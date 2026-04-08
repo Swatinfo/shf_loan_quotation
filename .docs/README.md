@@ -24,7 +24,8 @@ This `.docs` folder contains comprehensive documentation for every module and fe
 | [frontend.md](frontend.md) | Design system, CSS classes, JS modules, Bootstrap integration |
 | [offline-pwa.md](offline-pwa.md) | PWA setup, service worker, IndexedDB, offline sync queue |
 | [views.md](views.md) | All Blade views, layouts, sections, partials, UI patterns |
-| [loans.md](loans.md) | Loan task system, 10-stage workflow, conversions (if created) |
+| [workflow-guide.md](workflow-guide.md) | **End-user guide**: Complete loan lifecycle from quotation to completion |
+| [workflow-developer.md](workflow-developer.md) | **Developer reference**: Stage system, services, auto-assignment, phase flows |
 
 ---
 

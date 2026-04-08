@@ -91,8 +91,8 @@
                                     $allBanks = \App\Models\Bank::active()->orderBy('name')->get();
                                     // Roles that need location
                                     $singleCityRoles = ['bank_employee', 'office_employee'];
-                                    $multiLocationRoles = ['legal_advisor', 'branch_manager', 'loan_advisor'];
-                                    $bankRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
+                                    $multiLocationRoles = ['branch_manager', 'loan_advisor'];
+                                    $bankRoles = ['bank_employee', 'office_employee'];
                                 @endphp
 
                                 {{-- Location: Single city for bank_employee/office_employee --}}
@@ -110,7 +110,7 @@
                                     </select>
                                 </div>
 
-                                {{-- Location: Multiple for legal_advisor/branch_manager/loan_advisor --}}
+                                {{-- Location: Multiple for branch_manager/loan_advisor --}}
                                 <div id="editMultiLocationField" style="{{ in_array($taskRole, $multiLocationRoles) ? '' : 'display:none;' }}">
                                     <label class="shf-form-label d-block mb-1">Assigned Locations</label>
                                     <div class="mb-3" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:8px;">
@@ -135,7 +135,7 @@
                                     </div>
                                 </div>
 
-                                {{-- Bank: Single for bank_employee, Multiple for office_employee/legal_advisor --}}
+                                {{-- Bank: Single for bank_employee, Multiple for office_employee --}}
                                 <div id="editBankField" style="{{ in_array($taskRole, $bankRoles) ? '' : 'display:none;' }}">
                                     {{-- Single bank (bank_employee) --}}
                                     <div id="editSingleBankField" style="{{ $taskRole === 'bank_employee' ? '' : 'display:none;' }}">
@@ -147,8 +147,8 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    {{-- Multiple banks (office_employee, legal_advisor) --}}
-                                    <div id="editMultiBankField" style="{{ in_array($taskRole, ['office_employee', 'legal_advisor']) ? '' : 'display:none;' }}">
+                                    {{-- Multiple banks (office_employee) --}}
+                                    <div id="editMultiBankField" style="{{ $taskRole === 'office_employee' ? '' : 'display:none;' }}">
                                         <label class="shf-form-label d-block mb-1">Assigned Banks</label>
                                         <div class="d-flex flex-wrap gap-2 mb-3">
                                             @foreach($allBanks as $bank)
@@ -255,14 +255,14 @@ $(function() {
     $('#editTaskRoleSelect').on('change', function() {
         var val = $(this).val();
         var singleCityRoles = ['bank_employee', 'office_employee'];
-        var multiLocationRoles = ['legal_advisor', 'branch_manager', 'loan_advisor'];
-        var bankRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
+        var multiLocationRoles = ['branch_manager', 'loan_advisor'];
+        var bankRoles = ['bank_employee', 'office_employee'];
 
         $('#editSingleCityField').toggle(singleCityRoles.indexOf(val) !== -1);
         $('#editMultiLocationField').toggle(multiLocationRoles.indexOf(val) !== -1);
         $('#editBankField').toggle(bankRoles.indexOf(val) !== -1);
         $('#editSingleBankField').toggle(val === 'bank_employee');
-        $('#editMultiBankField').toggle(val === 'office_employee' || val === 'legal_advisor');
+        $('#editMultiBankField').toggle(val === 'office_employee');
     });
 });
 </script>

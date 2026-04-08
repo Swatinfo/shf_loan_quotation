@@ -2,7 +2,7 @@
 
 ## Overview
 
-The app uses a 3-tier permission system with 34 permissions across 6 groups. Permissions are defined in `config/permissions.php`, seeded via `PermissionSeeder`, and resolved by `PermissionService`.
+The app uses a 4-tier permission system with 36 permissions across 5 groups (Settings, Quotations, Users, Loans, System). Permissions are defined in `config/permissions.php`, seeded via `DefaultDataSeeder`, and resolved by `PermissionService`.
 
 ## Architecture
 
@@ -16,12 +16,15 @@ app/Models/User::hasPermission() → Model-level check (delegates to PermissionS
 
 ## Resolution Order
 
-When checking if a user has a permission:
+When checking if a user has a permission (4-tier, additive):
 
 1. **Super Admin Bypass**: If `user->role === 'super_admin'` → always `true`
 2. **User Override**: Check `user_permissions` table for explicit `grant` or `deny` for this user + permission
-3. **Role Default**: Check `role_permissions` table for the user's role + permission
-4. **No Match**: Returns `false`
+3. **System Role Default**: Check `role_permissions` table for the user's role + permission
+4. **Task Role (Additive)**: Check `task_role_permissions` table for the user's `task_role` + permission
+5. **No Match**: Returns `false`
+
+If either system role (step 3) OR task role (step 4) grants the permission, the user has it. Task roles are additive — they can only grant permissions, never deny.
 
 ```php
 // PermissionService::userHasPermission()
@@ -32,7 +35,10 @@ public function userHasPermission(User $user, string $slug): bool
     $override = $this->getUserOverride($user, $slug);
     if ($override !== null) return $override;
 
-    return $this->roleHasPermission($user->role, $slug);
+    if ($this->roleHasPermission($user->role, $slug)) return true;
+    if ($user->task_role && $this->taskRoleHasPermission($user->task_role, $slug)) return true;
+
+    return false;
 }
 ```
 
@@ -90,8 +96,13 @@ public function userHasPermission(User $user, string $slug): bool
 | `skip_loan_stages` | Skip stages in loan workflow | yes | no |
 | `add_remarks` | Add remarks to loan stages | yes | yes |
 | `manage_workflow_config` | Configure workflow settings | yes | no |
+| `upload_loan_documents` | Upload document files | yes | yes |
+| `download_loan_documents` | Download/preview document files | yes | yes |
+| `delete_loan_files` | Remove uploaded document files | yes | yes |
 
 **Note**: `super_admin` always has ALL permissions (hardcoded bypass in PermissionService).
+
+**Total**: 36 permissions across 5 groups.
 
 ## Middleware Usage
 
@@ -151,12 +162,24 @@ Admins can set per-user overrides via the user edit page (`/users/{user}/edit`):
 | 5       | 7            | deny  |  ← User 5 explicitly denied permission 7
 ```
 
+## Task Role Permissions
+
+Managed via Loan Settings → Role Permissions tab. Stored in `task_role_permissions` table.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| task_role | string | branch_manager, loan_advisor, bank_employee, office_employee |
+| permission_id | FK → permissions | cascade delete |
+
+Only Loans group permissions are configurable per task role. These are additive to system role permissions.
+
 ## Caching
 
 | Cache Key | TTL | Content |
 |-----------|-----|---------|
 | `user_perms:{userId}` | 300s (5 min) | User's permission overrides |
 | `role_perms:{role}` | 300s (5 min) | Role's default permissions |
+| `task_role_perms:{taskRole}` | 300s (5 min) | Task role's permissions |
 
 **Cache Clearing**:
 ```php

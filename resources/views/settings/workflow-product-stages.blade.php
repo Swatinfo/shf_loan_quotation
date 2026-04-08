@@ -30,7 +30,7 @@
             @php
                 $locStates = \App\Models\Location::with('children')->states()->active()->orderBy('name')->get();
                 $bankLocIds = $product->bank->locations->pluck('id')->toArray();
-                $locationConfigRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
+                $locationConfigRoles = ['bank_employee', 'office_employee'];
                 $roleLabels = \App\Models\User::TASK_ROLE_LABELS;
             @endphp
 

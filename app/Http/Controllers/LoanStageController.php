@@ -55,6 +55,28 @@ class LoanStageController extends Controller
             return response()->json(['error' => 'You do not have permission to skip stages'], 403);
         }
 
+        // Docket phase 2: office employee completes → transfer back to owner (phase 3), don't actually complete yet
+        if ($validated['status'] === 'completed' && $stageKey === 'docket') {
+            $docketAssignment = $loan->stageAssignments()->where('stage_key', 'docket')->first();
+            if ($docketAssignment) {
+                $docketNotes = $docketAssignment->getNotesData();
+                if (($docketNotes['docket_phase'] ?? '1') === '2') {
+                    $docketAssignment->mergeNotesData(['docket_phase' => '3']);
+                    $originalAssignee = $docketNotes['docket_original_assignee'] ?? $loan->created_by;
+                    if ($originalAssignee) {
+                        $this->stageService->transferStage($loan, 'docket', (int) $originalAssignee, 'Docket login done, returned to task owner');
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'assignment' => ['stage_key' => 'docket', 'status' => 'in_progress'],
+                        'current_stage' => $loan->current_stage,
+                        'progress' => ['completed' => $loan->progress?->completed_stages ?? 0, 'total' => $loan->progress?->total_stages ?? 10, 'percentage' => $loan->progress?->overall_percentage ?? 0],
+                    ]);
+                }
+            }
+        }
+
         // Block completion if required stage data is missing
         if ($validated['status'] === 'completed') {
             $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
@@ -72,12 +94,9 @@ class LoanStageController extends Controller
                     if (! $docService->allRequiredResolved($loan)) {
                         return response()->json(['error' => 'Cannot complete — not all required documents have been collected.'], 422);
                     }
-                } elseif (in_array($stageKey, ['technical_valuation', 'property_valuation', 'vehicle_valuation', 'business_valuation'])) {
+                } elseif (in_array($stageKey, ['technical_valuation', 'property_valuation'])) {
                     // Valuation stages need valuation_details record
-                    $valType = match ($stageKey) {
-                        'property_valuation' => 'property', 'vehicle_valuation' => 'vehicle', 'business_valuation' => 'business', default => 'property'
-                    };
-                    if (! $loan->valuationDetails()->where('valuation_type', $valType)->whereNotNull('market_value')->exists()) {
+                    if (! $loan->valuationDetails()->where('valuation_type', 'property')->whereNotNull('final_valuation')->exists()) {
                         return response()->json(['error' => 'Cannot complete — fill the valuation form first.'], 422);
                     }
                 } elseif (! $this->isStageDataComplete($stageKey, $assignment)) {
@@ -279,20 +298,20 @@ class LoanStageController extends Controller
         return response()->json(['error' => 'Invalid action'], 422);
     }
 
-    public function bsmAction(Request $request, LoanDetail $loan): JsonResponse
+    public function legalAction(Request $request, LoanDetail $loan): JsonResponse
     {
         $validated = $request->validate([
-            'action' => 'required|in:initiate_bsm,bsm_initiated,bsm_transfer_to_owner',
-            'legal_advisor_id' => 'nullable|exists:users,id',
+            'action' => 'required|in:send_to_bank,initiate_legal',
+            'suggested_legal_advisor' => 'nullable|string|max:255',
         ]);
 
-        $assignment = $loan->stageAssignments()->where('stage_key', 'bsm_osv')->firstOrFail();
+        $assignment = $loan->stageAssignments()->where('stage_key', 'legal_verification')->firstOrFail();
 
-        if ($validated['action'] === 'initiate_bsm') {
+        if ($validated['action'] === 'send_to_bank') {
             $assignment->mergeNotesData([
-                'bsm_phase' => '2',
-                'bsm_original_assignee' => auth()->id(),
-                'bsm_selected_legal_advisor' => $validated['legal_advisor_id'] ?? null,
+                'legal_phase' => '2',
+                'legal_original_assignee' => auth()->id(),
+                'suggested_legal_advisor' => $validated['suggested_legal_advisor'] ?? '',
             ]);
 
             // Transfer to bank employee
@@ -304,35 +323,173 @@ class LoanStageController extends Controller
                     ->first();
                 $bankEmployeeId = $bankEmployee?->id;
             }
+
             if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'bsm_osv', $bankEmployeeId, 'Initiated BSM/OSV');
+                $this->stageService->transferStage($loan, 'legal_verification', $bankEmployeeId, 'Sent to bank for legal verification');
             }
 
-            return response()->json(['success' => true, 'message' => 'BSM/OSV initiated and assigned to bank employee']);
+            return response()->json(['success' => true, 'message' => 'Sent to bank employee for legal verification']);
         }
 
-        if ($validated['action'] === 'bsm_initiated') {
-            $notesData = $assignment->getNotesData();
-            $assignment->mergeNotesData(['bsm_phase' => '3']);
+        if ($validated['action'] === 'initiate_legal') {
+            $assignment->mergeNotesData([
+                'legal_phase' => '3',
+                'confirmed_legal_advisor' => $validated['suggested_legal_advisor'] ?? $assignment->getNotesData()['suggested_legal_advisor'] ?? '',
+            ]);
 
-            $legalAdvisorId = $notesData['bsm_selected_legal_advisor'] ?? null;
-            if ($legalAdvisorId) {
-                $this->stageService->transferStage($loan, 'bsm_osv', (int) $legalAdvisorId, 'BSM initiated, assigned to legal advisor');
-            }
-
-            return response()->json(['success' => true, 'message' => 'BSM initiated, assigned to legal advisor']);
-        }
-
-        if ($validated['action'] === 'bsm_transfer_to_owner') {
-            $notesData = $assignment->getNotesData();
-            $assignment->mergeNotesData(['bsm_phase' => '4']);
-
-            $originalAssignee = $notesData['bsm_original_assignee'] ?? $loan->created_by;
+            // Transfer back to loan creator (task owner)
+            $originalAssignee = $assignment->getNotesData()['legal_original_assignee'] ?? $loan->created_by;
             if ($originalAssignee) {
-                $this->stageService->transferStage($loan, 'bsm_osv', (int) $originalAssignee, 'BSM completed by legal, transferred to task owner');
+                $this->stageService->transferStage($loan, 'legal_verification', (int) $originalAssignee, 'Legal initiated, transferred back to task owner');
             }
 
-            return response()->json(['success' => true, 'message' => 'Transferred to task owner for completion']);
+            return response()->json(['success' => true, 'message' => 'Legal initiated, transferred to task owner']);
+        }
+
+        return response()->json(['error' => 'Invalid action'], 422);
+    }
+
+    public function esignAction(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:esign_generated,esign_customer_done',
+        ]);
+
+        $assignment = $loan->stageAssignments()->where('stage_key', 'esign')->firstOrFail();
+
+        if ($validated['action'] === 'esign_generated') {
+            $assignment->mergeNotesData([
+                'esign_phase' => '2',
+                'esign_bank_employee' => auth()->id(),
+            ]);
+
+            // Transfer to loan creator / eligible user
+            $eligibleUser = $loan->created_by;
+            if ($eligibleUser) {
+                $this->stageService->transferStage($loan, 'esign', $eligibleUser, 'E-Sign & eNACH generated, sent for customer completion');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Sent to task owner for customer completion']);
+        }
+
+        if ($validated['action'] === 'esign_customer_done') {
+            $notesData = $assignment->getNotesData();
+            $assignment->mergeNotesData(['esign_phase' => '3']);
+
+            // Transfer back to bank employee
+            $bankEmployeeId = $notesData['esign_bank_employee'] ?? $loan->assigned_bank_employee;
+            if ($bankEmployeeId) {
+                $this->stageService->transferStage($loan, 'esign', (int) $bankEmployeeId, 'E-Sign completed with customer, returned to bank');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Returned to bank employee for final confirmation']);
+        }
+
+        return response()->json(['error' => 'Invalid action'], 422);
+    }
+
+    public function docketAction(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:send_to_office',
+        ]);
+
+        $assignment = $loan->stageAssignments()->where('stage_key', 'docket')->firstOrFail();
+        $notesData = $assignment->getNotesData();
+
+        if (empty($notesData['login_date'])) {
+            return response()->json(['error' => 'Login Date is required'], 422);
+        }
+
+        $assignment->mergeNotesData([
+            'docket_phase' => '2',
+            'docket_original_assignee' => auth()->id(),
+        ]);
+
+        // Find office employee to assign
+        $officeEmployee = User::where('task_role', 'office_employee')
+            ->where('is_active', true)
+            ->first();
+
+        if ($officeEmployee) {
+            $this->stageService->transferStage($loan, 'docket', $officeEmployee->id, 'Sent for docket login');
+        }
+
+        return response()->json(['success' => true, 'message' => 'Sent to office employee for docket login']);
+    }
+
+    public function ratePfAction(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:send_to_bank,return_to_owner',
+        ]);
+
+        $assignment = $loan->stageAssignments()->where('stage_key', 'rate_pf')->firstOrFail();
+        $notesData = $assignment->getNotesData();
+
+        // Validate all required fields are filled before action
+        $requiredFields = [
+            'interest_rate' => 'Interest Rate',
+            'repo_rate' => 'Repo Rate',
+            'bank_rate' => 'Bank Margin',
+            'rate_offered_date' => 'Rate Offered Date',
+            'rate_valid_until' => 'Valid Until',
+            'bank_reference' => 'Bank Reference',
+            'processing_fee' => 'Processing Fee',
+            'admin_charges' => 'Admin Charges',
+            'processing_fee_gst' => 'PF GST',
+            'total_pf' => 'Total PF',
+        ];
+
+        $missing = [];
+        foreach ($requiredFields as $field => $label) {
+            if (! isset($notesData[$field]) || $notesData[$field] === '' || $notesData[$field] === null) {
+                $missing[] = $label;
+            }
+        }
+        if (! empty($missing)) {
+            return response()->json(['error' => 'Missing required fields: '.implode(', ', $missing)], 422);
+        }
+
+        if ($validated['action'] === 'send_to_bank') {
+            // Snapshot original values before sending to bank
+            $originalValues = [];
+            foreach ($requiredFields as $field => $label) {
+                $originalValues[$field] = $notesData[$field] ?? '';
+            }
+            $originalValues['special_conditions'] = $notesData['special_conditions'] ?? '';
+
+            $assignment->mergeNotesData([
+                'rate_pf_phase' => '2',
+                'rate_pf_original_assignee' => auth()->id(),
+                'original_values' => $originalValues,
+            ]);
+
+            $bankEmployeeId = $loan->assigned_bank_employee;
+            if (! $bankEmployeeId) {
+                $bankEmployee = User::where('task_role', 'bank_employee')
+                    ->where('task_bank_id', $loan->bank_id)
+                    ->where('is_active', true)
+                    ->first();
+                $bankEmployeeId = $bankEmployee?->id;
+            }
+
+            if ($bankEmployeeId) {
+                $this->stageService->transferStage($loan, 'rate_pf', $bankEmployeeId, 'Sent for bank rate review');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Sent to bank employee for review']);
+        }
+
+        if ($validated['action'] === 'return_to_owner') {
+            $assignment->mergeNotesData(['rate_pf_phase' => '3']);
+
+            $originalAssignee = $notesData['rate_pf_original_assignee'] ?? $loan->created_by;
+            if ($originalAssignee) {
+                $this->stageService->transferStage($loan, 'rate_pf', (int) $originalAssignee, 'Bank reviewed rate details, returned to task owner');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Returned to task owner']);
         }
 
         return response()->json(['error' => 'Invalid action'], 422);
@@ -368,6 +525,20 @@ class LoanStageController extends Controller
             $loan->update(['application_number' => $notesData['application_number']]);
         }
 
+        // Calculate and store expected docket date when sanction details are saved
+        if ($stageKey === 'sanction' && ! empty($notesData['sanction_date'])) {
+            $appNumberAssignment = $loan->stageAssignments()->where('stage_key', 'app_number')->first();
+            $appNotes = $appNumberAssignment ? $appNumberAssignment->getNotesData() : [];
+            $docketOffset = $appNotes['docket_days_offset'] ?? null;
+
+            if ($docketOffset && $docketOffset !== '0') {
+                $sanctionDateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $notesData['sanction_date']);
+                $loan->update(['due_date' => $sanctionDateObj->copy()->addDays((int) $docketOffset)->toDateString()]);
+            } elseif ($docketOffset === '0' && ! empty($appNotes['custom_docket_date'])) {
+                $loan->update(['due_date' => \Carbon\Carbon::createFromFormat('d/m/Y', $appNotes['custom_docket_date'])->toDateString()]);
+            }
+        }
+
         // Auto-complete if stage criteria met
         $stageAdvanced = false;
         if (in_array($assignment->status, ['pending', 'in_progress']) && $this->isStageDataComplete($stageKey, $assignment)) {
@@ -389,18 +560,16 @@ class LoanStageController extends Controller
         $errors = [];
 
         $rules = match ($stageKey) {
-            'app_number' => ['application_number' => 'Application Number'],
-            'bsm_osv' => $this->getBsmRequiredFields($data),
-            'legal_verification' => ['legal_remarks' => 'Legal Remarks'],
-            'technical_valuation', 'property_valuation', 'vehicle_valuation', 'business_valuation' => [], // validated via valuation_details table, not notes
-            'title_search' => ['title_search_remarks' => 'Title Search Remarks'],
-            'financial_analysis' => ['financial_analysis_remarks' => 'Financial Analysis Remarks'],
-            'site_visit' => ['site_visit_remarks' => 'Site Visit Remarks'],
-            'rate_pf' => $this->getRatePfRequiredFields($data),
+            'app_number' => ['application_number' => 'Application Number', 'docket_days_offset' => 'Docket Timeline'],
+            'bsm_osv' => [],
+            'legal_verification' => [],
+            'technical_valuation', 'property_valuation' => [], // validated via valuation_details table, not notes
+            'rate_pf' => [],
             'sanction' => $this->getSanctionRequiredFields($data),
-            'docket' => ['docket_number' => 'Docket Number', 'login_date' => 'Login Date'],
-            'kfs' => ['kfs_reference' => 'KFS Reference'],
-            'esign' => ['ecs_reference' => 'ECS Reference', 'esign_status' => 'E-Sign Status'],
+            'docket' => ['login_date' => 'Login Date'],
+            'kfs' => [],
+            'esign' => [],
+            'otc_clearance' => ['handover_date' => 'Handover Date'],
             default => [],
         };
 
@@ -417,24 +586,6 @@ class LoanStageController extends Controller
      * Rate & PF has role-gated sections: bank employee fills rate, task owner fills PF/charges.
      * Only validate required fields that belong to the submitted section.
      */
-    private function getRatePfRequiredFields(array $data): array
-    {
-        $bankFields = ['interest_rate' => 'Interest Rate'];
-        $officeFields = ['processing_fee' => 'Processing Fee'];
-
-        $rules = [];
-
-        // Determine which section was submitted by checking which fields are present as keys
-        if (array_key_exists('interest_rate', $data)) {
-            $rules = array_merge($rules, $bankFields);
-        }
-        if (array_key_exists('processing_fee', $data)) {
-            $rules = array_merge($rules, $officeFields);
-        }
-
-        return $rules;
-    }
-
     /**
      * Sanction stage phase 3: validate form fields only when task owner fills details.
      */
@@ -447,24 +598,13 @@ class LoanStageController extends Controller
         return [
             'sanction_date' => 'Sanction Date',
             'sanctioned_amount' => 'Sanctioned Amount',
+            'emi_amount' => 'EMI Amount',
         ];
     }
 
     /**
      * BSM/OSV: validate form fields only in phase 3 or 4.
      */
-    private function getBsmRequiredFields(array $data): array
-    {
-        if (! array_key_exists('bsm_remarks', $data)) {
-            return [];
-        }
-
-        return [
-            'bsm_remarks' => 'BSM/OSV Remarks',
-            'bsm_verification_status' => 'Verification Status',
-        ];
-    }
-
     /**
      * Check if all required data is present in the assignment's notes for auto-completion.
      */
@@ -473,22 +613,18 @@ class LoanStageController extends Controller
         $notesData = $assignment->getNotesData();
 
         return match ($stageKey) {
-            'app_number' => ! empty($notesData['application_number']),
-            'bsm_osv' => in_array($notesData['bsm_phase'] ?? '', ['3', '4'])
-                && ! empty($notesData['bsm_remarks']) && ! empty($notesData['bsm_verification_status']),
-            'legal_verification' => ! empty($notesData['legal_remarks']),
-            'technical_valuation', 'property_valuation', 'vehicle_valuation', 'business_valuation' => false, // auto-completed by ValuationController, not saveNotes
-            'title_search' => ! empty($notesData['title_search_remarks']),
-            'financial_analysis' => ! empty($notesData['financial_analysis_remarks']),
-            'site_visit' => ! empty($notesData['site_visit_remarks']),
-            'rate_pf' => isset($notesData['interest_rate']) && $notesData['interest_rate'] !== ''
-                && isset($notesData['processing_fee']) && $notesData['processing_fee'] !== '',
+            'app_number' => ! empty($notesData['application_number']) && isset($notesData['docket_days_offset']) && $notesData['docket_days_offset'] !== '',
+            'bsm_osv' => true,
+            'legal_verification' => ($notesData['legal_phase'] ?? '') === '3',
+            'technical_valuation', 'property_valuation' => false, // auto-completed by ValuationController, not saveNotes
+            'rate_pf' => ($notesData['rate_pf_phase'] ?? '') === '3',
             'sanction' => ($notesData['sanction_phase'] ?? '') === '3'
                 && ! empty($notesData['sanction_date'])
                 && isset($notesData['sanctioned_amount']) && $notesData['sanctioned_amount'] !== '',
-            'docket' => ! empty($notesData['docket_number']) && ! empty($notesData['login_date']),
-            'kfs' => ! empty($notesData['kfs_reference']),
-            'esign' => ! empty($notesData['ecs_reference']) && ($notesData['esign_status'] ?? '') === 'completed',
+            'docket' => in_array($notesData['docket_phase'] ?? '', ['2', '3']),
+            'kfs' => true,
+            'esign' => ($notesData['esign_phase'] ?? '') === '3',
+            'otc_clearance' => ! empty($notesData['handover_date']),
             default => false,
         };
     }

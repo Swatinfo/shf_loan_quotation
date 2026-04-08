@@ -65,61 +65,61 @@ class UserController extends Controller
         $authId = auth()->id();
         $roleLabels = User::TASK_ROLE_LABELS;
 
-        $data = $users->map(function ($user) use ($canEdit, $canCreate, $canDelete, $authId, $roleLabels) {
+        $data = $users->map(function ($user) use ($canEdit, $canCreate, $canDelete, $authId) {
             // Name + phone
-            $nameHtml = '<div class="fw-medium">' . e($user->name) . '</div>';
+            $nameHtml = '<div class="fw-medium">'.e($user->name).'</div>';
             if ($user->phone) {
-                $nameHtml .= '<div class="small" style="color:#6b7280;">' . e($user->phone) . '</div>';
+                $nameHtml .= '<div class="small" style="color:#6b7280;">'.e($user->phone).'</div>';
             }
 
             // Role badge
             $roleBadge = $user->isSuperAdmin() ? 'shf-badge-orange' : ($user->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray');
-            $roleHtml = '<span class="shf-badge ' . $roleBadge . '">' . e($user->role_label) . '</span>';
+            $roleHtml = '<span class="shf-badge '.$roleBadge.'">'.e($user->role_label).'</span>';
 
             // Loan role
             $loanRoleHtml = '<small class="text-muted">—</small>';
             if ($user->task_role_label) {
-                $loanRoleHtml = '<span class="shf-badge shf-badge-blue" style="font-size:0.7rem;">' . e($user->task_role_label) . '</span>';
+                $loanRoleHtml = '<span class="shf-badge shf-badge-blue" style="font-size:0.7rem;">'.e($user->task_role_label).'</span>';
                 if ($user->employerBanks->isNotEmpty()) {
-                    $loanRoleHtml .= '<br><small class="text-muted">' . e($user->employerBanks->pluck('name')->implode(', ')) . '</small>';
+                    $loanRoleHtml .= '<br><small class="text-muted">'.e($user->employerBanks->pluck('name')->implode(', ')).'</small>';
                 } elseif ($user->taskBank) {
-                    $loanRoleHtml .= '<br><small class="text-muted">' . e($user->taskBank->name) . '</small>';
+                    $loanRoleHtml .= '<br><small class="text-muted">'.e($user->taskBank->name).'</small>';
                 }
                 if ($user->locations->isNotEmpty()) {
-                    $loanRoleHtml .= '<br><small class="text-info" style="font-size:0.65rem;">' . e($user->locations->pluck('name')->implode(', ')) . '</small>';
+                    $loanRoleHtml .= '<br><small class="text-info" style="font-size:0.65rem;">'.e($user->locations->pluck('name')->implode(', ')).'</small>';
                 }
             }
 
             // Branch
             $branchHtml = $user->branches->isNotEmpty()
-                ? '<small>' . e($user->branches->pluck('name')->implode(', ')) . '</small>'
+                ? '<small>'.e($user->branches->pluck('name')->implode(', ')).'</small>'
                 : '<small class="text-muted">—</small>';
 
             // Status
-            $statusHtml = '<span class="shf-badge ' . ($user->is_active ? 'shf-badge-green' : 'shf-badge-red') . '">'
-                . ($user->is_active ? 'Active' : 'Inactive') . '</span>';
+            $statusHtml = '<span class="shf-badge '.($user->is_active ? 'shf-badge-green' : 'shf-badge-red').'">'
+                .($user->is_active ? 'Active' : 'Inactive').'</span>';
 
             // Created
-            $createdHtml = '<span style="color:#6b7280;white-space:nowrap;">' . $user->created_at->format('d M Y') . '</span>';
+            $createdHtml = '<span style="color:#6b7280;white-space:nowrap;">'.$user->created_at->format('d M Y').'</span>';
             if ($user->creator) {
-                $createdHtml .= '<div class="small" style="color:#9ca3af;">by ' . e($user->creator->name) . '</div>';
+                $createdHtml .= '<div class="small" style="color:#9ca3af;">by '.e($user->creator->name).'</div>';
             }
 
             // Actions
             $actions = '<div class="d-flex align-items-center justify-content-end gap-2">';
             if ($canEdit) {
-                $actions .= '<a href="' . route('users.edit', $user) . '" class="btn-accent-sm">Edit</a>';
+                $actions .= '<a href="'.route('users.edit', $user).'" class="btn-accent-sm">Edit</a>';
             }
             if ($canCreate) {
-                $actions .= '<a href="' . route('users.create', ['copy' => $user->id]) . '" class="btn-accent-sm" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">Copy</a>';
+                $actions .= '<a href="'.route('users.create', ['copy' => $user->id]).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">Copy</a>';
             }
             if ($canEdit && $user->id !== $authId) {
                 $toggleColor = $user->is_active ? '#d97706,#f59e0b' : '#16a34a,#22c55e';
                 $toggleLabel = $user->is_active ? 'Deactivate' : 'Activate';
-                $actions .= '<button type="button" class="btn-accent-sm btn-toggle-active" data-url="' . route('users.toggle-active', $user) . '" style="background:linear-gradient(135deg,' . $toggleColor . ');">' . $toggleLabel . '</button>';
+                $actions .= '<button type="button" class="btn-accent-sm btn-toggle-active" data-url="'.route('users.toggle-active', $user).'" style="background:linear-gradient(135deg,'.$toggleColor.');">'.$toggleLabel.'</button>';
             }
             if ($canDelete && $user->id !== $authId) {
-                $actions .= '<button type="button" class="btn-accent-sm btn-delete-user" data-url="' . route('users.destroy', $user) . '" style="background:linear-gradient(135deg,#dc2626,#ef4444);">Delete</button>';
+                $actions .= '<button type="button" class="btn-accent-sm btn-delete-user" data-url="'.route('users.destroy', $user).'" style="background:linear-gradient(135deg,#dc2626,#ef4444);">Delete</button>';
             }
             $actions .= '</div>';
 
@@ -200,7 +200,7 @@ class UserController extends Controller
         }
 
         // Sync bank assignments
-        $bankRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
+        $bankRoles = ['bank_employee', 'office_employee'];
         if (in_array($validated['task_role'] ?? null, $bankRoles)) {
             $assignedBanks = $request->input('assigned_banks', []);
             $user->employerBanks()->sync($assignedBanks);
@@ -275,7 +275,7 @@ class UserController extends Controller
         $user->save();
 
         // Sync bank assignments
-        $bankRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
+        $bankRoles = ['bank_employee', 'office_employee'];
         if (in_array($validated['task_role'] ?? null, $bankRoles)) {
             $assignedBanks = $request->input('assigned_banks', []);
             $user->employerBanks()->sync($assignedBanks);
@@ -308,18 +308,23 @@ class UserController extends Controller
     {
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
-            return back()->with('error', 'You cannot delete your own account.');
+            return response()->json(['message' => 'You cannot delete your own account.'], 422);
         }
 
         // Prevent deleting super_admin unless you are super_admin
         if ($user->isSuperAdmin() && ! auth()->user()->isSuperAdmin()) {
-            abort(403, 'Cannot delete a Super Admin account.');
+            return response()->json(['message' => 'Cannot delete a Super Admin account.'], 403);
+        }
+
+        // Prevent deleting users who have loans
+        if (\App\Models\LoanDetail::where('created_by', $user->id)->exists()) {
+            return response()->json(['message' => 'Cannot delete this user because they have associated loans. Deactivate the user instead.'], 422);
         }
 
         ActivityLog::log('user_deleted', $user, ['name' => $user->name, 'email' => $user->email]);
         $user->delete();
 
-        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
+        return response()->json(['message' => 'User deleted successfully.']);
     }
 
     public function toggleActive(User $user)

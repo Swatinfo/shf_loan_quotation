@@ -77,8 +77,8 @@
         {{-- Precompute role labels, bank filter, and location context once --}}
         @php
             $roleLabels = \App\Models\User::TASK_ROLE_LABELS;
-            $bankFilterRoles = ['bank_employee', 'office_employee', 'legal_advisor'];
-            $locationRoles = ['bank_employee', 'legal_advisor'];
+            $bankFilterRoles = ['bank_employee', 'office_employee'];
+            $locationRoles = ['bank_employee'];
             $branchRoles = ['office_employee', 'loan_advisor', 'branch_manager'];
             $loanCityId = $loan->branch?->location_id;
             $loanStateId = $loan->branch?->location?->parent_id;
@@ -166,27 +166,29 @@
                                                     @switch($sub->stage_key)
                                                         @case('app_number')
                                                             <div class="small"><span class="text-muted">Application No:</span> <strong>{{ $notesData['application_number'] ?? '—' }}</strong></div>
+                                                            @if(!empty($notesData['docket_days_offset']))
+                                                                <div class="small"><span class="text-muted">Docket Timeline:</span> <strong>S+{{ $notesData['docket_days_offset'] }}</strong></div>
+                                                            @elseif(!empty($notesData['custom_docket_date']))
+                                                                <div class="small"><span class="text-muted">Expected Docket:</span> <strong>{{ $notesData['custom_docket_date'] }}</strong></div>
+                                                            @endif
                                                             @if(!empty($notesData['stageRemarks']))<div class="small text-muted mt-1">{{ $notesData['stageRemarks'] }}</div>@endif
                                                             @break
                                                         @case('bsm_osv')
-                                                            @if(!empty($notesData['bsm_verification_status']))
-                                                                <div class="small"><span class="text-muted">Status:</span> <strong class="{{ $notesData['bsm_verification_status'] === 'verified' ? 'text-success' : 'text-danger' }}">{{ ucfirst($notesData['bsm_verification_status']) }}</strong></div>
-                                                            @endif
-                                                            <div class="small text-muted">{{ $notesData['bsm_remarks'] ?? '—' }}</div>
+                                                            <div class="small text-success">BSM/OSV verification completed</div>
                                                             @break
                                                         @case('legal_verification')
-                                                            <div class="small text-muted">{{ $notesData['legal_remarks'] ?? '—' }}</div>
+                                                            @if(!empty($notesData['confirmed_legal_advisor'] ?? $notesData['suggested_legal_advisor'] ?? null))
+                                                                <div class="small"><span class="text-muted">Legal Advisor:</span> <strong>{{ $notesData['confirmed_legal_advisor'] ?? $notesData['suggested_legal_advisor'] }}</strong></div>
+                                                            @endif
+                                                            <div class="small text-success">Legal verification completed</div>
                                                             @break
                                                         @case('technical_valuation')
                                                         @case('property_valuation')
-                                                        @case('vehicle_valuation')
-                                                        @case('business_valuation')
-                                                            @php $val = $loan->valuationDetails->where('valuation_type', match($sub->stage_key) { 'property_valuation' => 'property', 'vehicle_valuation' => 'vehicle', 'business_valuation' => 'business', default => 'property' })->first(); @endphp
+                                                            @php $val = $loan->valuationDetails->where('valuation_type', 'property')->first(); @endphp
                                                             @if($val)
-                                                                <div class="small"><span class="text-muted">Market Value:</span> <strong>₹ {{ number_format($val->market_value, 2) }}</strong></div>
-                                                                @if($val->government_value)<div class="small"><span class="text-muted">Govt Value:</span> ₹ {{ number_format($val->government_value, 2) }}</div>@endif
+                                                                @if($val->final_valuation)<div class="small"><span class="text-muted">Valuation:</span> <strong>₹ {{ number_format($val->final_valuation) }}</strong></div>@endif
+                                                                @if($val->property_type)<div class="small"><span class="text-muted">Type:</span> {{ \App\Models\ValuationDetail::PROPERTY_TYPES[$val->property_type] ?? $val->property_type }}</div>@endif
                                                                 @if($val->valuator_name)<div class="small"><span class="text-muted">Valuator:</span> {{ $val->valuator_name }}</div>@endif
-                                                                @if($val->notes)<div class="small text-muted mt-1">{{ $val->notes }}</div>@endif
                                                             @else
                                                                 <div class="small text-muted">No valuation details</div>
                                                             @endif
@@ -202,24 +204,17 @@
                                                         @case('app_number')
                                                             @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
                                                                 ['name' => 'application_number', 'label' => 'Application Number', 'required' => true, 'placeholder' => 'e.g. HL20250113001'],
+                                                                ['name' => 'docket_days_offset', 'label' => 'Docket Timeline', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', '1' => 'S+1 (1 day after sanction)', '2' => 'S+2 (2 days after sanction)', '3' => 'S+3 (3 days after sanction)', '0' => 'Custom Date']],
+                                                                ['name' => 'custom_docket_date', 'label' => 'Custom Docket Date', 'type' => 'date'],
                                                                 ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
                                                             ]])
                                                             @break
                                                         @case('bsm_osv')
-                                                            @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
-                                                                ['name' => 'bsm_verification_status', 'label' => 'Verification Status', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', 'verified' => 'Verified', 'not_verified' => 'Not Verified']],
-                                                                ['name' => 'bsm_remarks', 'label' => 'BSM/OSV Remarks', 'type' => 'textarea', 'required' => true, 'col' => 12, 'placeholder' => 'Enter BSM verification remarks...'],
-                                                            ]])
                                                             @break
                                                         @case('legal_verification')
-                                                            @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
-                                                                ['name' => 'legal_remarks', 'label' => 'Legal Remarks', 'type' => 'textarea', 'required' => true, 'col' => 12, 'placeholder' => 'Enter legal verification remarks...'],
-                                                            ]])
                                                             @break
                                                         @case('technical_valuation')
                                                         @case('property_valuation')
-                                                        @case('vehicle_valuation')
-                                                        @case('business_valuation')
                                                             <div class="mt-2 border-top pt-2">
                                                                 <a href="{{ route('loans.valuation', $loan) }}" class="btn-accent-sm">
                                                                     <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -235,80 +230,61 @@
                                                     @case('app_number')
                                                         @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
                                                             ['name' => 'application_number', 'label' => 'Application Number', 'required' => true, 'placeholder' => 'e.g. HL20250113001'],
+                                                            ['name' => 'docket_days_offset', 'label' => 'Docket Timeline', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', '1' => 'S+1 (1 day after sanction)', '2' => 'S+2 (2 days after sanction)', '3' => 'S+3 (3 days after sanction)', '0' => 'Custom Date']],
+                                                            ['name' => 'custom_docket_date', 'label' => 'Custom Docket Date', 'type' => 'date'],
                                                             ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
                                                         ]])
                                                         @break
                                                     @case('bsm_osv')
+                                                        <div class="mt-2 border-top pt-2">
+                                                            <small class="text-muted">Assigned to bank employee for BSM/OSV verification. Mark complete when done.</small>
+                                                        </div>
+                                                        @break
+                                                    @case('legal_verification')
                                                         @php
-                                                            $bsmNotes = $sub->getNotesData();
-                                                            $bsmPhase = $bsmNotes['bsm_phase'] ?? '1';
-                                                            $legalAdvisors = $allActiveUsers->where('task_role', 'legal_advisor');
-                                                            if ($loan->bank_id) {
-                                                                $legalAdvisors = $legalAdvisors->filter(fn($u) => $u->employerBanks->contains('id', $loan->bank_id));
-                                                            }
+                                                            $legalNotes = $sub->getNotesData();
+                                                            $legalPhase = $legalNotes['legal_phase'] ?? '1';
                                                         @endphp
 
-                                                        @if($bsmPhase === '1')
+                                                        @if($legalPhase === '1')
+                                                            {{-- Phase 1: Task owner sends to bank --}}
                                                             <div class="mt-2 border-top pt-2">
-                                                                <small class="text-muted d-block mb-2">Select a legal advisor and initiate BSM/OSV verification.</small>
-                                                                <select class="shf-input mb-2" id="bsmLegalAdvisor" style="font-size:0.8rem;">
-                                                                    <option value="">— Select Legal Advisor —</option>
-                                                                    @foreach($legalAdvisors as $la)
-                                                                        <option value="{{ $la->id }}">{{ $la->name }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                                <button class="btn-accent-sm shf-bsm-action" data-loan-id="{{ $loan->id }}" data-action="initiate_bsm">
+                                                                <small class="text-muted d-block mb-2">Enter suggested legal advisor name and send to bank employee.</small>
+                                                                <input type="text" class="shf-input shf-input-sm mb-2" id="legalAdvisorName" placeholder="Suggested Legal Advisor name (required)" value="{{ $legalNotes['suggested_legal_advisor'] ?? '' }}">
+                                                                <button class="btn-accent-sm shf-legal-action" data-loan-id="{{ $loan->id }}" data-action="send_to_bank">
                                                                     <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                                                    Assign & Initiate
+                                                                    Send to Bank
                                                                 </button>
                                                             </div>
-                                                        @elseif($bsmPhase === '2')
+                                                        @elseif($legalPhase === '2')
+                                                            {{-- Phase 2: Bank employee confirms legal advisor and initiates --}}
                                                             <div class="mt-2 border-top pt-2">
                                                                 <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;">
-                                                                    <strong>Waiting for initiation.</strong> Click below to initiate BSM/OSV and assign to legal advisor.
+                                                                    <strong>Legal verification requested.</strong> Confirm or change the legal advisor and click Initiate.
                                                                 </div>
-                                                                <button class="btn-accent-sm shf-bsm-action" data-loan-id="{{ $loan->id }}" data-action="bsm_initiated" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
+                                                                <label class="form-label small">Legal Advisor Name <span class="text-danger">*</span></label>
+                                                                <input type="text" class="shf-input shf-input-sm mb-2" id="legalAdvisorName" placeholder="Legal Advisor name (required)" value="{{ $legalNotes['suggested_legal_advisor'] ?? '' }}">
+                                                                <button class="btn-accent-sm shf-legal-action" data-loan-id="{{ $loan->id }}" data-action="initiate_legal" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
                                                                     <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                                    Initiate BSM/OSV
+                                                                    Initiate Legal Verification
                                                                 </button>
                                                             </div>
-                                                        @elseif($bsmPhase === '3')
+                                                        @elseif($legalPhase === '3')
+                                                            {{-- Phase 3: Back to task owner — can reassign or complete --}}
                                                             <div class="mt-2 border-top pt-2">
-                                                                <small class="fw-semibold text-muted d-block mb-1">Fill verification details or transfer to task owner.</small>
-                                                                @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
-                                                                    ['name' => 'bsm_verification_status', 'label' => 'Verification Status', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', 'verified' => 'Verified', 'not_verified' => 'Not Verified']],
-                                                                    ['name' => 'bsm_remarks', 'label' => 'BSM/OSV Remarks', 'type' => 'textarea', 'required' => true, 'col' => 12, 'placeholder' => 'Enter BSM verification remarks...'],
-                                                                ]])
-                                                                <button class="btn-accent-sm shf-bsm-action mt-1" data-loan-id="{{ $loan->id }}" data-action="bsm_transfer_to_owner" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.7rem;">
-                                                                    Complete & Transfer to Task Owner
-                                                                </button>
-                                                            </div>
-                                                        @elseif($bsmPhase === '4')
-                                                            <div class="mt-2 border-top pt-2">
-                                                                <small class="fw-semibold text-muted d-block mb-1">Legal advisor has completed. Fill final details.</small>
-                                                                @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
-                                                                    ['name' => 'bsm_verification_status', 'label' => 'Verification Status', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', 'verified' => 'Verified', 'not_verified' => 'Not Verified']],
-                                                                    ['name' => 'bsm_remarks', 'label' => 'BSM/OSV Remarks', 'type' => 'textarea', 'required' => true, 'col' => 12, 'placeholder' => 'Enter BSM verification remarks...'],
-                                                                ]])
+                                                                <small class="text-muted d-block mb-1">Legal verification initiated. Legal Advisor: <strong>{{ $legalNotes['confirmed_legal_advisor'] ?? $legalNotes['suggested_legal_advisor'] ?? '—' }}</strong></small>
+                                                                <small class="text-muted">You can reassign to another eligible user or mark as complete.</small>
                                                             </div>
                                                         @endif
                                                         @break
-                                                    @case('legal_verification')
-                                                        @include('loans.partials.stage-notes-form', ['assignment' => $sub, 'loan' => $loan, 'fields' => [
-                                                            ['name' => 'legal_remarks', 'label' => 'Legal Remarks', 'type' => 'textarea', 'required' => true, 'col' => 12, 'placeholder' => 'Enter legal verification remarks...'],
-                                                        ]])
-                                                        @break
                                                     @case('technical_valuation')
                                                     @case('property_valuation')
-                                                    @case('vehicle_valuation')
-                                                    @case('business_valuation')
-                                                        @php $val = $loan->valuationDetails->where('valuation_type', match($sub->stage_key) { 'property_valuation' => 'property', 'vehicle_valuation' => 'vehicle', 'business_valuation' => 'business', default => 'property' })->first(); @endphp
+                                                        @php $val = $loan->valuationDetails->where('valuation_type', 'property')->first(); @endphp
                                                         @if($val)
                                                             <div class="mt-2 border-top pt-2">
-                                                                <div class="small"><span class="text-muted">Market Value:</span> <strong>₹ {{ number_format($val->market_value, 2) }}</strong></div>
-                                                                @if($val->government_value)<div class="small"><span class="text-muted">Govt Value:</span> ₹ {{ number_format($val->government_value, 2) }}</div>@endif
+                                                                @if($val->final_valuation)<div class="small"><span class="text-muted">Valuation:</span> <strong>₹ {{ number_format($val->final_valuation) }}</strong></div>@endif
+                                                                @if($val->property_type)<div class="small"><span class="text-muted">Type:</span> {{ \App\Models\ValuationDetail::PROPERTY_TYPES[$val->property_type] ?? $val->property_type }}</div>@endif
                                                                 @if($val->valuator_name)<div class="small"><span class="text-muted">Valuator:</span> {{ $val->valuator_name }}</div>@endif
-                                                                @if($val->notes)<div class="small text-muted mt-1">{{ $val->notes }}</div>@endif
                                                             </div>
                                                         @endif
                                                         <div class="mt-2">
@@ -466,19 +442,10 @@
                                     </div>
                                 @endif
                                 @break
-                            @case('cibil_check')
-                                @include('loans.partials.stage-notes-form', ['fields' => [
-                                    ['name' => 'cibil_score', 'label' => 'CIBIL Score', 'type' => 'number', 'min' => 300, 'max' => 900, 'required' => true, 'placeholder' => '300-900'],
-                                    ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
-                                ]])
-                                @break
                             @case('rate_pf')
                                 @php
-                                    $isBankEmployee = auth()->user()->task_role === 'bank_employee';
-                                    $isAdminOrSuper = in_array(auth()->user()->role, ['super_admin', 'admin']);
-                                    $bankFieldsEditable = $isBankEmployee || $isAdminOrSuper;
-                                    $officeFieldsEditable = !$isBankEmployee || $isAdminOrSuper;
                                     $ratePfNotes = $assignment->getNotesData();
+                                    $ratePfPhase = $ratePfNotes['rate_pf_phase'] ?? '1';
                                     $ratePfCompleted = $assignment->status === 'completed';
                                 @endphp
 
@@ -502,7 +469,7 @@
                                                 <div class="small"><span class="text-muted">Repo Rate:</span> <strong>{{ $ratePfNotes['repo_rate'] ?? '—' }}%</strong></div>
                                             </div>
                                             <div class="col-sm-6">
-                                                <div class="small"><span class="text-muted">Bank Rate:</span> <strong>{{ $ratePfNotes['bank_rate'] ?? '—' }}%</strong></div>
+                                                <div class="small"><span class="text-muted">Bank Margin:</span> <strong>{{ $ratePfNotes['bank_rate'] ?? '—' }}%</strong></div>
                                             </div>
                                             <div class="col-sm-6">
                                                 <div class="small"><span class="text-muted">Processing Fee:</span> <strong>{{ $ratePfNotes['processing_fee'] ?? '0' }}%</strong></div>
@@ -531,50 +498,96 @@
                                             Edit
                                         </button>
                                     </div>
+                                    <div id="edit-rate_pf" style="display:none;">
+                                        @include('loans.partials.stage-notes-form', ['fields' => [
+                                            ['name' => 'interest_rate', 'label' => 'Interest Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'rate_offered_date', 'label' => 'Rate Offered Date', 'type' => 'date'],
+                                            ['name' => 'rate_valid_until', 'label' => 'Valid Until', 'type' => 'date'],
+                                            ['name' => 'bank_reference', 'label' => 'Bank Reference'],
+                                            ['name' => 'repo_rate', 'label' => 'Repo Rate (%)', 'type' => 'number', 'step' => '0.01'],
+                                            ['name' => 'bank_rate', 'label' => 'Bank Margin (%)', 'type' => 'number', 'step' => '0.01'],
+                                            ['name' => 'processing_fee', 'label' => 'Processing Fee (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'admin_charges', 'label' => 'Admin Charges', 'type' => 'currency'],
+                                            ['name' => 'processing_fee_gst', 'label' => 'PF GST', 'type' => 'currency'],
+                                            ['name' => 'total_pf', 'label' => 'Total PF', 'type' => 'currency'],
+                                            ['name' => 'special_conditions', 'label' => 'Special Conditions', 'type' => 'textarea', 'col' => 12],
+                                            ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                        ]])
+                                    </div>
+
+                                {{-- Phase 1: Eligible user fills ALL fields, then sends to bank --}}
+                                @elseif($ratePfPhase === '1')
+                                    <div class="mt-2 border-top pt-2">
+                                        <small class="fw-semibold text-muted d-block mb-1">Rate & Processing Details</small>
+                                        <small class="text-muted d-block mb-2">Fill all details before sending to bank.</small>
+                                        @include('loans.partials.stage-notes-form', ['fields' => [
+                                            ['name' => 'interest_rate', 'label' => 'Interest Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'placeholder' => 'e.g. 8.5'],
+                                            ['name' => 'repo_rate', 'label' => 'Repo Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'placeholder' => 'e.g. 6.5'],
+                                            ['name' => 'bank_rate', 'label' => 'Bank Margin (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'placeholder' => 'e.g. 2.5'],
+                                            ['name' => 'rate_offered_date', 'label' => 'Rate Offered Date', 'type' => 'date', 'required' => true, 'default' => now()->format('d/m/Y')],
+                                            ['name' => 'rate_valid_until', 'label' => 'Valid Until', 'type' => 'date', 'required' => true, 'default' => now()->addDays(15)->format('d/m/Y')],
+                                            ['name' => 'bank_reference', 'label' => 'Bank Reference', 'required' => true],
+                                            ['name' => 'processing_fee', 'label' => 'Processing Fee (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'placeholder' => 'e.g. 1.0'],
+                                            ['name' => 'admin_charges', 'label' => 'Admin Charges', 'type' => 'currency', 'required' => true, 'default' => '0'],
+                                            ['name' => 'processing_fee_gst', 'label' => 'PF GST', 'type' => 'currency', 'required' => true, 'default' => '0'],
+                                            ['name' => 'total_pf', 'label' => 'Total PF', 'type' => 'currency', 'required' => true, 'default' => '0'],
+                                            ['name' => 'special_conditions', 'label' => 'Special Conditions', 'type' => 'textarea', 'col' => 12],
+                                            ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                        ]])
+                                        <button class="btn-accent-sm shf-rate-pf-action mt-1" data-loan-id="{{ $loan->id }}" data-action="send_to_bank">
+                                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                            Send to Bank
+                                        </button>
+                                    </div>
+
+                                {{-- Phase 2: Bank employee sees ALL fields (editable), no hints --}}
+                                @elseif($ratePfPhase === '2')
+                                    <div class="mt-2 border-top pt-2">
+                                        <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;">
+                                            <strong>Rate request received.</strong> Review and update all details, then return to task owner.
+                                        </div>
+                                        @include('loans.partials.stage-notes-form', ['fields' => [
+                                            ['name' => 'interest_rate', 'label' => 'Interest Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'repo_rate', 'label' => 'Repo Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'bank_rate', 'label' => 'Bank Margin (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'rate_offered_date', 'label' => 'Rate Offered Date', 'type' => 'date', 'required' => true],
+                                            ['name' => 'rate_valid_until', 'label' => 'Valid Until', 'type' => 'date', 'required' => true],
+                                            ['name' => 'bank_reference', 'label' => 'Bank Reference', 'required' => true],
+                                            ['name' => 'processing_fee', 'label' => 'Processing Fee (%)', 'type' => 'number', 'step' => '0.01', 'required' => true],
+                                            ['name' => 'admin_charges', 'label' => 'Admin Charges', 'type' => 'currency', 'required' => true],
+                                            ['name' => 'processing_fee_gst', 'label' => 'PF GST', 'type' => 'currency', 'required' => true],
+                                            ['name' => 'total_pf', 'label' => 'Total PF', 'type' => 'currency', 'required' => true],
+                                            ['name' => 'special_conditions', 'label' => 'Special Conditions', 'type' => 'textarea', 'col' => 12],
+                                            ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                        ]])
+                                        <button class="btn-accent-sm shf-rate-pf-action mt-1" data-loan-id="{{ $loan->id }}" data-action="return_to_owner" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
+                                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            Save & Return to Task Owner
+                                        </button>
+                                    </div>
+
+                                {{-- Phase 3: Eligible user sees editable form with original values as hints --}}
+                                @elseif($ratePfPhase === '3')
+                                    @php $origValues = $ratePfNotes['original_values'] ?? []; @endphp
+                                    <div class="mt-2 border-top pt-2">
+                                        <small class="fw-semibold text-muted d-block mb-1">Bank has reviewed. Values you originally entered are shown below each field.</small>
+                                        @include('loans.partials.stage-notes-form', ['fields' => [
+                                            ['name' => 'interest_rate', 'label' => 'Interest Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'hint' => ($origValues['interest_rate'] ?? '') !== '' ? ($origValues['interest_rate'] . '%') : ''],
+                                            ['name' => 'repo_rate', 'label' => 'Repo Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'hint' => ($origValues['repo_rate'] ?? '') !== '' ? ($origValues['repo_rate'] . '%') : ''],
+                                            ['name' => 'bank_rate', 'label' => 'Bank Margin (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'hint' => ($origValues['bank_rate'] ?? '') !== '' ? ($origValues['bank_rate'] . '%') : ''],
+                                            ['name' => 'rate_offered_date', 'label' => 'Rate Offered Date', 'type' => 'date', 'required' => true, 'hint' => $origValues['rate_offered_date'] ?? ''],
+                                            ['name' => 'rate_valid_until', 'label' => 'Valid Until', 'type' => 'date', 'required' => true, 'hint' => $origValues['rate_valid_until'] ?? ''],
+                                            ['name' => 'bank_reference', 'label' => 'Bank Reference', 'required' => true, 'hint' => $origValues['bank_reference'] ?? ''],
+                                            ['name' => 'processing_fee', 'label' => 'Processing Fee (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'hint' => ($origValues['processing_fee'] ?? '') !== '' ? ($origValues['processing_fee'] . '%') : ''],
+                                            ['name' => 'admin_charges', 'label' => 'Admin Charges', 'type' => 'currency', 'required' => true, 'hint' => ($origValues['admin_charges'] ?? '') !== '' ? ('₹ ' . $origValues['admin_charges']) : ''],
+                                            ['name' => 'processing_fee_gst', 'label' => 'PF GST', 'type' => 'currency', 'required' => true, 'hint' => ($origValues['processing_fee_gst'] ?? '') !== '' ? ('₹ ' . $origValues['processing_fee_gst']) : ''],
+                                            ['name' => 'total_pf', 'label' => 'Total PF', 'type' => 'currency', 'required' => true, 'hint' => ($origValues['total_pf'] ?? '') !== '' ? ('₹ ' . $origValues['total_pf']) : ''],
+                                            ['name' => 'special_conditions', 'label' => 'Special Conditions', 'type' => 'textarea', 'col' => 12, 'hint' => $origValues['special_conditions'] ?? ''],
+                                            ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                        ]])
+                                        <small class="text-muted d-block mt-1">Save any changes, then click Complete to finish this stage.</small>
+                                    </div>
                                 @endif
-
-                                {{-- Edit forms (shown directly when in_progress, hidden behind Edit button when completed) --}}
-                                <div id="edit-rate_pf" @if($ratePfCompleted) style="display:none;" @endif>
-                                    {{-- Section 1: Bank Rate Details --}}
-                                    <div class="mt-2 border-top pt-2">
-                                        <small class="fw-semibold text-muted d-block mb-1">
-                                            <svg style="width:12px;height:12px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                            Bank Rate Details
-                                            @if(!$bankFieldsEditable) <span class="text-info">(filled by bank employee)</span> @endif
-                                        </small>
-                                        @include('loans.partials.stage-notes-form', [
-                                            'disabled' => !$bankFieldsEditable,
-                                            'fields' => [
-                                                ['name' => 'interest_rate', 'label' => 'Interest Rate (%)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'placeholder' => 'e.g. 8.5'],
-                                                ['name' => 'rate_offered_date', 'label' => 'Rate Offered Date', 'type' => 'date', 'default' => now()->format('d/m/Y')],
-                                                ['name' => 'rate_valid_until', 'label' => 'Valid Until', 'type' => 'date', 'default' => now()->addDays(15)->format('d/m/Y')],
-                                                ['name' => 'bank_reference', 'label' => 'Bank Reference'],
-                                            ],
-                                        ])
-                                    </div>
-
-                                    {{-- Section 2: Processing & Charges --}}
-                                    <div class="mt-2 border-top pt-2">
-                                        <small class="fw-semibold text-muted d-block mb-1">
-                                            <svg style="width:12px;height:12px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3v-6m-3 6v-1m6-9V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"/></svg>
-                                            Processing & Charges
-                                            @if(!$officeFieldsEditable) <span class="text-info">(filled by task owner)</span> @endif
-                                        </small>
-                                        @include('loans.partials.stage-notes-form', [
-                                            'disabled' => !$officeFieldsEditable,
-                                            'fields' => [
-                                                ['name' => 'repo_rate', 'label' => 'Repo Rate (%)', 'type' => 'number', 'step' => '0.01', 'placeholder' => 'e.g. 6.5'],
-                                                ['name' => 'bank_rate', 'label' => 'Bank Rate (%)', 'type' => 'number', 'step' => '0.01', 'readonly' => true, 'placeholder' => 'Auto-calculated'],
-                                                ['name' => 'processing_fee', 'label' => 'Processing Fee (%)', 'type' => 'number', 'step' => '0.01', 'placeholder' => 'e.g. 1.0', 'default' => '0'],
-                                                ['name' => 'admin_charges', 'label' => 'Admin Charges', 'type' => 'currency', 'default' => '0'],
-                                                ['name' => 'processing_fee_gst', 'label' => 'PF GST', 'type' => 'currency', 'default' => '0'],
-                                                ['name' => 'total_pf', 'label' => 'Total PF', 'type' => 'currency', 'default' => '0'],
-                                                ['name' => 'special_conditions', 'label' => 'Special Conditions', 'type' => 'textarea', 'col' => 12],
-                                                ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
-                                            ],
-                                        ])
-                                    </div>
-                                </div>
                                 @break
                             @case('sanction')
                                 @php
@@ -590,9 +603,6 @@
                                     <div class="mt-2 border-top pt-2 shf-stage-saved-data" id="saved-sanction">
                                         <div class="row g-2">
                                             <div class="col-sm-6">
-                                                <div class="small"><span class="text-muted">Sanction Letter No:</span> <strong>{{ $sanctionNotes['sanction_letter_number'] ?? '—' }}</strong></div>
-                                            </div>
-                                            <div class="col-sm-6">
                                                 <div class="small"><span class="text-muted">Sanction Date:</span> <strong>{{ $sanctionNotes['sanction_date'] ?? '—' }}</strong></div>
                                             </div>
                                             <div class="col-sm-6">
@@ -601,11 +611,9 @@
                                             <div class="col-sm-6">
                                                 <div class="small"><span class="text-muted">Sanctioned Rate:</span> <strong>{{ $sanctionNotes['sanctioned_rate'] ?? '—' }}%</strong></div>
                                             </div>
-                                            @if(!empty($sanctionNotes['sanction_validity']))
-                                                <div class="col-sm-6">
-                                                    <div class="small"><span class="text-muted">Validity Period:</span> <strong>{{ $sanctionNotes['sanction_validity'] }}</strong></div>
-                                                </div>
-                                            @endif
+                                            <div class="col-sm-6">
+                                                <div class="small"><span class="text-muted">EMI Amount:</span> <strong>₹ {{ $sanctionNotes['emi_amount'] ?? '—' }}</strong></div>
+                                            </div>
                                             @if(!empty($sanctionNotes['conditions']))
                                                 <div class="col-12">
                                                     <div class="small"><span class="text-muted">Conditions:</span> {{ $sanctionNotes['conditions'] }}</div>
@@ -623,11 +631,10 @@
                                     </div>
                                     <div id="edit-sanction" style="display:none;">
                                         @include('loans.partials.stage-notes-form', ['fields' => [
-                                            ['name' => 'sanction_letter_number', 'label' => 'Sanction Letter No.'],
-                                            ['name' => 'sanction_date', 'label' => 'Sanction Date', 'type' => 'date', 'required' => true, 'default' => now()->format('d/m/Y')],
+                                            ['name' => 'sanction_date', 'label' => 'Sanction Date', 'type' => 'date', 'required' => true, 'readonly' => true],
                                             ['name' => 'sanctioned_amount', 'label' => 'Sanctioned Amount', 'type' => 'currency', 'required' => true, 'default' => $loan->loan_amount],
-                                            ['name' => 'sanctioned_rate', 'label' => 'Sanctioned Rate (%)', 'type' => 'number', 'step' => '0.01', 'default' => $interestRateDefault],
-                                            ['name' => 'sanction_validity', 'label' => 'Validity Period'],
+                                            ['name' => 'sanctioned_rate', 'label' => 'Sanctioned Rate (%)', 'type' => 'number', 'step' => '0.01', 'readonly' => true, 'default' => $interestRateDefault],
+                                            ['name' => 'emi_amount', 'label' => 'EMI Amount', 'type' => 'currency', 'required' => true],
                                             ['name' => 'conditions', 'label' => 'Conditions', 'type' => 'textarea', 'col' => 12],
                                             ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
                                         ]])
@@ -660,11 +667,10 @@
                                     <div class="mt-2 border-top pt-2">
                                         <small class="fw-semibold text-muted d-block mb-1">Sanction letter has been generated. Enter the details below.</small>
                                         @include('loans.partials.stage-notes-form', ['fields' => [
-                                            ['name' => 'sanction_letter_number', 'label' => 'Sanction Letter No.'],
                                             ['name' => 'sanction_date', 'label' => 'Sanction Date', 'type' => 'date', 'required' => true, 'default' => now()->format('d/m/Y')],
                                             ['name' => 'sanctioned_amount', 'label' => 'Sanctioned Amount', 'type' => 'currency', 'required' => true, 'default' => $loan->loan_amount],
-                                            ['name' => 'sanctioned_rate', 'label' => 'Sanctioned Rate (%)', 'type' => 'number', 'step' => '0.01', 'default' => $interestRateDefault],
-                                            ['name' => 'sanction_validity', 'label' => 'Validity Period'],
+                                            ['name' => 'sanctioned_rate', 'label' => 'Sanctioned Rate (%)', 'type' => 'number', 'step' => '0.01', 'readonly' => true, 'default' => $interestRateDefault],
+                                            ['name' => 'emi_amount', 'label' => 'EMI Amount', 'type' => 'currency', 'required' => true],
                                             ['name' => 'conditions', 'label' => 'Conditions', 'type' => 'textarea', 'col' => 12],
                                             ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
                                         ]])
@@ -672,35 +678,110 @@
                                 @endif
                                 @break
                             @case('docket')
-                                @include('loans.partials.stage-notes-form', ['fields' => [
-                                    ['name' => 'docket_number', 'label' => 'Docket Number', 'required' => true],
-                                    ['name' => 'login_date', 'label' => 'Login Date', 'type' => 'date', 'required' => true],
-                                    ['name' => 'documents_submitted', 'label' => 'Documents Submitted', 'type' => 'textarea', 'col' => 12],
-                                    ['name' => 'submitted_to', 'label' => 'Submitted To'],
-                                    ['name' => 'acknowledgement_number', 'label' => 'Acknowledgement No.'],
-                                    ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
-                                ]])
+                                @php
+                                    $docketNotes = $assignment->getNotesData();
+                                    $docketPhase = $docketNotes['docket_phase'] ?? '1';
+
+                                    // Calculate expected docket date from sanction_date + app_number offset
+                                    $appNumberAssignment = $loan->stageAssignments()->where('stage_key', 'app_number')->first();
+                                    $appNotes = $appNumberAssignment ? $appNumberAssignment->getNotesData() : [];
+                                    $sanctionAssignment = $loan->stageAssignments()->where('stage_key', 'sanction')->first();
+                                    $sanctionNotesDocket = $sanctionAssignment ? $sanctionAssignment->getNotesData() : [];
+                                    $expectedDocketDate = null;
+                                    $expectedDocketCarbon = null;
+                                    $docketOffset = $appNotes['docket_days_offset'] ?? null;
+
+                                    if ($docketOffset && $docketOffset !== '0' && !empty($sanctionNotesDocket['sanction_date'])) {
+                                        $expectedDocketCarbon = \Carbon\Carbon::createFromFormat('d/m/Y', $sanctionNotesDocket['sanction_date'])->addDays((int) $docketOffset);
+                                        $expectedDocketDate = $expectedDocketCarbon->format('d/m/Y');
+                                    } elseif ($docketOffset === '0' && !empty($appNotes['custom_docket_date'])) {
+                                        $expectedDocketCarbon = \Carbon\Carbon::createFromFormat('d/m/Y', $appNotes['custom_docket_date']);
+                                        $expectedDocketDate = $appNotes['custom_docket_date'];
+                                    }
+
+                                    $docketDaysInfo = '';
+                                    if ($expectedDocketCarbon) {
+                                        $diffDays = now()->startOfDay()->diffInDays($expectedDocketCarbon->startOfDay(), false);
+                                        if ($diffDays > 0) {
+                                            $docketDaysInfo = '<span class="text-success fw-semibold">' . $diffDays . ' day' . ($diffDays > 1 ? 's' : '') . ' remaining</span>';
+                                        } elseif ($diffDays === 0) {
+                                            $docketDaysInfo = '<span class="text-warning fw-semibold">Due today</span>';
+                                        } else {
+                                            $docketDaysInfo = '<span class="text-danger fw-semibold">' . abs($diffDays) . ' day' . (abs($diffDays) > 1 ? 's' : '') . ' overdue</span>';
+                                        }
+                                    }
+                                @endphp
+
+                                {{-- Expected docket date banner --}}
+                                @if($expectedDocketDate)
+                                    <div class="alert {{ $expectedDocketCarbon && $expectedDocketCarbon->isPast() ? 'alert-danger' : 'alert-info' }} py-2 mt-2 mb-2" style="font-size:0.85rem;">
+                                        <strong>Expected Docket Date:</strong> {{ $expectedDocketDate }}
+                                        @if($docketOffset && $docketOffset !== '0')
+                                            <small class="text-muted">(Sanction + {{ $docketOffset }}d)</small>
+                                        @endif
+                                        — {!! $docketDaysInfo !!}
+                                    </div>
+                                @endif
+
+                                {{-- Phase 1: User fills login date, sends to office employee --}}
+                                @if($docketPhase === '1')
+                                    @include('loans.partials.stage-notes-form', ['fields' => [
+                                        ['name' => 'login_date', 'label' => 'Login Date', 'type' => 'date', 'required' => true, 'default' => now()->format('d/m/Y')],
+                                        ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                    ]])
+                                    <button class="btn-accent-sm shf-docket-action mt-1" data-loan-id="{{ $loan->id }}" data-action="send_to_office">
+                                        <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                        Save & Send to Office Employee
+                                    </button>
+
+                                {{-- Phase 2: Office employee reviews and completes --}}
+                                @elseif($docketPhase === '2')
+                                    <div class="mt-2 border-top pt-2">
+                                        <div class="small mb-1"><span class="text-muted">Login Date:</span> <strong>{{ $docketNotes['login_date'] ?? '—' }}</strong></div>
+                                        @if(!empty($docketNotes['stageRemarks']))<div class="small text-muted mb-1">{{ $docketNotes['stageRemarks'] }}</div>@endif
+                                        <small class="text-muted">Review and click Complete when docket login is done.</small>
+                                    </div>
+
+                                {{-- Phase 3: Back to loan creator --}}
+                                @elseif($docketPhase === '3')
+                                    <div class="mt-2 border-top pt-2">
+                                        <div class="small mb-1"><span class="text-muted">Login Date:</span> <strong>{{ $docketNotes['login_date'] ?? '—' }}</strong></div>
+                                        <small class="text-muted">Docket login completed by office employee. Click Complete to finish this stage.</small>
+                                    </div>
+                                @endif
                                 @break
                             @case('kfs')
-                                @include('loans.partials.stage-notes-form', ['fields' => [
-                                    ['name' => 'kfs_reference', 'label' => 'KFS Reference', 'required' => true],
-                                    ['name' => 'kfs_date', 'label' => 'KFS Date', 'type' => 'date'],
-                                    ['name' => 'customer_acknowledged', 'label' => 'Customer Acknowledged', 'type' => 'select', 'options' => ['' => 'Select...', 'yes' => 'Yes', 'no' => 'No']],
-                                    ['name' => 'acknowledgement_date', 'label' => 'Acknowledgement Date', 'type' => 'date'],
-                                    ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
-                                ]])
+                                <div class="mt-2 border-top pt-2">
+                                    <small class="text-muted d-block mb-2">Click below when KFS has been generated for this loan.</small>
+                                </div>
                                 @break
                             @case('esign')
-                                @include('loans.partials.stage-notes-form', ['fields' => [
-                                    ['name' => 'ecs_reference', 'label' => 'ECS Reference', 'required' => true],
-                                    ['name' => 'esign_status', 'label' => 'E-Sign Status', 'type' => 'select', 'required' => true, 'options' => ['' => 'Select...', 'completed' => 'Completed', 'pending' => 'Pending Signature', 'partial' => 'Partially Signed']],
-                                    ['name' => 'esign_date', 'label' => 'E-Sign Date', 'type' => 'date'],
-                                    ['name' => 'enach_registered', 'label' => 'eNACH Registered', 'type' => 'select', 'options' => ['' => 'Select...', 'yes' => 'Yes', 'no' => 'No']],
-                                    ['name' => 'enach_date', 'label' => 'eNACH Date', 'type' => 'date'],
-                                    ['name' => 'enach_bank_account', 'label' => 'eNACH Account No.'],
-                                    ['name' => 'enach_amount', 'label' => 'EMI Amount', 'type' => 'currency'],
-                                    ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
-                                ]])
+                                @php $esignPhase = ($assignment->getNotesData()['esign_phase'] ?? '1'); @endphp
+
+                                @if($esignPhase === '1')
+                                    {{-- Phase 1: Bank employee generates E-Sign & eNACH --}}
+                                    <div class="mt-2 border-top pt-2">
+                                        <small class="text-muted d-block mb-2">Generate E-Sign & eNACH documents for this loan, then click below.</small>
+                                        <button class="btn-accent-sm shf-esign-action" data-loan-id="{{ $loan->id }}" data-action="esign_generated">
+                                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            E-Sign & eNACH Generated
+                                        </button>
+                                    </div>
+                                @elseif($esignPhase === '2')
+                                    {{-- Phase 2: Eligible user completes with customer --}}
+                                    <div class="mt-2 border-top pt-2">
+                                        <small class="text-muted d-block mb-2">E-Sign & eNACH has been generated by bank. Complete the signing process with the customer.</small>
+                                        <button class="btn-accent-sm shf-esign-action" data-loan-id="{{ $loan->id }}" data-action="esign_customer_done" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
+                                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            E-Sign & eNACH Completed with Customer
+                                        </button>
+                                    </div>
+                                @elseif($esignPhase === '3')
+                                    {{-- Phase 3: Bank employee final confirmation --}}
+                                    <div class="mt-2 border-top pt-2">
+                                        <small class="text-muted d-block mb-2">Customer has completed E-Sign & eNACH. Click Complete to finish this stage.</small>
+                                    </div>
+                                @endif
                                 @break
                             @case('disbursement')
                                 <div class="mt-2">
@@ -710,12 +791,43 @@
                                     </a>
                                 </div>
                                 @break
+                            @case('otc_clearance')
+                                @php
+                                    $otcNotes = $assignment->getNotesData();
+                                    $disbursementData = $loan->disbursement;
+                                    $chequeList = $disbursementData?->cheques ?? [];
+                                @endphp
+                                <div class="mt-2 border-top pt-2">
+                                    @if(!empty($chequeList))
+                                        <small class="fw-semibold text-muted d-block mb-2">Cheques to be handed over:</small>
+                                        <div class="table-responsive mb-2">
+                                            <table class="table table-sm table-hover mb-0" style="font-size:0.8rem;">
+                                                <thead><tr><th>Cheque No.</th><th>Date</th><th class="text-end">Amount</th></tr></thead>
+                                                <tbody>
+                                                    @foreach($chequeList as $chq)
+                                                        <tr>
+                                                            <td>{{ $chq['cheque_number'] ?? '—' }}</td>
+                                                            <td>{{ $chq['cheque_date'] ?? '—' }}</td>
+                                                            <td class="text-end">₹ {{ number_format($chq['cheque_amount'] ?? 0) }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endif
+
+                                    @include('loans.partials.stage-notes-form', ['fields' => [
+                                        ['name' => 'handover_date', 'label' => 'Handover Date', 'type' => 'date', 'required' => true, 'default' => now()->format('d/m/Y')],
+                                        ['name' => 'stageRemarks', 'label' => 'Remarks', 'type' => 'textarea', 'col' => 12],
+                                    ]])
+                                </div>
+                                @break
                         @endswitch
                     @endif
 
                     {{-- Active Queries Banner (main stages) --}}
                     @php
-                        $queryStages = ['rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'cibil_check', 'disbursement'];
+                        $queryStages = ['rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement'];
                         $mainActiveQueries = in_array($assignment->stage_key, $queryStages)
                             ? \App\Models\StageQuery::where('loan_id', $loan->id)->where('stage_key', $assignment->stage_key)->whereIn('status', ['pending', 'responded'])->with(['raisedByUser', 'responses.respondedByUser'])->get()
                             : collect();
@@ -869,6 +981,23 @@
 $(function() {
     var csrfToken = $('meta[name="csrf-token"]').attr('content');
 
+    // Show/hide custom docket date based on docket_days_offset selection
+    function toggleCustomDocketDate($select) {
+        var $form = $select.closest('form');
+        var $customField = $form.find('[name="custom_docket_date"]').closest('.col-sm-6');
+        if ($select.val() === '0') {
+            $customField.show();
+        } else {
+            $customField.hide();
+            $form.find('[name="custom_docket_date"]').val('');
+        }
+    }
+    $(document).on('change', '[name="docket_days_offset"]', function() {
+        toggleCustomDocketDate($(this));
+    });
+    // Init on page load for any existing forms
+    $('[name="docket_days_offset"]').each(function() { toggleCustomDocketDate($(this)); });
+
     // Init Bootstrap Datepicker on all shf-datepicker fields
     $('.shf-datepicker').datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true });
 
@@ -978,45 +1107,141 @@ $(function() {
         });
     });
 
-    // BSM/OSV phase actions
-    $(document).on('click', '.shf-bsm-action', function() {
+    // E-Sign phase actions
+    $(document).on('click', '.shf-esign-action', function() {
         var $btn = $(this);
         var loanId = $btn.data('loan-id');
         var action = $btn.data('action');
-        var postData = { _token: csrfToken, action: action };
+        $btn.prop('disabled', true);
+        $.post('/loans/' + loanId + '/stages/esign/action', { _token: csrfToken, action: action })
+            .done(function(r) {
+                if (r.success) {
+                    Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                        .then(function() { location.reload(); });
+                }
+            })
+            .fail(function(xhr) {
+                $btn.prop('disabled', false);
+                Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error');
+            });
+    });
 
-        // For initiate_bsm, include the selected legal advisor
-        if (action === 'initiate_bsm') {
-            var legalAdvisorId = $('#bsmLegalAdvisor').val();
-            if (!legalAdvisorId) {
-                Swal.fire('Error', 'Please select a legal advisor first', 'error');
+    // Docket phase actions
+    $(document).on('click', '.shf-docket-action', function() {
+        var $btn = $(this);
+        var loanId = $btn.data('loan-id');
+        // Save form data first, then send action
+        var $form = $btn.closest('.card-body').find('.shf-stage-notes-form');
+        if ($form.length) {
+            var formData = {};
+            $form.serializeArray().forEach(function(item) { formData[item.name] = item.value; });
+            $btn.prop('disabled', true);
+            $.post($form.data('notes-url'), { _token: csrfToken, notes_data: formData })
+                .done(function() {
+                    $.post('/loans/' + loanId + '/stages/docket/action', { _token: csrfToken, action: 'send_to_office' })
+                        .done(function(r) {
+                            if (r.success) {
+                                Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                                    .then(function() { location.reload(); });
+                            }
+                        })
+                        .fail(function(xhr) { $btn.prop('disabled', false); Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error'); });
+                })
+                .fail(function(xhr) { $btn.prop('disabled', false); Swal.fire('Error', xhr.responseJSON?.error || 'Save failed', 'error'); });
+        }
+    });
+
+    // Rate & PF phase actions
+    $(document).on('click', '.shf-rate-pf-action', function() {
+        var $btn = $(this);
+        var loanId = $btn.data('loan-id');
+        var action = $btn.data('action');
+
+        // If sending to bank, first save the current form data
+        if (action === 'send_to_bank') {
+            var $form = $btn.closest('.card-body').find('.shf-stage-notes-form');
+            if ($form.length) {
+                var formData = {};
+                $form.serializeArray().forEach(function(item) { formData[item.name] = item.value; });
+                // Save notes first, then send action
+                $.post($form.data('notes-url'), { _token: csrfToken, notes_data: formData })
+                    .done(function() {
+                        $.post('/loans/' + loanId + '/stages/rate_pf/action', { _token: csrfToken, action: action })
+                            .done(function(r) {
+                                if (r.success) {
+                                    Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                                        .then(function() { location.reload(); });
+                                }
+                            })
+                            .fail(function(xhr) { Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error'); });
+                    })
+                    .fail(function(xhr) { Swal.fire('Error', xhr.responseJSON?.error || 'Save failed', 'error'); });
                 return;
             }
-            postData.legal_advisor_id = legalAdvisorId;
         }
 
-        Swal.fire({
-            title: 'Confirm',
-            text: 'Proceed with this action?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes'
-        }).then(function(result) {
-            if (result.isConfirmed) {
-                $btn.prop('disabled', true);
-                $.post('/loans/' + loanId + '/stages/bsm_osv/action', postData)
-                    .done(function(r) {
-                        if (r.success) {
-                            Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
-                                .then(function() { location.reload(); });
-                        }
+        // If returning to owner, first save bank rate form data
+        if (action === 'return_to_owner') {
+            var $form = $btn.closest('.card-body').find('.shf-stage-notes-form');
+            if ($form.length) {
+                var formData = {};
+                $form.serializeArray().forEach(function(item) { formData[item.name] = item.value; });
+                $.post($form.data('notes-url'), { _token: csrfToken, notes_data: formData })
+                    .done(function() {
+                        $.post('/loans/' + loanId + '/stages/rate_pf/action', { _token: csrfToken, action: action })
+                            .done(function(r) {
+                                if (r.success) {
+                                    Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                                        .then(function() { location.reload(); });
+                                }
+                            })
+                            .fail(function(xhr) { Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error'); });
                     })
-                    .fail(function(xhr) {
-                        $btn.prop('disabled', false);
-                        Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error');
-                    });
+                    .fail(function(xhr) { Swal.fire('Error', xhr.responseJSON?.error || 'Save failed', 'error'); });
+                return;
             }
-        });
+        }
+
+        $btn.prop('disabled', true);
+        $.post('/loans/' + loanId + '/stages/rate_pf/action', { _token: csrfToken, action: action })
+            .done(function(r) {
+                if (r.success) {
+                    Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                        .then(function() { location.reload(); });
+                }
+            })
+            .fail(function(xhr) {
+                $btn.prop('disabled', false);
+                Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error');
+            });
+    });
+
+    // Legal verification phase actions
+    $(document).on('click', '.shf-legal-action', function() {
+        var $btn = $(this);
+        var loanId = $btn.data('loan-id');
+        var action = $btn.data('action');
+        var advisorName = $('#legalAdvisorName').val();
+
+        if (!advisorName || !advisorName.trim()) {
+            Swal.fire('Error', 'Legal Advisor name is required', 'error');
+            return;
+        }
+
+        var postData = { _token: csrfToken, action: action, suggested_legal_advisor: advisorName.trim() };
+
+        $btn.prop('disabled', true);
+        $.post('/loans/' + loanId + '/stages/legal_verification/action', postData)
+            .done(function(r) {
+                if (r.success) {
+                    Swal.fire({ icon: 'success', title: r.message, timer: 1500, showConfirmButton: false })
+                        .then(function() { location.reload(); });
+                }
+            })
+            .fail(function(xhr) {
+                $btn.prop('disabled', false);
+                Swal.fire('Error', xhr.responseJSON?.error || 'Failed', 'error');
+            });
     });
 
     // Sanction stage phase actions (send for sanction / sanction generated)

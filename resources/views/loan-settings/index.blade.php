@@ -17,7 +17,7 @@
 
             {{-- SHF-style tabs (matching quotation settings) --}}
             <div class="shf-tabs">
-                @php $activeTab = request('tab', 'banks'); @endphp
+                @php $activeTab = request('tab', 'locations'); @endphp
                 <button class="shf-tab{{ $activeTab === 'locations' ? ' active' : '' }}"
                     data-tab="locations">Locations</button>
                 <button class="shf-tab{{ $activeTab === 'banks' ? ' active' : '' }}" data-tab="banks">Banks</button>
@@ -27,8 +27,8 @@
                     Master</button>
                 <button class="shf-tab{{ $activeTab === 'products' ? ' active' : '' }}" data-tab="products">Products &
                     Stages</button>
-                <button class="shf-tab{{ $activeTab === 'user-roles' ? ' active' : '' }}" data-tab="user-roles">User
-                    Roles</button>
+                <button class="shf-tab{{ $activeTab === 'role-permissions' ? ' active' : '' }}"
+                    data-tab="role-permissions">Role Permissions</button>
             </div>
 
             <div class="shf-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
@@ -793,402 +793,333 @@
                     @endif
                 </div>
 
-                {{-- User Roles Tab --}}
-                <div class="settings-tab-pane p-4" id="tab-user-roles"{!! $activeTab !== 'user-roles' ? ' style="display:none;"' : '' !!}>
-                    <p class="text-muted mb-3">Assign workflow roles to users for loan processing.</p>
+                {{-- ═══ Role Permissions Tab ═══ --}}
+                <div class="settings-tab-pane p-4" id="tab-role-permissions"{!! $activeTab !== 'role-permissions' ? ' style="display:none;"' : '' !!}>
+                    <div class="shf-section">
+                        <div class="shf-section-header">
+                            <div class="shf-section-number">
+                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <span class="shf-section-title">Task Role × Permission Matrix</span>
+                        </div>
+                        <div class="shf-section-body">
+                            <p class="small mb-4" style="color: #6b7280;">
+                                Configure which loan permissions each task role has. These are additive to system role
+                                permissions.
+                            </p>
 
-                    {{-- Desktop table --}}
-                    <div class="d-none d-md-block">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>System Role</th>
-                                    <th>Task Role</th>
-                                    <th>Bank</th>
-                                    <th>Branches</th>
-                                    @if (auth()->user()->hasPermission('manage_workflow_config'))
-                                        <th style="width:80px;"></th>
-                                    @endif
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($users as $u)
-                                    <tr>
-                                        <td>
-                                            <strong>{{ $u->name }}</strong>
-                                            <br><small class="text-muted">{{ $u->email }}</small>
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="shf-badge {{ $u->isSuperAdmin() ? 'shf-badge-orange' : ($u->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}"
-                                                style="font-size: 0.7rem;">
-                                                {{ $u->role_label }}
-                                            </span>
-                                        </td>
-                                        <td>{{ $u->task_role_label ?: '—' }}</td>
-                                        <td>{{ $u->taskBank?->name ?? '—' }}</td>
-                                        <td>{{ $u->branches->pluck('name')->implode(', ') ?: '—' }}</td>
-                                        @if (auth()->user()->hasPermission('manage_workflow_config'))
-                                            <td>
-                                                <button class="btn-accent-sm shf-edit-role"
-                                                    data-user-id="{{ $u->id }}"
-                                                    data-task-role="{{ $u->task_role ?? '' }}"
-                                                    data-task-bank-id="{{ $u->task_bank_id ?? '' }}"
-                                                    data-employee-id="{{ $u->employee_id ?? '' }}"
-                                                    data-branches="{{ $u->branches->pluck('id')->toJson() }}">
-                                                    <svg style="width:12px;height:12px;" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Edit
-                                                </button>
-                                            </td>
-                                        @endif
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                            @php $groupedLoanPerms = $loanPermissions->groupBy('group'); @endphp
 
-                    {{-- Mobile cards --}}
-                    <div class="d-md-none">
-                        @foreach ($users as $u)
-                            <div class="border-bottom py-3">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong>{{ $u->name }}</strong>
-                                        <span
-                                            class="shf-badge {{ $u->isSuperAdmin() ? 'shf-badge-orange' : ($u->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }} ms-1"
-                                            style="font-size: 0.65rem;">{{ $u->role_label }}</span>
-                                        <br><small class="text-muted">{{ $u->task_role_label ?: 'No task role' }}</small>
+                            @if (auth()->user()->hasPermission('manage_workflow_config'))
+                                <form action="{{ route('loan-settings.task-role-permissions.save') }}" method="POST">
+                                    @csrf
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Permission</th>
+                                                    @foreach (\App\Models\User::TASK_ROLE_LABELS as $role => $label)
+                                                        <th class="text-center">{{ $label }}</th>
+                                                    @endforeach
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($groupedLoanPerms as $group => $perms)
+                                                    <tr style="background: var(--accent-dim);">
+                                                        <td colspan="{{ count(\App\Models\User::TASK_ROLES) + 1 }}"
+                                                            class="font-display fw-semibold small"
+                                                            style="color: #f15a29; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px;">
+                                                            {{ $group }}
+                                                        </td>
+                                                    </tr>
+                                                    @foreach ($perms as $perm)
+                                                        <tr>
+                                                            <td>
+                                                                <span class="fw-medium">{{ $perm->name }}</span>
+                                                                @if ($perm->description)
+                                                                    <span class="d-block small"
+                                                                        style="color: #9ca3af;">{{ $perm->description }}</span>
+                                                                @endif
+                                                            </td>
+                                                            @foreach (\App\Models\User::TASK_ROLES as $role)
+                                                                <td class="text-center">
+                                                                    <input type="checkbox"
+                                                                        name="task_role[{{ $role }}][]"
+                                                                        value="{{ $perm->id }}"
+                                                                        {{ in_array($perm->id, $taskRolePermissions[$role] ?? []) ? 'checked' : '' }}
+                                                                        class="shf-checkbox"
+                                                                        style="width:16px;height:16px;">
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+                                                    @endforeach
+                                                @endforeach
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    @if (auth()->user()->hasPermission('manage_workflow_config'))
-                                        <button class="btn-accent-sm shf-edit-role" data-user-id="{{ $u->id }}"
-                                            data-task-role="{{ $u->task_role ?? '' }}"
-                                            data-task-bank-id="{{ $u->task_bank_id ?? '' }}"
-                                            data-employee-id="{{ $u->employee_id ?? '' }}"
-                                            data-branches="{{ $u->branches->pluck('id')->toJson() }}">
-                                            <svg style="width:12px;height:12px;" fill="none" stroke="currentColor"
+
+                                    <div class="d-flex justify-content-end mt-4">
+                                        <button type="submit" class="btn-accent">
+                                            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    d="M5 13l4 4L19 7" />
                                             </svg>
-                                            Edit
+                                            Save Permissions
                                         </button>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    {{-- Edit User Role Modal --}}
-    @if (auth()->user()->hasPermission('manage_workflow_config'))
-        <div class="modal fade" id="editRoleModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit User Role</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" id="editRoleUserId">
-                        <div class="mb-3">
-                            <label class="shf-form-label d-block mb-1">Task Role</label>
-                            <select id="editTaskRole" class="shf-input">
-                                <option value="">— None (quotation only) —</option>
-                                @foreach (\App\Models\User::TASK_ROLE_LABELS as $role => $label)
-                                    <option value="{{ $role }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3" id="bankFieldWrapper" style="display:none;">
-                            <label class="shf-form-label d-block mb-1">Bank <span class="text-danger">*</span></label>
-                            <select id="editTaskBankId" class="shf-input">
-                                <option value="">— Select Bank —</option>
-                                @foreach ($banks as $b)
-                                    <option value="{{ $b->id }}">{{ $b->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="shf-form-label d-block mb-1">Employee ID</label>
-                            <input type="text" id="editEmployeeId" class="shf-input" placeholder="Optional">
-                        </div>
-                        <div class="mb-3">
-                            <label class="shf-form-label d-block mb-1">Branch Assignments</label>
-                            <div id="branchCheckboxes" style="max-height: 200px; overflow-y: auto;">
-                                @foreach ($allBranches as $branch)
-                                    <div class="form-check py-1">
-                                        <input class="shf-checkbox shf-branch-check" type="checkbox"
-                                            value="{{ $branch->id }}" id="branch_{{ $branch->id }}">
-                                        <label class="form-check-label"
-                                            for="branch_{{ $branch->id }}">{{ $branch->name }}</label>
                                     </div>
-                                @endforeach
-                            </div>
+                                </form>
+                            @else
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Permission</th>
+                                                @foreach (\App\Models\User::TASK_ROLE_LABELS as $role => $label)
+                                                    <th class="text-center">{{ $label }}</th>
+                                                @endforeach
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($groupedLoanPerms as $group => $perms)
+                                                <tr style="background: var(--accent-dim);">
+                                                    <td colspan="{{ count(\App\Models\User::TASK_ROLES) + 1 }}"
+                                                        class="font-display fw-semibold small"
+                                                        style="color: #f15a29; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px;">
+                                                        {{ $group }}
+                                                    </td>
+                                                </tr>
+                                                @foreach ($perms as $perm)
+                                                    <tr>
+                                                        <td>
+                                                            <span class="fw-medium">{{ $perm->name }}</span>
+                                                            @if ($perm->description)
+                                                                <span class="d-block small"
+                                                                    style="color: #9ca3af;">{{ $perm->description }}</span>
+                                                            @endif
+                                                        </td>
+                                                        @foreach (\App\Models\User::TASK_ROLES as $role)
+                                                            <td class="text-center">
+                                                                <input type="checkbox"
+                                                                    {{ in_array($perm->id, $taskRolePermissions[$role] ?? []) ? 'checked' : '' }}
+                                                                    disabled class="shf-checkbox"
+                                                                    style="width:16px;height:16px;opacity:1;cursor:not-allowed;">
+                                                            </td>
+                                                        @endforeach
+                                                    </tr>
+                                                @endforeach
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button class="btn-accent" id="saveRoleBtn">
-                            <svg style="width:14px;height:14px;" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            Save Role
-                        </button>
-                    </div>
                 </div>
+
             </div>
         </div>
-    @endif
-@endsection
 
-@push('scripts')
-    <script>
-        $(function() {
-            var csrfToken = $('meta[name="csrf-token"]').attr('content');
+    @endsection
 
-            // SHF tab switching (same pattern as quotation settings)
-            $('.shf-tab').on('click', function() {
-                var tab = $(this).data('tab');
-                $('.shf-tab').removeClass('active');
-                $(this).addClass('active');
-                $('.settings-tab-pane').hide();
-                $('#tab-' + tab).show();
-                history.replaceState(null, '', '#' + tab);
-            });
-            // Restore tab from URL hash on page load, or show banks tab if there are validation errors
-            var hash = window.location.hash.substring(1);
-            @if ($errors->any() && old('manager_id') !== null)
-                hash = 'branches';
-            @elseif ($errors->any())
-                hash = 'banks';
-            @endif
-            if (hash && $('#tab-' + hash).length) {
-                $('.shf-tab').removeClass('active');
-                $('.shf-tab[data-tab="' + hash + '"]').addClass('active');
-                $('.settings-tab-pane').hide();
-                $('#tab-' + hash).show();
-            }
+    @push('scripts')
+        <script>
+            $(function() {
+                var csrfToken = $('meta[name="csrf-token"]').attr('content');
 
-            // Location form — type toggle
-            $('#locationTypeInput').on('change', function() {
-                $('#locationParentWrapper').toggle($(this).val() === 'city');
-            });
-            $(document).on('click', '.shf-edit-location', function() {
-                $('#locationEditId').val($(this).data('id'));
-                $('#locationNameInput').val($(this).data('name'));
-                $('#locationCodeInput').val($(this).data('code'));
-                $('#locationTypeInput').val($(this).data('type')).trigger('change');
-                $('#locationParentInput').val($(this).data('parent-id'));
-                $('#locationFormTitle').text('Edit Location');
-                $('#locationSubmitText').text('Update');
-            });
+                // SHF tab switching (same pattern as quotation settings)
+                $('.shf-tab').on('click', function() {
+                    var tab = $(this).data('tab');
+                    $('.shf-tab').removeClass('active');
+                    $(this).addClass('active');
+                    $('.settings-tab-pane').hide();
+                    $('#tab-' + tab).show();
+                    history.replaceState(null, '', '#' + tab);
+                });
+                // Restore tab from URL hash on page load, or show banks tab if there are validation errors
+                var hash = window.location.hash.substring(1);
+                @if ($errors->any() && old('manager_id') !== null)
+                    hash = 'branches';
+                @elseif ($errors->any())
+                    hash = 'banks';
+                @endif
+                if (hash && $('#tab-' + hash).length) {
+                    $('.shf-tab').removeClass('active');
+                    $('.shf-tab[data-tab="' + hash + '"]').addClass('active');
+                    $('.settings-tab-pane').hide();
+                    $('#tab-' + hash).show();
+                }
 
-            // Edit bank — populate form with locations
-            $(document).on('click', '.shf-edit-bank', function() {
-                $('#bankEditId').val($(this).data('id'));
-                $('#bankNameInput').val($(this).data('name'));
-                $('#bankCodeInput').val($(this).data('code'));
-
-                // Reset location checkboxes
-                $('.bank-loc-check').prop('checked', false);
-
-                // Check assigned locations
-                var locationIds = $(this).data('location-ids') || [];
-                locationIds.forEach(function(id) {
-                    $('.bank-loc-check[value="' + id + '"]').prop('checked', true);
+                // Location form — type toggle
+                $('#locationTypeInput').on('change', function() {
+                    $('#locationParentWrapper').toggle($(this).val() === 'city');
+                });
+                $(document).on('click', '.shf-edit-location', function() {
+                    $('#locationEditId').val($(this).data('id'));
+                    $('#locationNameInput').val($(this).data('name'));
+                    $('#locationCodeInput').val($(this).data('code'));
+                    $('#locationTypeInput').val($(this).data('type')).trigger('change');
+                    $('#locationParentInput').val($(this).data('parent-id'));
+                    $('#locationFormTitle').text('Edit Location');
+                    $('#locationSubmitText').text('Update');
                 });
 
-                $('#bankLocationSection').show();
-                $('#bankFormTitle').text('Edit Bank');
-                $('#bankSubmitText').text('Update Bank');
-                $('#bankCancelEdit').show();
-                $('#bankNameInput').focus();
-            });
+                // Edit bank — populate form with locations
+                $(document).on('click', '.shf-edit-bank', function() {
+                    $('#bankEditId').val($(this).data('id'));
+                    $('#bankNameInput').val($(this).data('name'));
+                    $('#bankCodeInput').val($(this).data('code'));
 
-            window.resetBankForm = function() {
-                $('#bankEditId').val('');
-                $('#bankNameInput').val('');
-                $('#bankCodeInput').val('');
-                $('.bank-loc-check').prop('checked', false);
-                $('#bankLocationSection').hide();
-                $('#bankFormTitle').text('Add Bank');
-                $('#bankSubmitText').text('Add Bank');
-                $('#bankCancelEdit').hide();
-            };
+                    // Reset location checkboxes
+                    $('.bank-loc-check').prop('checked', false);
 
-            // Toggle inline product stage config
-            $(document).on('click', '.shf-toggle-product-locations', function() {
-                var $panel = $($(this).data('target'));
-                $panel.is(':visible') ? $panel.slideUp(200) : $panel.slideDown(200);
-            });
+                    // Check assigned locations
+                    var locationIds = $(this).data('location-ids') || [];
+                    locationIds.forEach(function(id) {
+                        $('.bank-loc-check[value="' + id + '"]').prop('checked', true);
+                    });
 
-            $(document).on('click', '.shf-toggle-stages', function() {
-                var target = $(this).data('target');
-                var $panel = $(target);
-                if ($panel.is(':visible')) {
-                    $panel.slideUp(200);
-                } else {
-                    // Close any other open panels first
-                    $('.shf-product-stages-panel:visible').slideUp(200);
-                    $panel.slideDown(200);
-                }
-            });
+                    $('#bankLocationSection').show();
+                    $('#bankFormTitle').text('Edit Bank');
+                    $('#bankSubmitText').text('Update Bank');
+                    $('#bankCancelEdit').show();
+                    $('#bankNameInput').focus();
+                });
 
-            // Edit branch — populate form
-            $(document).on('click', '.shf-edit-branch', function() {
-                $('#branchEditId').val($(this).data('id'));
-                $('#branchNameInput').val($(this).data('name'));
-                $('#branchCodeInput').val($(this).data('code'));
-                $('#branchCityInput').val($(this).data('city'));
-                $('#branchPhoneInput').val($(this).data('phone'));
-                $('#branchManagerInput').val($(this).data('manager-id') || '');
-                $('#branchLocationInput').val($(this).data('location-id') || '');
-                $('#branchFormTitle').text('Edit Branch');
-                $('#branchNameInput').focus();
-            });
+                window.resetBankForm = function() {
+                    $('#bankEditId').val('');
+                    $('#bankNameInput').val('');
+                    $('#bankCodeInput').val('');
+                    $('.bank-loc-check').prop('checked', false);
+                    $('#bankLocationSection').hide();
+                    $('#bankFormTitle').text('Add Bank');
+                    $('#bankSubmitText').text('Add Bank');
+                    $('#bankCancelEdit').hide();
+                };
 
-            // Delete bank/branch
-            $(document).on('click', '.shf-delete-item', function() {
-                var url = $(this).data('url');
-                Swal.fire({
-                    title: 'Delete?',
-                    text: 'This action cannot be undone.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'Delete'
-                }).then(function(r) {
-                    if (r.isConfirmed) {
-                        $.ajax({
-                                url: url,
-                                method: 'DELETE',
-                                data: {
-                                    _token: csrfToken
-                                }
-                            })
-                            .done(function() {
-                                location.reload();
-                            })
-                            .fail(function(xhr) {
-                                Swal.fire('Error', xhr.responseJSON?.error || 'Cannot delete',
-                                    'error');
-                            });
+                // Toggle inline product stage config
+                $(document).on('click', '.shf-toggle-product-locations', function() {
+                    var $panel = $($(this).data('target'));
+                    $panel.is(':visible') ? $panel.slideUp(200) : $panel.slideDown(200);
+                });
+
+                $(document).on('click', '.shf-toggle-stages', function() {
+                    var target = $(this).data('target');
+                    var $panel = $(target);
+                    if ($panel.is(':visible')) {
+                        $panel.slideUp(200);
+                    } else {
+                        // Close any other open panels first
+                        $('.shf-product-stages-panel:visible').slideUp(200);
+                        $panel.slideDown(200);
                     }
                 });
-            });
 
-            // Edit role modal
-            $(document).on('click', '.shf-edit-role', function() {
-                var $btn = $(this);
-                $('#editRoleUserId').val($btn.data('user-id'));
-                $('#editTaskRole').val($btn.data('task-role'));
-                $('#editTaskBankId').val($btn.data('task-bank-id'));
-                $('#editEmployeeId').val($btn.data('employee-id'));
-
-                var userBranches = $btn.data('branches') || [];
-                $('.shf-branch-check').prop('checked', false);
-                userBranches.forEach(function(id) {
-                    $('#branch_' + id).prop('checked', true);
+                // Edit branch — populate form
+                $(document).on('click', '.shf-edit-branch', function() {
+                    $('#branchEditId').val($(this).data('id'));
+                    $('#branchNameInput').val($(this).data('name'));
+                    $('#branchCodeInput').val($(this).data('code'));
+                    $('#branchCityInput').val($(this).data('city'));
+                    $('#branchPhoneInput').val($(this).data('phone'));
+                    $('#branchManagerInput').val($(this).data('manager-id') || '');
+                    $('#branchLocationInput').val($(this).data('location-id') || '');
+                    $('#branchFormTitle').text('Edit Branch');
+                    $('#branchNameInput').focus();
                 });
 
-                $('#bankFieldWrapper').toggle($btn.data('task-role') === 'bank_employee');
-                $('#editRoleModal').modal('show');
-            });
-
-            $('#editTaskRole').on('change', function() {
-                $('#bankFieldWrapper').toggle($(this).val() === 'bank_employee');
-            });
-
-            // Save role
-            $('#saveRoleBtn').on('click', function() {
-                var userId = $('#editRoleUserId').val();
-                var branches = [];
-                $('.shf-branch-check:checked').each(function() {
-                    branches.push($(this).val());
-                });
-
-                $.ajax({
-                    url: '/loan-settings/users/' + userId + '/role',
-                    method: 'POST',
-                    data: {
-                        _token: csrfToken,
-                        task_role: $('#editTaskRole').val() || null,
-                        task_bank_id: $('#editTaskBankId').val() || null,
-                        employee_id: $('#editEmployeeId').val() || null,
-                        branches: branches
-                    },
-                    success: function(r) {
-                        if (r.success) {
-                            $('#editRoleModal').modal('hide');
-                            location.reload();
+                // Delete bank/branch
+                $(document).on('click', '.shf-delete-item', function() {
+                    var url = $(this).data('url');
+                    Swal.fire({
+                        title: 'Delete?',
+                        text: 'This action cannot be undone.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: 'Delete'
+                    }).then(function(r) {
+                        if (r.isConfirmed) {
+                            $.ajax({
+                                    url: url,
+                                    method: 'DELETE',
+                                    data: {
+                                        _token: csrfToken
+                                    }
+                                })
+                                .done(function() {
+                                    location.reload();
+                                })
+                                .fail(function(xhr) {
+                                    Swal.fire('Error', xhr.responseJSON?.error || 'Cannot delete',
+                                        'error');
+                                });
                         }
-                    },
-                    error: function(xhr) {
-                        Swal.fire('Error', xhr.responseJSON?.message || 'Failed', 'error');
+                    });
+                });
+
+                // --- Stage Master form validation ---
+                $('#masterStagesForm').on('submit', function(e) {
+                    var hasError = false;
+                    var firstErrorEl = null;
+
+                    // Clear previous
+                    $('.shf-master-stage, .shf-master-substage').css({
+                        'outline': '',
+                        'background': ''
+                    });
+                    $('.shf-inline-error').remove();
+
+                    function addInlineError($row, msg) {
+                        hasError = true;
+                        if (!firstErrorEl) firstErrorEl = $row;
+                        $row.css({
+                            'outline': '2px solid #dc3545',
+                            'background': '#fff5f5'
+                        });
+                        $row.append(
+                            '<div class="shf-inline-error text-danger mt-1" style="font-size:0.75rem;">* ' +
+                            msg + '</div>');
+                    }
+
+                    // Validate enabled stages
+                    $('.shf-master-stage').each(function() {
+                        var $row = $(this);
+                        var $toggle = $row.find('.shf-master-stage-toggle');
+                        if (!$toggle.length || !$toggle.is(':checked')) return;
+                        var $roleBoxes = $row.find('.shf-role-checkboxes');
+                        if (!$roleBoxes.length) return;
+                        if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
+                            addInlineError($row, 'Select at least one role');
+                        }
+                    });
+
+                    // Validate enabled sub-stages
+                    $('.shf-master-substage').each(function() {
+                        var $row = $(this);
+                        var $toggle = $row.find('.shf-master-substage-toggle');
+                        if (!$toggle.length || !$toggle.is(':checked')) return;
+                        var $roleBoxes = $row.find('.shf-role-checkboxes');
+                        if (!$roleBoxes.length) return;
+                        if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
+                            addInlineError($row, 'Select at least one role');
+                        }
+                    });
+
+                    if (hasError) {
+                        e.preventDefault();
+                        if (firstErrorEl) {
+                            $('html, body').animate({
+                                scrollTop: $(firstErrorEl).offset().top - 100
+                            }, 300);
+                        }
+                        return false;
                     }
                 });
             });
-
-            // --- Stage Master form validation ---
-            $('#masterStagesForm').on('submit', function(e) {
-                var hasError = false;
-                var firstErrorEl = null;
-
-                // Clear previous
-                $('.shf-master-stage, .shf-master-substage').css({'outline': '', 'background': ''});
-                $('.shf-inline-error').remove();
-
-                function addInlineError($row, msg) {
-                    hasError = true;
-                    if (!firstErrorEl) firstErrorEl = $row;
-                    $row.css({'outline': '2px solid #dc3545', 'background': '#fff5f5'});
-                    $row.append('<div class="shf-inline-error text-danger mt-1" style="font-size:0.75rem;">* ' + msg + '</div>');
-                }
-
-                // Validate enabled stages
-                $('.shf-master-stage').each(function() {
-                    var $row = $(this);
-                    var $toggle = $row.find('.shf-master-stage-toggle');
-                    if (!$toggle.length || !$toggle.is(':checked')) return;
-                    var $roleBoxes = $row.find('.shf-role-checkboxes');
-                    if (!$roleBoxes.length) return;
-                    if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
-                        addInlineError($row, 'Select at least one role');
-                    }
-                });
-
-                // Validate enabled sub-stages
-                $('.shf-master-substage').each(function() {
-                    var $row = $(this);
-                    var $toggle = $row.find('.shf-master-substage-toggle');
-                    if (!$toggle.length || !$toggle.is(':checked')) return;
-                    var $roleBoxes = $row.find('.shf-role-checkboxes');
-                    if (!$roleBoxes.length) return;
-                    if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
-                        addInlineError($row, 'Select at least one role');
-                    }
-                });
-
-                if (hasError) {
-                    e.preventDefault();
-                    if (firstErrorEl) {
-                        $('html, body').animate({ scrollTop: $(firstErrorEl).offset().top - 100 }, 300);
-                    }
-                    return false;
-                }
-            });
-        });
-    </script>
-@endpush
+        </script>
+    @endpush

@@ -38,7 +38,7 @@
             @endif
             @if(auth()->user()->hasPermission('delete_quotations'))
                 <form method="POST" action="{{ route('quotations.destroy', $quotation) }}"
-                      onsubmit="return confirm('Delete this quotation? This cannot be undone.')">
+                      class="shf-confirm-delete" data-confirm-title="Delete this quotation?" data-confirm-text="This action cannot be undone.">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">

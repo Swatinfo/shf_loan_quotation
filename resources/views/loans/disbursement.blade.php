@@ -13,15 +13,8 @@
 <div class="py-4">
     <div class="px-3 px-sm-4 px-lg-5" style="max-width: 48rem;">
 
-        @if($disbursement && $disbursement->needsOtcClearance())
-            <div class="alert alert-warning">
-                <strong>OTC Pending:</strong> Cheque disbursement at {{ $disbursement->otc_branch }}.
-                <form method="POST" action="{{ route('loans.disbursement.clear-otc', $loan) }}" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-success ms-2"
-                            onclick="return confirm('Mark OTC as cleared?')">Clear OTC</button>
-                </form>
-            </div>
+        @if(session('error'))
+            <div class="alert alert-danger mb-3">{{ session('error') }}</div>
         @endif
 
         <form method="POST" action="{{ route('loans.disbursement.store', $loan) }}">
@@ -31,10 +24,10 @@
                 <div class="shf-section-body">
                     <div class="row g-3">
                         @foreach(\App\Models\DisbursementDetail::TYPES as $key => $label)
-                            <div class="col-sm-4">
+                            <div class="col-sm-6">
                                 <div class="form-check p-3 border rounded {{ old('disbursement_type', $disbursement?->disbursement_type) === $key ? 'border-primary' : '' }}">
                                     <input class="form-check-input" type="radio" name="disbursement_type" value="{{ $key }}" id="type_{{ $key }}"
-                                           {{ old('disbursement_type', $disbursement?->disbursement_type) === $key ? 'checked' : '' }} required>
+                                           {{ old('disbursement_type', $disbursement?->disbursement_type ?? 'fund_transfer') === $key ? 'checked' : '' }} required>
                                     <label class="form-check-label" for="type_{{ $key }}"><strong>{{ $label }}</strong></label>
                                 </div>
                             </div>
@@ -48,59 +41,53 @@
                 <div class="shf-section-body">
                     <div class="row g-3">
                         <div class="col-sm-6">
-                            <label class="shf-form-label">Amount</label>
+                            <label class="shf-form-label">Amount <span class="text-danger">*</span></label>
                             <div class="input-group"><span class="input-group-text">₹</span>
-                                <input type="number" name="amount_disbursed" class="shf-input w-100" value="{{ old('amount_disbursed', $disbursement?->amount_disbursed ?? $loan->loan_amount) }}" min="0">
+                                <input type="number" name="amount_disbursed" id="disbAmount" class="shf-input w-100" value="{{ old('amount_disbursed', $disbursement?->amount_disbursed ?? $loan->loan_amount) }}" min="1" required>
                             </div>
                         </div>
                         <div class="col-sm-6">
-                            <label class="shf-form-label">Date</label>
-                            <input type="text" name="disbursement_date" class="shf-input shf-datepicker" value="{{ old('disbursement_date', $disbursement?->disbursement_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}">
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="shf-form-label">Reference / UTR Number</label>
-                            <input type="text" name="reference_number" class="shf-input w-100" value="{{ old('reference_number', $disbursement?->reference_number) }}">
+                            <label class="shf-form-label">Disbursement Date <span class="text-danger">*</span></label>
+                            <input type="text" name="disbursement_date" class="shf-input shf-datepicker" value="{{ old('disbursement_date', $disbursement?->disbursement_date?->format('d/m/Y') ?? now()->format('d/m/Y')) }}" required>
                         </div>
 
                         {{-- Fund Transfer fields --}}
                         <div class="col-sm-6 shf-fund-transfer-fields">
-                            <label class="shf-form-label">Account Number</label>
+                            <label class="shf-form-label">Loan Account Number</label>
                             <input type="text" name="bank_account_number" class="shf-input w-100" value="{{ old('bank_account_number', $disbursement?->bank_account_number) }}">
-                        </div>
-                        <div class="col-sm-6 shf-fund-transfer-fields">
-                            <label class="shf-form-label">IFSC Code</label>
-                            <input type="text" name="ifsc_code" class="shf-input w-100" value="{{ old('ifsc_code', $disbursement?->ifsc_code) }}">
                         </div>
 
                         {{-- Cheque fields --}}
-                        <div class="col-sm-6 shf-cheque-fields" style="display:none;">
-                            <label class="shf-form-label">Cheque Number</label>
-                            <input type="text" name="cheque_number" class="shf-input w-100" value="{{ old('cheque_number', $disbursement?->cheque_number) }}">
-                        </div>
-                        <div class="col-sm-6 shf-cheque-fields" style="display:none;">
-                            <label class="shf-form-label">Cheque Date</label>
-                            <input type="text" name="cheque_date" class="shf-input shf-datepicker" value="{{ old('cheque_date', $disbursement?->cheque_date?->format('Y-m-d')) }}">
-                        </div>
                         <div class="col-12 shf-cheque-fields" style="display:none;">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_otc" value="1" id="isOtc"
-                                       {{ old('is_otc', $disbursement?->is_otc) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="isOtc">OTC (Over The Counter)</label>
+                            <label class="shf-form-label">Cheques</label>
+                            <div id="chequeList">
+                                @php $existingCheques = old('cheques', $disbursement?->cheques ?? []); @endphp
+                                @if(!empty($existingCheques))
+                                    @foreach($existingCheques as $i => $chq)
+                                        <div class="row g-2 mb-2 cheque-row">
+                                            <div class="col-sm-4">
+                                                <input type="text" name="cheques[{{ $i }}][cheque_number]" class="shf-input shf-input-sm" placeholder="Cheque Number" value="{{ $chq['cheque_number'] ?? '' }}" required>
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <input type="text" name="cheques[{{ $i }}][cheque_date]" class="shf-input shf-input-sm shf-datepicker" placeholder="dd/mm/yyyy" value="{{ $chq['cheque_date'] ?? '' }}" required>
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <div class="input-group input-group-sm"><span class="input-group-text">₹</span>
+                                                    <input type="number" name="cheques[{{ $i }}][cheque_amount]" class="shf-input cheque-amount" value="{{ $chq['cheque_amount'] ?? '' }}" min="0" step="0.01" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-cheque w-100">Remove</button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
                             </div>
-                        </div>
-                        <div class="col-sm-6 shf-otc-fields" style="display:none;">
-                            <label class="shf-form-label">OTC Branch</label>
-                            <input type="text" name="otc_branch" class="shf-input w-100" value="{{ old('otc_branch', $disbursement?->otc_branch) }}">
-                        </div>
-
-                        {{-- DD fields --}}
-                        <div class="col-sm-6 shf-dd-fields" style="display:none;">
-                            <label class="shf-form-label">DD Number</label>
-                            <input type="text" name="dd_number" class="shf-input w-100" value="{{ old('dd_number', $disbursement?->dd_number) }}">
-                        </div>
-                        <div class="col-sm-6 shf-dd-fields" style="display:none;">
-                            <label class="shf-form-label">DD Date</label>
-                            <input type="text" name="dd_date" class="shf-input shf-datepicker" value="{{ old('dd_date', $disbursement?->dd_date?->format('Y-m-d')) }}">
+                            <button type="button" id="addCheque" class="btn-accent-sm mt-1" style="font-size:0.75rem;">+ Add Cheque</button>
+                            <div class="mt-2">
+                                <small class="text-muted">Cheque Total: <strong id="chequeTotal">₹ 0</strong></small>
+                                <small class="text-danger d-none" id="chequeTotalError"> (exceeds disbursement amount!)</small>
+                            </div>
                         </div>
 
                         <div class="col-12">
@@ -123,14 +110,14 @@
 @push('scripts')
 <script>
 $(function() {
-    $('.shf-datepicker').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true });
+    $('.shf-datepicker').datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true });
+
+    var chequeIndex = {{ count($existingCheques ?? []) }};
 
     function toggleFields() {
         var type = $('input[name="disbursement_type"]:checked').val();
         $('.shf-fund-transfer-fields').toggle(type === 'fund_transfer');
         $('.shf-cheque-fields').toggle(type === 'cheque');
-        $('.shf-dd-fields').toggle(type === 'demand_draft');
-        $('.shf-otc-fields').toggle(type === 'cheque' && $('#isOtc').is(':checked'));
     }
 
     $('input[name="disbursement_type"]').on('change', function() {
@@ -138,8 +125,40 @@ $(function() {
         $(this).closest('.form-check').addClass('border-primary');
         toggleFields();
     });
-    $('#isOtc').on('change', toggleFields);
     toggleFields();
+
+    // Add cheque row
+    $('#addCheque').on('click', function() {
+        var html = '<div class="row g-2 mb-2 cheque-row">'
+            + '<div class="col-sm-4"><input type="text" name="cheques[' + chequeIndex + '][cheque_number]" class="shf-input shf-input-sm" placeholder="Cheque Number" required></div>'
+            + '<div class="col-sm-3"><input type="text" name="cheques[' + chequeIndex + '][cheque_date]" class="shf-input shf-input-sm shf-datepicker" placeholder="dd/mm/yyyy" required></div>'
+            + '<div class="col-sm-3"><div class="input-group input-group-sm"><span class="input-group-text">₹</span><input type="number" name="cheques[' + chequeIndex + '][cheque_amount]" class="shf-input cheque-amount" min="0" step="0.01" required></div></div>'
+            + '<div class="col-sm-2"><button type="button" class="btn btn-sm btn-outline-danger remove-cheque w-100">Remove</button></div>'
+            + '</div>';
+        $('#chequeList').append(html);
+        $('#chequeList .cheque-row:last .shf-datepicker').datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true });
+        chequeIndex++;
+        updateChequeTotal();
+    });
+
+    // Remove cheque row
+    $(document).on('click', '.remove-cheque', function() {
+        $(this).closest('.cheque-row').remove();
+        updateChequeTotal();
+    });
+
+    // Update cheque total
+    function updateChequeTotal() {
+        var total = 0;
+        $('.cheque-amount').each(function() { total += parseFloat($(this).val()) || 0; });
+        $('#chequeTotal').text('₹ ' + total.toLocaleString('en-IN'));
+        var amount = parseFloat($('#disbAmount').val()) || 0;
+        $('#chequeTotalError').toggleClass('d-none', total <= amount);
+    }
+
+    $(document).on('input', '.cheque-amount', updateChequeTotal);
+    $('#disbAmount').on('input', updateChequeTotal);
+    updateChequeTotal();
 });
 </script>
 @endpush

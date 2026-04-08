@@ -245,15 +245,15 @@ class LoanEndToEndTest extends TestCase
     }
 
     /**
-     * OTC flow: cheque → wait for OTC clearance → complete
+     * Cheque disbursement keeps loan active (OTC handled separately)
      */
-    public function test_otc_clearance_flow(): void
+    public function test_cheque_disbursement_keeps_loan_active(): void
     {
         $user = $this->createUser();
 
         $loan = LoanDetail::create([
             'loan_number' => LoanDetail::generateLoanNumber(),
-            'customer_name' => 'OTC Customer',
+            'customer_name' => 'Cheque Customer',
             'customer_type' => 'pvt_ltd',
             'loan_amount' => 10000000,
             'status' => LoanDetail::STATUS_ACTIVE,
@@ -268,26 +268,18 @@ class LoanEndToEndTest extends TestCase
         $disbursementService = app(DisbursementService::class);
         Auth::login($user);
 
-        // Step 1: Submit cheque with OTC
         $disbursement = $disbursementService->processDisbursement($loan, [
             'disbursement_type' => DisbursementDetail::TYPE_CHEQUE,
             'disbursement_date' => now()->toDateString(),
             'amount_disbursed' => 10000000,
-            'cheque_number' => 'CHQ-99999',
-            'cheque_date' => now()->toDateString(),
-            'is_otc' => true,
-            'otc_branch' => 'Satellite Branch',
+            'cheques' => [
+                ['cheque_number' => 'CHQ-99999', 'cheque_date' => '10/04/2026', 'cheque_amount' => 10000000],
+            ],
         ]);
 
         $loan->refresh();
-        $this->assertEquals(LoanDetail::STATUS_ACTIVE, $loan->status); // Still active
-        $this->assertTrue($disbursement->needsOtcClearance());
-
-        // Step 2: Clear OTC
-        $disbursementService->clearOtc($disbursement);
-
-        $loan->refresh();
-        $this->assertEquals(LoanDetail::STATUS_COMPLETED, $loan->status); // Now complete
+        $this->assertEquals(LoanDetail::STATUS_ACTIVE, $loan->status);
+        $this->assertCount(1, $disbursement->cheques);
     }
 
     /**
@@ -319,7 +311,7 @@ class LoanEndToEndTest extends TestCase
 
         $this->assertNotEquals($loan1->loan_number, $loan2->loan_number);
         // Both should have SHF- prefix with same month
-        $prefix = 'SHF-' . now()->format('Ym') . '-';
+        $prefix = 'SHF-'.now()->format('Ym').'-';
         $this->assertStringStartsWith($prefix, $loan1->loan_number);
         $this->assertStringStartsWith($prefix, $loan2->loan_number);
 

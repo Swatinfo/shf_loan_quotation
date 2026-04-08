@@ -128,11 +128,9 @@
                             <span class="shf-badge shf-badge-orange ms-1" style="font-size:0.6rem;">{{ $loanStats['my_tasks'] }}</span>
                         @endif
                     </button>
-                @endif
-                <button class="shf-tab{{ $defaultTab === 'quotations' ? ' active' : '' }}" data-tab="dash-quotations">Quotations</button>
-                @if($loanStats)
                     <button class="shf-tab{{ $defaultTab === 'loans' ? ' active' : '' }}" data-tab="dash-loans">Loans</button>
                 @endif
+                <button class="shf-tab{{ $defaultTab === 'quotations' ? ' active' : '' }}" data-tab="dash-quotations">Quotations</button>
             </div>
 
             {{-- My Tasks Tab --}}
@@ -214,6 +212,18 @@
                                 <option value="partnership_llp">Partnership/LLP</option>
                                 <option value="pvt_ltd">PVT LTD</option>
                                 <option value="salaried">Salaried</option>
+                            </select>
+                        </div>
+
+                        <div class="col-6 col-md-auto" style="min-width: 10rem;">
+                            <label class="shf-form-label d-block mb-1">Loan Status</label>
+                            <select id="filter-loan-status" class="shf-input">
+                                <option value="not_converted">Not Converted</option>
+                                <option value="active">Loan Active</option>
+                                <option value="converted">All Converted</option>
+                                <option value="completed">Loan Completed</option>
+                                <option value="rejected">Loan Rejected</option>
+                                <option value="all">All Quotations</option>
                             </select>
                         </div>
 
@@ -631,6 +641,7 @@ $(function() {
         serverSide: true,
         ajax: function(data, callback, settings) {
             data.customer_type = $('#filter-type').val();
+            data.loan_status = $('#filter-loan-status').val();
             data.date_from = getDateValue('#filter-date-from');
             data.date_to = getDateValue('#filter-date-to');
             data.created_by = $('#filter-created-by').val() || '';
@@ -799,6 +810,7 @@ $(function() {
 
     function updateEmptyState() {
         hasFilters = $('#filter-search').val() || $('#filter-type').val() ||
+                     $('#filter-loan-status').val() !== 'not_converted' ||
                      $('#filter-date-from').val() || $('#filter-date-to').val() ||
                      ($('#filter-created-by').length && $('#filter-created-by').val());
 
@@ -835,6 +847,7 @@ $(function() {
     $('#btn-clear').on('click', function() {
         $('#filter-search').val('');
         $('#filter-type').val('');
+        $('#filter-loan-status').val('not_converted');
         $('#filter-date-from').datepicker('clearDates');
         $('#filter-date-to').datepicker('clearDates');
         $('#filter-created-by').val('');
@@ -902,6 +915,7 @@ $(function() {
                 length: mobileLength,
                 'search[value]': $('#filter-search').val() || '',
                 customer_type: $('#filter-type').val() || '',
+                loan_status: $('#filter-loan-status').val() || 'not_converted',
                 date_from: getDateValue('#filter-date-from'),
                 date_to: getDateValue('#filter-date-to'),
                 created_by: $('#filter-created-by').val() || ''

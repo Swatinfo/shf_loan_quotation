@@ -35,11 +35,14 @@
                                    step="0.01" min="0" placeholder="{{ $field['placeholder'] ?? '' }}" {{ $isDisabled ? 'disabled' : '' }} {{ !empty($field['readonly']) ? 'readonly' : '' }}>
                         </div>
                     @elseif(($field['type'] ?? 'text') === 'date')
-                        <input type="text" name="{{ $field['name'] }}" class="shf-input shf-input-sm shf-datepicker"
-                               value="{{ $fieldValue($field) }}" placeholder="dd/mm/yyyy" autocomplete="off" {{ $isDisabled ? 'disabled' : '' }}>
+                        <input type="text" name="{{ $field['name'] }}" class="shf-input shf-input-sm {{ empty($field['readonly']) ? 'shf-datepicker' : '' }}"
+                               value="{{ $fieldValue($field) }}" placeholder="dd/mm/yyyy" autocomplete="off" {{ $isDisabled ? 'disabled' : '' }} {{ !empty($field['readonly']) ? 'readonly style=background:#f8f9fa;' : '' }}>
                     @else
                         <input type="{{ $field['type'] ?? 'text' }}" name="{{ $field['name'] }}" class="shf-input shf-input-sm"
                                value="{{ $fieldValue($field) }}" placeholder="{{ $field['placeholder'] ?? '' }}" {{ $isDisabled ? 'disabled' : '' }}>
+                    @endif
+                    @if(!empty($field['hint']))
+                        <small class="text-info d-block" style="font-size:0.7rem;">Original: {{ $field['hint'] }}</small>
                     @endif
                 </div>
             @endforeach

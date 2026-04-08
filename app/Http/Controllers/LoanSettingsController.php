@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Bank;
 use App\Models\Branch;
-use App\Models\Product;
+use App\Models\Permission;
 use App\Models\Stage;
+use App\Models\TaskRolePermission;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,54 +21,22 @@ class LoanSettingsController extends Controller
         $branches = Branch::with('location.parent')->orderBy('name')->get();
         $stages = Stage::orderBy('sequence_order')->get(); // All stages for Stage Master tab
         $enabledStages = Stage::where('is_enabled', true)->orderBy('sequence_order')->get(); // For product config
-        $users = User::with(['branches', 'taskBank'])->where('is_active', true)->orderBy('name')->get();
-        $allBranches = Branch::orderBy('name')->get();
         $activeBranches = Branch::active()->orderBy('name')->get();
         $allActiveUsers = User::where('is_active', true)
             ->whereNotNull('task_role')
             ->with('employerBanks')
             ->orderBy('name')->get();
 
-        return view('loan-settings.index', compact('banks', 'branches', 'stages', 'enabledStages', 'users', 'allBranches', 'activeBranches', 'allActiveUsers'));
-    }
-
-    /**
-     * Update user task role via AJAX (User Roles tab).
-     */
-    public function updateUserRole(Request $request, User $user): JsonResponse
-    {
-        $validated = $request->validate([
-            'task_role' => 'nullable|in:branch_manager,loan_advisor,bank_employee,office_employee,legal_advisor',
-            'task_bank_id' => 'nullable|required_if:task_role,bank_employee|exists:banks,id',
-            'employee_id' => 'nullable|string|max:50',
-            'branches' => 'nullable|array',
-            'branches.*' => 'exists:branches,id',
-        ]);
-
-        $user->update([
-            'task_role' => $validated['task_role'] ?? null,
-            'task_bank_id' => ($validated['task_role'] ?? null) === 'bank_employee' ? ($validated['task_bank_id'] ?? null) : null,
-            'employee_id' => $validated['employee_id'] ?? null,
-        ]);
-
-        // Sync branches
-        if (isset($validated['branches'])) {
-            $user->branches()->sync($validated['branches']);
-        } else {
-            $user->branches()->detach();
+        // Task role permissions data
+        $loanPermissions = Permission::where('group', 'Loans')->orderBy('id')->get();
+        $taskRolePermissions = [];
+        foreach (User::TASK_ROLES as $taskRole) {
+            $taskRolePermissions[$taskRole] = TaskRolePermission::where('task_role', $taskRole)
+                ->pluck('permission_id')
+                ->toArray();
         }
 
-        return response()->json([
-            'success' => true,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'task_role' => $user->task_role,
-                'task_role_label' => $user->task_role_label,
-                'task_bank_id' => $user->task_bank_id,
-                'employee_id' => $user->employee_id,
-            ],
-        ]);
+        return view('loan-settings.index', compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'taskRolePermissions'));
     }
 
     /**
@@ -140,7 +111,7 @@ class LoanSettingsController extends Controller
             $message = 'Location added';
         }
 
-        return redirect(route('loan-settings.index') . '#locations')->with('success', $message);
+        return redirect(route('loan-settings.index').'#locations')->with('success', $message);
     }
 
     public function destroyLocation(\App\Models\Location $location): JsonResponse
@@ -156,5 +127,38 @@ class LoanSettingsController extends Controller
         $location->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Save task role permissions (Role Permissions tab).
+     */
+    public function saveTaskRolePermissions(Request $request)
+    {
+        $loanPermissionIds = Permission::where('group', 'Loans')->pluck('id')->toArray();
+
+        foreach (User::TASK_ROLES as $taskRole) {
+            // Clear existing Loans-group task role permissions
+            TaskRolePermission::where('task_role', $taskRole)
+                ->whereIn('permission_id', $loanPermissionIds)
+                ->delete();
+
+            $selected = $request->input("task_role.{$taskRole}", []);
+            foreach ($selected as $permissionId) {
+                if (in_array((int) $permissionId, $loanPermissionIds)) {
+                    TaskRolePermission::create([
+                        'task_role' => $taskRole,
+                        'permission_id' => (int) $permissionId,
+                    ]);
+                }
+            }
+        }
+
+        app(PermissionService::class)->clearAllCaches();
+        ActivityLog::log('task_role_permissions_updated', null, [
+            'updated_by' => auth()->user()->name,
+        ]);
+
+        return redirect()->route('loan-settings.index', ['tab' => 'role-permissions'])
+            ->with('success', 'Task role permissions updated.');
     }
 }

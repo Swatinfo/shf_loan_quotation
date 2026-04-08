@@ -9,6 +9,7 @@ use App\Http\Controllers\LoanConversionController;
 use App\Http\Controllers\LoanDisbursementController;
 use App\Http\Controllers\LoanDocumentController;
 use App\Http\Controllers\LoanRemarkController;
+use App\Http\Controllers\LoanSettingsController;
 use App\Http\Controllers\LoanStageController;
 use App\Http\Controllers\LoanValuationController;
 use App\Http\Controllers\NotificationController;
@@ -17,7 +18,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\LoanSettingsController;
 use App\Http\Controllers\WorkflowConfigController;
 use Illuminate\Support\Facades\Route;
 
@@ -119,10 +119,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loan-settings/branches', [WorkflowConfigController::class, 'storeBranch'])->name('loan-settings.branches.store');
         Route::delete('/loan-settings/branches/{branch}', [WorkflowConfigController::class, 'destroyBranch'])->name('loan-settings.branches.destroy');
         Route::delete('/loan-settings/products/{product}', [WorkflowConfigController::class, 'destroyProduct'])->name('loan-settings.products.destroy');
-        Route::post('/loan-settings/users/{user}/role', [LoanSettingsController::class, 'updateUserRole'])->name('loan-settings.user-role');
         Route::post('/loan-settings/master-stages', [LoanSettingsController::class, 'saveMasterStages'])->name('loan-settings.master-stages.save');
         Route::post('/loan-settings/locations', [LoanSettingsController::class, 'storeLocation'])->name('loan-settings.locations.store');
         Route::delete('/loan-settings/locations/{location}', [LoanSettingsController::class, 'destroyLocation'])->name('loan-settings.locations.destroy');
+        Route::post('/loan-settings/task-role-permissions', [LoanSettingsController::class, 'saveTaskRolePermissions'])->name('loan-settings.task-role-permissions.save');
     });
 
     // Stage workflow
@@ -137,8 +137,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loans/{loan}/stages/{stageKey}/reject', [LoanStageController::class, 'reject'])->name('loans.stages.reject');
         Route::post('/loans/{loan}/stages/{stageKey}/query', [LoanStageController::class, 'raiseQuery'])->name('loans.stages.query');
         Route::post('/loans/{loan}/stages/{stageKey}/notes', [LoanStageController::class, 'saveNotes'])->name('loans.stages.notes');
+        Route::post('/loans/{loan}/stages/esign/action', [LoanStageController::class, 'esignAction'])->name('loans.stages.esign-action');
+        Route::post('/loans/{loan}/stages/docket/action', [LoanStageController::class, 'docketAction'])->name('loans.stages.docket-action');
+        Route::post('/loans/{loan}/stages/rate_pf/action', [LoanStageController::class, 'ratePfAction'])->name('loans.stages.rate-pf-action');
         Route::post('/loans/{loan}/stages/sanction/action', [LoanStageController::class, 'sanctionAction'])->name('loans.stages.sanction-action');
-        Route::post('/loans/{loan}/stages/bsm_osv/action', [LoanStageController::class, 'bsmAction'])->name('loans.stages.bsm-action');
+        Route::post('/loans/{loan}/stages/legal_verification/action', [LoanStageController::class, 'legalAction'])->name('loans.stages.legal-action');
         Route::post('/loans/queries/{query}/respond', [LoanStageController::class, 'respondToQuery'])->name('loans.queries.respond');
         Route::post('/loans/queries/{query}/resolve', [LoanStageController::class, 'resolveQuery'])->name('loans.queries.resolve');
     });
@@ -150,7 +153,6 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:manage_loan_stages')->group(function () {
         Route::get('/loans/{loan}/disbursement', [LoanDisbursementController::class, 'show'])->name('loans.disbursement');
         Route::post('/loans/{loan}/disbursement', [LoanDisbursementController::class, 'store'])->name('loans.disbursement.store');
-        Route::post('/loans/{loan}/disbursement/clear-otc', [LoanDisbursementController::class, 'clearOtc'])->name('loans.disbursement.clear-otc');
     });
 
     // Valuation

@@ -55,7 +55,7 @@ class DisbursementTest extends TestCase
         return $loan;
     }
 
-    // ── Fund Transfer (auto-complete) ──
+    // ── Fund Transfer (completes loan immediately) ──
 
     public function test_fund_transfer_completes_loan(): void
     {
@@ -68,8 +68,6 @@ class DisbursementTest extends TestCase
             'disbursement_date' => now()->toDateString(),
             'amount_disbursed' => 5000000,
             'bank_account_number' => '1234567890',
-            'ifsc_code' => 'HDFC0001234',
-            'reference_number' => 'REF-001',
         ]);
 
         $this->assertEquals(DisbursementDetail::TYPE_FUND_TRANSFER, $disbursement->disbursement_type);
@@ -79,9 +77,9 @@ class DisbursementTest extends TestCase
         $this->assertEquals(LoanDetail::STATUS_COMPLETED, $loan->status);
     }
 
-    // ── Cheque without OTC (auto-complete) ──
+    // ── Cheque (loan stays active for OTC) ──
 
-    public function test_cheque_without_otc_completes_loan(): void
+    public function test_cheque_keeps_loan_active(): void
     {
         $user = $this->createUser();
         $loan = $this->createLoanAtDisbursement($user);
@@ -91,89 +89,41 @@ class DisbursementTest extends TestCase
             'disbursement_type' => DisbursementDetail::TYPE_CHEQUE,
             'disbursement_date' => now()->toDateString(),
             'amount_disbursed' => 5000000,
-            'cheque_number' => 'CHQ-12345',
-            'cheque_date' => now()->toDateString(),
-            'is_otc' => false,
+            'cheques' => [
+                ['cheque_number' => 'CHQ-001', 'cheque_date' => '10/04/2026', 'cheque_amount' => 3000000],
+                ['cheque_number' => 'CHQ-002', 'cheque_date' => '15/04/2026', 'cheque_amount' => 2000000],
+            ],
         ]);
 
-        $this->assertTrue($disbursement->isComplete());
-
-        $loan->refresh();
-        $this->assertEquals(LoanDetail::STATUS_COMPLETED, $loan->status);
-    }
-
-    // ── Cheque with OTC (pending until cleared) ──
-
-    public function test_cheque_with_otc_stays_pending(): void
-    {
-        $user = $this->createUser();
-        $loan = $this->createLoanAtDisbursement($user);
-
-        $service = app(DisbursementService::class);
-        $disbursement = $service->processDisbursement($loan, [
-            'disbursement_type' => DisbursementDetail::TYPE_CHEQUE,
-            'disbursement_date' => now()->toDateString(),
-            'amount_disbursed' => 5000000,
-            'cheque_number' => 'CHQ-12345',
-            'cheque_date' => now()->toDateString(),
-            'is_otc' => true,
-            'otc_branch' => 'Main Branch',
-        ]);
-
-        $this->assertFalse($disbursement->isComplete());
-        $this->assertTrue($disbursement->needsOtcClearance());
+        $this->assertEquals(DisbursementDetail::TYPE_CHEQUE, $disbursement->disbursement_type);
+        $this->assertCount(2, $disbursement->cheques);
 
         $loan->refresh();
         $this->assertEquals(LoanDetail::STATUS_ACTIVE, $loan->status);
     }
 
-    public function test_otc_clearance_completes_loan(): void
+    // ── Multiple Cheques ──
+
+    public function test_multiple_cheques_stored(): void
     {
         $user = $this->createUser();
         $loan = $this->createLoanAtDisbursement($user);
 
         $service = app(DisbursementService::class);
-
         $disbursement = $service->processDisbursement($loan, [
             'disbursement_type' => DisbursementDetail::TYPE_CHEQUE,
             'disbursement_date' => now()->toDateString(),
             'amount_disbursed' => 5000000,
-            'cheque_number' => 'CHQ-12345',
-            'cheque_date' => now()->toDateString(),
-            'is_otc' => true,
-            'otc_branch' => 'Main Branch',
+            'cheques' => [
+                ['cheque_number' => 'CHQ-A', 'cheque_date' => '10/04/2026', 'cheque_amount' => 2000000],
+                ['cheque_number' => 'CHQ-B', 'cheque_date' => '12/04/2026', 'cheque_amount' => 1500000],
+                ['cheque_number' => 'CHQ-C', 'cheque_date' => '14/04/2026', 'cheque_amount' => 1500000],
+            ],
         ]);
 
-        $clearedDisbursement = $service->clearOtc($disbursement);
-
-        $this->assertTrue($clearedDisbursement->otc_cleared);
-        $this->assertNotNull($clearedDisbursement->otc_cleared_date);
-
-        $loan->refresh();
-        $this->assertEquals(LoanDetail::STATUS_COMPLETED, $loan->status);
-    }
-
-    // ── Demand Draft (auto-complete) ──
-
-    public function test_demand_draft_completes_loan(): void
-    {
-        $user = $this->createUser();
-        $loan = $this->createLoanAtDisbursement($user);
-
-        $service = app(DisbursementService::class);
-        $disbursement = $service->processDisbursement($loan, [
-            'disbursement_type' => DisbursementDetail::TYPE_DEMAND_DRAFT,
-            'disbursement_date' => now()->toDateString(),
-            'amount_disbursed' => 5000000,
-            'dd_number' => 'DD-67890',
-            'dd_date' => now()->toDateString(),
-            'reference_number' => 'REF-DD-001',
-        ]);
-
-        $this->assertTrue($disbursement->isComplete());
-
-        $loan->refresh();
-        $this->assertEquals(LoanDetail::STATUS_COMPLETED, $loan->status);
+        $this->assertCount(3, $disbursement->cheques);
+        $this->assertEquals('CHQ-A', $disbursement->cheques[0]['cheque_number']);
+        $this->assertEquals(2000000, $disbursement->cheques[0]['cheque_amount']);
     }
 
     // ── Model Logic ──
@@ -183,29 +133,15 @@ class DisbursementTest extends TestCase
         $ft = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_FUND_TRANSFER]);
         $this->assertTrue($ft->isComplete());
 
-        $dd = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_DEMAND_DRAFT]);
-        $this->assertTrue($dd->isComplete());
-
-        $cheque = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_CHEQUE, 'is_otc' => false]);
+        $cheque = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_CHEQUE]);
         $this->assertTrue($cheque->isComplete());
-
-        $otcPending = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_CHEQUE, 'is_otc' => true, 'otc_cleared' => false]);
-        $this->assertFalse($otcPending->isComplete());
-
-        $otcCleared = new DisbursementDetail(['disbursement_type' => DisbursementDetail::TYPE_CHEQUE, 'is_otc' => true, 'otc_cleared' => true]);
-        $this->assertTrue($otcCleared->isComplete());
     }
 
-    public function test_needs_otc_clearance(): void
+    public function test_types_constant(): void
     {
-        $pending = new DisbursementDetail(['is_otc' => true, 'otc_cleared' => false]);
-        $this->assertTrue($pending->needsOtcClearance());
-
-        $cleared = new DisbursementDetail(['is_otc' => true, 'otc_cleared' => true]);
-        $this->assertFalse($cleared->needsOtcClearance());
-
-        $noOtc = new DisbursementDetail(['is_otc' => false]);
-        $this->assertFalse($noOtc->needsOtcClearance());
+        $this->assertArrayHasKey('fund_transfer', DisbursementDetail::TYPES);
+        $this->assertArrayHasKey('cheque', DisbursementDetail::TYPES);
+        $this->assertCount(2, DisbursementDetail::TYPES);
     }
 
     // ── HTTP Routes ──
@@ -219,7 +155,7 @@ class DisbursementTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_store_disbursement_via_http(): void
+    public function test_store_fund_transfer_via_http(): void
     {
         $user = $this->createUser();
         $loan = $this->createLoanAtDisbursement($user);
@@ -228,10 +164,9 @@ class DisbursementTest extends TestCase
             route('loans.disbursement.store', $loan),
             [
                 'disbursement_type' => 'fund_transfer',
-                'disbursement_date' => now()->toDateString(),
+                'disbursement_date' => now()->format('d/m/Y'),
                 'amount_disbursed' => 5000000,
                 'bank_account_number' => '1234567890',
-                'ifsc_code' => 'HDFC0001234',
             ]
         );
 
@@ -242,26 +177,49 @@ class DisbursementTest extends TestCase
         ]);
     }
 
-    public function test_clear_otc_via_http(): void
+    public function test_store_cheque_via_http(): void
     {
         $user = $this->createUser();
         $loan = $this->createLoanAtDisbursement($user);
 
-        DisbursementDetail::create([
-            'loan_id' => $loan->id,
-            'disbursement_type' => DisbursementDetail::TYPE_CHEQUE,
-            'disbursement_date' => now()->toDateString(),
-            'amount_disbursed' => 5000000,
-            'cheque_number' => 'CHQ-001',
-            'cheque_date' => now()->toDateString(),
-            'is_otc' => true,
-            'otc_branch' => 'Main Branch',
-        ]);
-
         $response = $this->actingAs($user)->post(
-            route('loans.disbursement.clear-otc', $loan)
+            route('loans.disbursement.store', $loan),
+            [
+                'disbursement_type' => 'cheque',
+                'disbursement_date' => now()->format('d/m/Y'),
+                'amount_disbursed' => 5000000,
+                'cheques' => [
+                    ['cheque_number' => 'CHQ-001', 'cheque_date' => '10/04/2026', 'cheque_amount' => 5000000],
+                ],
+            ]
         );
 
         $response->assertRedirect();
+        $this->assertDatabaseHas('disbursement_details', [
+            'loan_id' => $loan->id,
+            'disbursement_type' => 'cheque',
+        ]);
+    }
+
+    public function test_cheque_total_cannot_exceed_amount(): void
+    {
+        $user = $this->createUser();
+        $loan = $this->createLoanAtDisbursement($user);
+
+        $response = $this->actingAs($user)->post(
+            route('loans.disbursement.store', $loan),
+            [
+                'disbursement_type' => 'cheque',
+                'disbursement_date' => now()->format('d/m/Y'),
+                'amount_disbursed' => 1000000,
+                'cheques' => [
+                    ['cheque_number' => 'CHQ-001', 'cheque_date' => '10/04/2026', 'cheque_amount' => 600000],
+                    ['cheque_number' => 'CHQ-002', 'cheque_date' => '12/04/2026', 'cheque_amount' => 600000],
+                ],
+            ]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
     }
 }

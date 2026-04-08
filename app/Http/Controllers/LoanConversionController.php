@@ -17,12 +17,12 @@ class LoanConversionController extends Controller
 
     public function showConvertForm(Quotation $quotation)
     {
-        if (auth()->user()->isBankEmployee()) {
-            abort(403, 'Bank employees cannot create loans.');
+        if (! auth()->user()->canCreateLoans()) {
+            abort(403, 'You do not have permission to create loans.');
         }
         if ($quotation->is_converted) {
             return redirect()->route('loans.show', $quotation->loan_id)
-                ->with('info', 'This quotation has already been converted to Loan #' . $quotation->loan->loan_number);
+                ->with('info', 'This quotation has already been converted to Loan #'.$quotation->loan->loan_number);
         }
 
         // Authorization: own or view_all_quotations
@@ -33,7 +33,7 @@ class LoanConversionController extends Controller
         $quotation->load(['banks', 'documents']);
         $branches = Branch::active()->with('location.parent')->orderBy('name')->get();
         $products = Product::active()->with(['bank', 'locations'])->orderBy('name')->get();
-        $advisors = User::whereNotNull('task_role')->where('is_active', true)->with(['branches', 'locations'])->orderBy('name')->get();
+        $advisors = User::advisorEligible()->with(['branches', 'locations'])->orderBy('name')->get();
 
         // Map quotation bank names to banks table IDs for product filtering
         $allBanks = \App\Models\Bank::active()->get();
@@ -70,7 +70,7 @@ class LoanConversionController extends Controller
             );
 
             return redirect()->route('loans.show', $loan)
-                ->with('success', 'Quotation converted to Loan #' . $loan->loan_number);
+                ->with('success', 'Quotation converted to Loan #'.$loan->loan_number);
         } catch (\RuntimeException $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }

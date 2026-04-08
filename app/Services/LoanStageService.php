@@ -76,7 +76,7 @@ class LoanStageService
         $baseStageKeys = [
             'inquiry', 'document_selection', 'document_collection',
             'parallel_processing', 'app_number', 'bsm_osv', 'legal_verification', 'technical_valuation',
-            'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement',
+            'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement', 'otc_clearance',
         ];
 
         $stages = Stage::whereIn('stage_key', $baseStageKeys)->where('is_enabled', true)->get();
@@ -219,8 +219,24 @@ class LoanStageService
             }
         }
 
+        // Fund transfer: skip OTC stage and complete loan
         if ($completedStageKey === 'disbursement') {
+            $disbursement = $loan->disbursement;
+            if ($disbursement && $disbursement->disbursement_type === 'fund_transfer') {
+                // Skip OTC stage if it exists
+                $otcAssignment = $loan->stageAssignments()->where('stage_key', 'otc_clearance')->first();
+                if ($otcAssignment && $otcAssignment->status !== 'completed') {
+                    $otcAssignment->update(['status' => 'skipped', 'completed_at' => now(), 'completed_by' => auth()->id()]);
+                }
+                $loan->update(['status' => LoanDetail::STATUS_COMPLETED]);
+            }
+            // Cheque: auto-advances to otc_clearance via normal flow
+        }
+
+        // OTC clearance completes the loan
+        if ($completedStageKey === 'otc_clearance') {
             $loan->update(['status' => LoanDetail::STATUS_COMPLETED]);
+            app(NotificationService::class)->notifyLoanCompleted($loan);
         }
     }
 

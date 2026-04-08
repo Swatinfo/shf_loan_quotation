@@ -64,4 +64,24 @@ $(function () {
         modal.show();
     });
 
+    // 5. SweetAlert confirm for delete forms (.shf-confirm-delete)
+    $(document).on('submit', '.shf-confirm-delete', function (e) {
+        e.preventDefault();
+        var form = this;
+        Swal.fire({
+            title: $(form).data('confirm-title') || 'Are you sure?',
+            text: $(form).data('confirm-text') || 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel'
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+
 });

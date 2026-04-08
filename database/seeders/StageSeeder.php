@@ -34,18 +34,11 @@ class StageSeeder extends Seeder
             // Stage 10: Decision tree
             ['stage_key' => 'disbursement', 'stage_name_en' => 'Disbursement', 'stage_name_gu' => 'વિતરણ', 'sequence_order' => 10, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'decision', 'description_en' => 'Fund disbursement — transfer or cheque with OTC handling'],
 
-            // Bank/product-specific optional stages (enabled via product_stages in Stage I)
-            ['stage_key' => 'cibil_check', 'stage_name_en' => 'CIBIL Score Check', 'stage_name_gu' => 'CIBIL સ્કોર તપાસ', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Credit score verification (optional)'],
+            // Stage 11: OTC Clearance (only for cheque disbursement)
+            ['stage_key' => 'otc_clearance', 'stage_name_en' => 'OTC Clearance', 'stage_name_gu' => 'OTC ક્લિયરન્સ', 'sequence_order' => 11, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Cheque handover and OTC clearance'],
+
+            // Product-specific parallel sub-stage
             ['stage_key' => 'property_valuation', 'stage_name_en' => 'Property Valuation', 'stage_name_gu' => 'મિલકત મૂલ્યાંકન', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Dedicated property valuation for LAP'],
-            ['stage_key' => 'vehicle_valuation', 'stage_name_en' => 'Vehicle Valuation', 'stage_name_gu' => 'વાહન મૂલ્યાંકન', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Vehicle valuation for car/vehicle loans'],
-            ['stage_key' => 'business_valuation', 'stage_name_en' => 'Business Valuation', 'stage_name_gu' => 'વ્યવસાય મૂલ્યાંકન', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Business valuation for business loans'],
-            ['stage_key' => 'title_search', 'stage_name_en' => 'Title Search', 'stage_name_gu' => 'ટાઇટલ સર્ચ', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Property title verification for LAP'],
-            ['stage_key' => 'financial_analysis', 'stage_name_en' => 'Financial Analysis', 'stage_name_gu' => 'નાણાકીય વિશ્લેષણ', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Financial analysis for business loans'],
-            ['stage_key' => 'site_visit', 'stage_name_en' => 'Site Visit Report', 'stage_name_gu' => 'સાઇટ મુલાકાત રિપોર્ટ', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Physical site visit for business loans'],
-            ['stage_key' => 'approval_committee', 'stage_name_en' => 'Approval Committee', 'stage_name_gu' => 'મંજૂરી સમિતિ', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Committee approval (ICICI specific)'],
-            ['stage_key' => 'credit_committee', 'stage_name_en' => 'Credit Committee', 'stage_name_gu' => 'ક્રેડિટ સમિતિ', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Credit committee review (Kotak specific)'],
-            ['stage_key' => 'insurance', 'stage_name_en' => 'Insurance', 'stage_name_gu' => 'વીમો', 'sequence_order' => 9, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Insurance requirement for vehicle loans'],
-            ['stage_key' => 'mortgage', 'stage_name_en' => 'Mortgage Registration', 'stage_name_gu' => 'મોર્ટગેજ નોંધણી', 'sequence_order' => 9, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Mortgage registration for LAP'],
         ];
 
         foreach ($stages as $stage) {

@@ -95,8 +95,8 @@
                             $locStatesCreate = \App\Models\Location::with('children')->states()->active()->orderBy('name')->get();
                             $allBanksCreate = \App\Models\Bank::active()->orderBy('name')->get();
                             $singleCityRoles = ['bank_employee', 'office_employee'];
-                            $multiLocRoles = ['legal_advisor', 'branch_manager', 'loan_advisor'];
-                            $bankRolesCreate = ['bank_employee', 'office_employee', 'legal_advisor'];
+                            $multiLocRoles = ['branch_manager', 'loan_advisor'];
+                            $bankRolesCreate = ['bank_employee', 'office_employee'];
                         @endphp
 
                         {{-- Single city for bank_employee/office_employee --}}
@@ -114,7 +114,7 @@
                             </select>
                         </div>
 
-                        {{-- Multiple locations for legal_advisor/branch_manager/loan_advisor --}}
+                        {{-- Multiple locations for branch_manager/loan_advisor --}}
                         <div id="createMultiLocationField" style="{{ in_array($cTaskRole, $multiLocRoles) ? '' : 'display:none;' }}">
                             <label class="shf-form-label d-block mb-1">Assigned Locations</label>
                             <div class="mb-3" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:8px;">
@@ -150,8 +150,8 @@
                             </select>
                         </div>
 
-                        {{-- Multiple banks for office_employee/legal_advisor --}}
-                        <div id="createMultiBankField" style="{{ in_array($cTaskRole, ['office_employee', 'legal_advisor']) ? '' : 'display:none;' }}">
+                        {{-- Multiple banks for office_employee --}}
+                        <div id="createMultiBankField" style="{{ $cTaskRole === 'office_employee' ? '' : 'display:none;' }}">
                             <label class="shf-form-label d-block mb-1">Assigned Banks</label>
                             <div class="d-flex flex-wrap gap-2 mb-3">
                                 @foreach($allBanksCreate as $bank)
@@ -229,11 +229,11 @@ $(function() {
     $('#taskRoleSelect').on('change', function() {
         var val = $(this).val();
         var singleCityRoles = ['bank_employee', 'office_employee'];
-        var multiLocRoles = ['legal_advisor', 'branch_manager', 'loan_advisor'];
+        var multiLocRoles = ['branch_manager', 'loan_advisor'];
         $('#createSingleCityField').toggle(singleCityRoles.indexOf(val) !== -1);
         $('#createMultiLocationField').toggle(multiLocRoles.indexOf(val) !== -1);
         $('#createSingleBankField').toggle(val === 'bank_employee');
-        $('#createMultiBankField').toggle(val === 'office_employee' || val === 'legal_advisor');
+        $('#createMultiBankField').toggle(val === 'office_employee');
     });
 });
 </script>

@@ -238,22 +238,51 @@ $(function() {
     // Toggle active via AJAX
     $(document).on('click', '.btn-toggle-active', function() {
         var $btn = $(this);
-        if (!confirm('Are you sure?')) return;
-        $.post($btn.data('url'), { _token: csrfToken }, function() {
-            table.ajax.reload(null, false);
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'This will change the user\'s active status.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#f15a29',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, proceed',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.post($btn.data('url'), { _token: csrfToken }, function() {
+                    table.ajax.reload(null, false);
+                });
+            }
         });
     });
 
     // Delete via AJAX
     $(document).on('click', '.btn-delete-user', function() {
         var $btn = $(this);
-        if (!confirm('Are you sure you want to delete this user?')) return;
-        $.ajax({
-            url: $btn.data('url'),
-            type: 'DELETE',
-            data: { _token: csrfToken },
-            success: function() { table.ajax.reload(null, false); },
-            error: function(xhr) { alert(xhr.responseJSON?.message || 'Failed to delete user.'); }
+        Swal.fire({
+            title: 'Delete this user?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: $btn.data('url'),
+                    type: 'DELETE',
+                    data: { _token: csrfToken },
+                    success: function(r) {
+                        Swal.fire({ icon: 'success', title: r.message || 'User deleted', timer: 1500, showConfirmButton: false });
+                        table.ajax.reload(null, false);
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Failed to delete user.', 'error');
+                    }
+                });
+            }
         });
     });
 });

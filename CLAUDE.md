@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Shreenathji Home Finance — a bilingual (English/Gujarati) loan management platform. Generates comparison PDFs across banks with EMI calculations, charges, and required documents. Includes a full loan task management system with 10-stage workflow, document collection, stage assignments/transfers, notifications, disbursement tracking, and lifecycle timeline.
+Shreenathji Home Finance — a bilingual (English/Gujarati) loan management platform. Generates comparison PDFs across banks with EMI calculations, charges, and required documents. Includes a full loan task management system with 11-stage workflow (16 total including parallel sub-stages), document collection, stage assignments/transfers, notifications, disbursement tracking, and lifecycle timeline.
 
 ## Tech Stack
 
@@ -80,6 +80,8 @@ Token-efficient reference split into small, on-demand files. **Read only what yo
 | Models & relationships | `.docs/models.md` |
 | Permissions & roles | `.docs/permissions.md` |
 | Quotation workflow | `.docs/quotations.md` |
+| Loan workflow (user) | `.docs/workflow-guide.md` |
+| Loan workflow (dev) | `.docs/workflow-developer.md` |
 | PDF generation | `.docs/pdf-generation.md` |
 | Frontend & CSS | `.docs/frontend.md` + `.docs/views.md` |
 | Settings config | `.docs/settings.md` |

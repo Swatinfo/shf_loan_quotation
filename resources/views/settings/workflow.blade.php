@@ -124,14 +124,40 @@
 $(function() {
     var csrfToken = $('meta[name="csrf-token"]').attr('content');
     $('.shf-delete-bank').on('click', function() {
-        if (!confirm('Delete this bank and all its products?')) return;
-        $.ajax({ url: '/settings/workflow/banks/' + $(this).data('id'), method: 'DELETE', data: { _token: csrfToken } })
-            .done(function() { location.reload(); });
+        var bankId = $(this).data('id');
+        Swal.fire({
+            title: 'Delete this bank?',
+            text: 'This will delete the bank and all its products. This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.ajax({ url: '/settings/workflow/banks/' + bankId, method: 'DELETE', data: { _token: csrfToken } })
+                    .done(function() { location.reload(); });
+            }
+        });
     });
     $('.shf-delete-branch').on('click', function() {
-        if (!confirm('Delete this branch?')) return;
-        $.ajax({ url: '/settings/workflow/branches/' + $(this).data('id'), method: 'DELETE', data: { _token: csrfToken } })
-            .done(function() { location.reload(); });
+        var branchId = $(this).data('id');
+        Swal.fire({
+            title: 'Delete this branch?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.ajax({ url: '/settings/workflow/branches/' + branchId, method: 'DELETE', data: { _token: csrfToken } })
+                    .done(function() { location.reload(); });
+            }
+        });
     });
 });
 </script>

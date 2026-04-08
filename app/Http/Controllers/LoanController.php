@@ -93,14 +93,14 @@ class LoanController extends Controller
         $length = (int) $request->input('length', 25);
         $loans = $query->skip($start)->take($length)->get();
 
-        $data = $loans->map(function ($loan) use ($canEdit, $canDelete) {
+        $data = $loans->map(function ($loan) use ($canEdit) {
             $viewIcon = '<svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
             $editIcon = '<svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
 
             $actions = '<div class="d-flex gap-1">';
-            $actions .= '<a href="' . route('loans.show', $loan) . '" class="btn-accent-sm">' . $viewIcon . ' View</a>';
+            $actions .= '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">'.$viewIcon.' View</a>';
             if ($canEdit) {
-                $actions .= '<a href="' . route('loans.edit', $loan) . '" class="btn-accent-sm" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">' . $editIcon . ' Edit</a>';
+                $actions .= '<a href="'.route('loans.edit', $loan).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">'.$editIcon.' Edit</a>';
             }
             $actions .= '</div>';
 
@@ -114,29 +114,29 @@ class LoanController extends Controller
             if ($disbursementAssignment?->status === 'completed') {
                 $disbNotes = $disbursementAssignment->getNotesData();
                 if (! empty($disbNotes['disbursed_amount'])) {
-                    $amountInfo .= '<br><small class="text-success fw-semibold">DIS-₹ ' . number_format($disbNotes['disbursed_amount']) . '</small>';
+                    $amountInfo .= '<br><small class="text-success fw-semibold">DIS-₹ '.number_format($disbNotes['disbursed_amount']).'</small>';
                 }
             } elseif ($sanctionAssignment?->status === 'completed') {
                 $sancNotes = $sanctionAssignment->getNotesData();
                 if (! empty($sancNotes['sanctioned_amount'])) {
-                    $amountInfo .= '<br><small class="text-primary fw-semibold">SC-₹ ' . number_format($sancNotes['sanctioned_amount']) . '</small>';
+                    $amountInfo .= '<br><small class="text-primary fw-semibold">SC-₹ '.number_format($sancNotes['sanctioned_amount']).'</small>';
                 }
             }
 
-            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name . '/' : '') . $loan->location->name : '';
+            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name.'/' : '').$loan->location->name : '';
 
             return [
                 'loan_number' => $loan->loan_number,
                 'customer_name' => $loan->customer_name,
                 'bank_name' => $loan->bank_name ?? '—',
-                'bank_product' => ($loan->bank_name ?? '—') . '<br><small class="text-muted">' . ($loan->product?->name ?? '—') . '</small>'
-                    . ($locationName ? '<br><small class="text-info" style="font-size:0.65rem;">' . $locationName . '</small>' : ''),
+                'bank_product' => ($loan->bank_name ?? '—').'<br><small class="text-muted">'.($loan->product?->name ?? '—').'</small>'
+                    .($locationName ? '<br><small class="text-info" style="font-size:0.65rem;">'.$locationName.'</small>' : ''),
                 'location_name' => $locationName,
                 'amount_info' => $amountInfo,
                 'formatted_amount' => $loan->formatted_amount,
                 'current_stage_name' => $loan->current_stage_name,
-                'owner_info' => $ownerName !== '—' ? $ownerName . '<br><small class="text-muted">' . $timeWithOwner . '</small>' : '—',
-                'status_label' => '<span class="shf-badge shf-badge-' . $this->statusBadgeClass($loan->status) . '">' . $loan->status_label . '</span>',
+                'owner_info' => $ownerName !== '—' ? $ownerName.'<br><small class="text-muted">'.$timeWithOwner.'</small>' : '—',
+                'status_label' => '<span class="shf-badge shf-badge-'.$this->statusBadgeClass($loan->status).'">'.$loan->status_label.'</span>',
                 'created_at' => $loan->created_at?->format('d M Y'),
                 'actions_html' => $actions,
             ];
@@ -152,21 +152,20 @@ class LoanController extends Controller
 
     public function create()
     {
-        // Bank employees cannot create loans
-        if (auth()->user()->isBankEmployee()) {
-            abort(403, 'Bank employees cannot create loans.');
+        if (! auth()->user()->canCreateLoans()) {
+            abort(403, 'You do not have permission to create loans.');
         }
 
         $banks = Bank::active()->orderBy('name')->get();
         $branches = Branch::active()->with('location.parent')->orderBy('name')->get();
         $products = Product::active()->with(['bank', 'locations'])->orderBy('name')->get();
-        $advisors = User::whereNotNull('task_role')->where('is_active', true)->with(['branches', 'locations'])->orderBy('name')->get();
+        $advisors = User::advisorEligible()->with(['branches', 'locations'])->orderBy('name')->get();
 
         // Build branch → location map and product → location map for JS filtering
-        $branchLocationMap = $branches->mapWithKeys(fn($b) => [
+        $branchLocationMap = $branches->mapWithKeys(fn ($b) => [
             $b->id => ['city_id' => $b->location_id, 'state_id' => $b->location?->parent_id],
         ]);
-        $productLocationMap = $products->mapWithKeys(fn($p) => [
+        $productLocationMap = $products->mapWithKeys(fn ($p) => [
             $p->id => $p->locations->pluck('id')->toArray(),
         ]);
 
@@ -175,8 +174,8 @@ class LoanController extends Controller
 
     public function store(Request $request)
     {
-        if (auth()->user()->isBankEmployee()) {
-            abort(403, 'Bank employees cannot create loans.');
+        if (! auth()->user()->canCreateLoans()) {
+            abort(403, 'You do not have permission to create loans.');
         }
 
         $validated = $request->validate([
@@ -195,7 +194,7 @@ class LoanController extends Controller
         $loan = $this->conversionService->createDirectLoan($validated);
 
         return redirect()->route('loans.show', $loan)
-            ->with('success', 'Loan #' . $loan->loan_number . ' created successfully');
+            ->with('success', 'Loan #'.$loan->loan_number.' created successfully');
     }
 
     public function show(LoanDetail $loan)

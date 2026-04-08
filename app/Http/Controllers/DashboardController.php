@@ -62,7 +62,9 @@ class DashboardController extends Controller
                 ->whereIn('status', ['pending', 'in_progress'])
                 ->count();
 
-            $recentLoans = LoanDetail::visibleTo($user)->count();
+            $recentLoans = LoanDetail::visibleTo($user)
+                ->whereNotIn('status', ['completed', 'rejected', 'cancelled'])
+                ->count();
         }
 
         if ($myTasks > 0) {
@@ -99,6 +101,24 @@ class DashboardController extends Controller
 
         // Total records (before any filtering)
         $recordsTotal = (clone $query)->count();
+
+        // Loan status filter
+        $loanStatus = $request->input('loan_status', 'not_converted');
+        if ($loanStatus === 'not_converted') {
+            // Default: only quotations not yet converted to a loan
+            $query->whereNull('loan_id');
+        } elseif ($loanStatus === 'active') {
+            // Converted with active loan
+            $query->whereHas('loan', fn ($q) => $q->where('status', 'active'));
+        } elseif ($loanStatus === 'completed') {
+            $query->whereHas('loan', fn ($q) => $q->where('status', 'completed'));
+        } elseif ($loanStatus === 'rejected') {
+            $query->whereHas('loan', fn ($q) => $q->where('status', 'rejected'));
+        } elseif ($loanStatus === 'converted') {
+            // All converted (any loan status)
+            $query->whereNotNull('loan_id');
+        }
+        // 'all' → no filter
 
         // Custom filters
         if ($request->filled('customer_type')) {
@@ -210,7 +230,9 @@ class DashboardController extends Controller
                     ? route('loans.show', $q->loan_id)
                     : null,
                 'is_converted' => (bool) $q->loan_id,
-                'location_name' => $q->location ? ($q->location->parent?->name ? $q->location->parent->name . '/' : '') . $q->location->name : '',
+                'loan_status' => $q->loan?->status,
+                'loan_status_label' => $q->loan?->status_label,
+                'location_name' => $q->location ? ($q->location->parent?->name ? $q->location->parent->name.'/' : '').$q->location->name : '',
             ];
         });
 
@@ -261,18 +283,18 @@ class DashboardController extends Controller
 
         $data = $tasks->map(function ($task) use ($stageNames) {
             $loan = $task->loan;
-            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name . '/' : '') . $loan->location->name : '';
+            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name.'/' : '').$loan->location->name : '';
 
             return [
                 'loan_number' => $loan->loan_number,
                 'customer_name' => $loan->customer_name,
                 'bank_name' => ($loan->bank?->name ?? $loan->bank_name)
-                    . ($locationName ? '<br><small class="text-info" style="font-size:0.7rem;">' . $locationName . '</small>' : ''),
+                    .($locationName ? '<br><small class="text-info" style="font-size:0.7rem;">'.$locationName.'</small>' : ''),
                 'stage_name' => $stageNames[$task->stage_key] ?? ucwords(str_replace('_', ' ', $task->stage_key)),
-                'status_label' => '<span class="shf-badge ' . ($task->status === 'in_progress' ? 'shf-badge-blue' : 'shf-badge-gray') . '">'
-                    . ($task->status === 'in_progress' ? 'In Progress' : 'Pending') . '</span>',
+                'status_label' => '<span class="shf-badge '.($task->status === 'in_progress' ? 'shf-badge-blue' : 'shf-badge-gray').'">'
+                    .($task->status === 'in_progress' ? 'In Progress' : 'Pending').'</span>',
                 'assigned_at' => $task->updated_at->diffForHumans(),
-                'actions_html' => '<a href="' . route('loans.stages', $loan) . '" class="btn-accent-sm">View</a>',
+                'actions_html' => '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm">View</a>',
                 'location_name' => $locationName,
             ];
         });
@@ -327,7 +349,7 @@ class DashboardController extends Controller
         $statusColors = ['primary' => 'blue', 'success' => 'green', 'danger' => 'red', 'warning' => 'orange', 'secondary' => 'gray'];
 
         $data = $loans->map(function ($loan) use ($stageNames, $statusColors) {
-            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name . '/' : '') . $loan->location->name : '';
+            $locationName = $loan->location ? ($loan->location->parent?->name ? $loan->location->parent->name.'/' : '').$loan->location->name : '';
             $sl = LoanDetail::STATUS_LABELS[$loan->status] ?? null;
             $badgeColor = $statusColors[$sl['color'] ?? 'secondary'] ?? 'gray';
 
@@ -335,12 +357,12 @@ class DashboardController extends Controller
                 'loan_number' => $loan->loan_number,
                 'customer_name' => $loan->customer_name,
                 'bank_name' => ($loan->bank?->name ?? $loan->bank_name)
-                    . ($locationName ? '<br><small class="text-info" style="font-size:0.7rem;">' . $locationName . '</small>' : ''),
+                    .($locationName ? '<br><small class="text-info" style="font-size:0.7rem;">'.$locationName.'</small>' : ''),
                 'formatted_amount' => $loan->formatted_amount,
-                'stage_name' => '<small>' . ($stageNames[$loan->current_stage] ?? ucwords(str_replace('_', ' ', $loan->current_stage ?? '—'))) . '</small>',
-                'status_label' => '<span class="shf-badge shf-badge-' . $badgeColor . '">' . ($sl['label'] ?? ucfirst($loan->status)) . '</span>',
+                'stage_name' => '<small>'.($stageNames[$loan->current_stage] ?? ucwords(str_replace('_', ' ', $loan->current_stage ?? '—'))).'</small>',
+                'status_label' => '<span class="shf-badge shf-badge-'.$badgeColor.'">'.($sl['label'] ?? ucfirst($loan->status)).'</span>',
                 'created_at' => $loan->created_at?->format('d M Y'),
-                'actions_html' => '<a href="' . route('loans.show', $loan) . '" class="btn-accent-sm">View</a>',
+                'actions_html' => '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">View</a>',
                 'location_name' => $locationName,
             ];
         });
@@ -415,7 +437,7 @@ class DashboardController extends Controller
             $actionLabel = ucwords(str_replace('_', ' ', $log->action));
 
             $subject = $log->subject_type
-                ? class_basename($log->subject_type) . ' #' . $log->subject_id
+                ? class_basename($log->subject_type).' #'.$log->subject_id
                 : '—';
 
             $details = '—';
@@ -424,20 +446,20 @@ class DashboardController extends Controller
                 if (isset($props['customer_name'])) {
                     $details = e($props['customer_name']);
                     if (isset($props['loan_amount'])) {
-                        $details .= ' — ₹ ' . number_format($props['loan_amount']);
+                        $details .= ' — ₹ '.number_format($props['loan_amount']);
                     }
                 } elseif (isset($props['name'])) {
                     $details = e($props['name']);
                 } elseif (isset($props['section'])) {
-                    $details = 'Section: ' . e($props['section']);
+                    $details = 'Section: '.e($props['section']);
                 }
             }
 
             return [
-                'date_html' => '<span style="white-space:nowrap;color:#6b7280;">' . $log->created_at->format('d M Y')
-                    . '<span class="d-block small" style="color:#9ca3af;">' . $log->created_at->format('h:i A') . '</span></span>',
+                'date_html' => '<span style="white-space:nowrap;color:#6b7280;">'.$log->created_at->format('d M Y')
+                    .'<span class="d-block small" style="color:#9ca3af;">'.$log->created_at->format('h:i A').'</span></span>',
                 'user_name' => $log->user?->name ?? 'System',
-                'action_html' => '<span class="shf-badge ' . $badge . '">' . $actionLabel . '</span>',
+                'action_html' => '<span class="shf-badge '.$badge.'">'.$actionLabel.'</span>',
                 'subject' => $subject,
                 'details' => $details,
                 'ip_address' => $log->ip_address ?? '—',

@@ -12,17 +12,19 @@ use Lab404\Impersonate\Models\Impersonate;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, Impersonate;
+    use HasFactory, Impersonate, Notifiable;
 
     // Task workflow roles (separate from system role)
-    const TASK_ROLES = ['branch_manager', 'loan_advisor', 'bank_employee', 'office_employee', 'legal_advisor'];
+    const TASK_ROLES = ['branch_manager', 'loan_advisor', 'bank_employee', 'office_employee'];
+
+    // Roles eligible to be assigned as loan advisor / create loans
+    const ADVISOR_ELIGIBLE_ROLES = ['branch_manager', 'loan_advisor', 'office_employee'];
 
     const TASK_ROLE_LABELS = [
         'branch_manager' => 'Branch Manager',
         'loan_advisor' => 'Loan Advisor',
         'bank_employee' => 'Bank Employee',
         'office_employee' => 'Office Employee',
-        'legal_advisor' => 'Legal Advisor',
     ];
 
     const TASK_ROLE_LABELS_GU = [
@@ -30,7 +32,6 @@ class User extends Authenticatable
         'loan_advisor' => 'લોન સલાહકાર',
         'bank_employee' => 'બેંક કર્મચારી',
         'office_employee' => 'ઓફિસ કર્મચારી',
-        'legal_advisor' => 'કાનૂની સલાહકાર',
     ];
 
     protected $fillable = [
@@ -148,9 +149,18 @@ class User extends Authenticatable
         return $this->task_role === 'loan_advisor';
     }
 
-    public function isLegalAdvisor(): bool
+    public function canCreateLoans(): bool
     {
-        return $this->task_role === 'legal_advisor';
+        if ($this->isSuperAdmin() || $this->isAdmin()) {
+            return true;
+        }
+
+        return in_array($this->task_role, self::ADVISOR_ELIGIBLE_ROLES);
+    }
+
+    public function scopeAdvisorEligible($query)
+    {
+        return $query->whereIn('task_role', self::ADVISOR_ELIGIBLE_ROLES)->where('is_active', true);
     }
 
     public function getTaskRoleLabelAttribute(): string

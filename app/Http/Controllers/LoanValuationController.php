@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\LoanDetail;
-use App\Models\ValuationDetail;
 use App\Services\LoanStageService;
 use Illuminate\Http\Request;
 
@@ -19,54 +18,48 @@ class LoanValuationController extends Controller
 
     public function store(Request $request, LoanDetail $loan)
     {
-        $type = $request->input('valuation_type');
-
-        $rules = [
-            'valuation_type' => 'required|in:property,vehicle,business',
-            'market_value' => 'required|numeric|min:0.01|max:100000000000',
-            'government_value' => 'required|numeric|min:0.01|max:100000000000',
+        $validated = $request->validate([
+            'valuation_type' => 'required|in:property',
+            'property_type' => 'required|string|max:100',
+            'property_address' => 'nullable|string|max:1000',
+            'latitude' => 'nullable|string|max:50',
+            'longitude' => 'nullable|string|max:50',
+            'land_area' => 'required|string|max:100',
+            'land_rate' => 'required|numeric|min:0',
+            'construction_area' => 'nullable|string|max:100',
+            'construction_rate' => 'nullable|numeric|min:0',
             'valuation_date' => 'required|date_format:d/m/Y',
             'valuator_name' => 'required|string|max:255',
             'valuator_report_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:5000',
-        ];
-
-        // Type-specific validation
-        if ($type === 'property') {
-            $rules['property_type'] = 'required|string|max:100';
-            $rules['property_area'] = 'required|string|max:100';
-            $rules['property_address'] = 'required|string|max:1000';
-        } elseif ($type === 'vehicle') {
-            $rules['property_type'] = 'required|string|max:100'; // vehicle type
-            $rules['property_area'] = 'nullable|string|max:100'; // registration no (optional)
-            $rules['property_address'] = 'nullable|string|max:1000';
-        } elseif ($type === 'business') {
-            $rules['property_type'] = 'required|string|max:100'; // business type
-            $rules['property_area'] = 'nullable|string|max:100';
-            $rules['property_address'] = 'nullable|string|max:1000';
-        }
-
-        $validated = $request->validate($rules);
+        ]);
 
         $validated['valuation_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['valuation_date'])->toDateString();
 
+        // Calculate valuations
+        $landArea = (float) preg_replace('/[^0-9.]/', '', $validated['land_area']);
+        $landRate = (float) ($validated['land_rate'] ?? 0);
+        $validated['land_valuation'] = (int) round($landArea * $landRate);
+
+        $constructionArea = (float) preg_replace('/[^0-9.]/', '', $validated['construction_area'] ?? '0');
+        $constructionRate = (float) ($validated['construction_rate'] ?? 0);
+        $validated['construction_valuation'] = (int) round($constructionArea * $constructionRate);
+
+        $validated['final_valuation'] = $validated['land_valuation'] + $validated['construction_valuation'];
+        $validated['market_value'] = $validated['final_valuation'];
+
         $valuation = $loan->valuationDetails()->updateOrCreate(
-            ['loan_id' => $loan->id, 'valuation_type' => $validated['valuation_type']],
+            ['loan_id' => $loan->id, 'valuation_type' => 'property'],
             $validated,
         );
 
         ActivityLog::log('save_valuation', $valuation, [
             'loan_number' => $loan->loan_number,
-            'valuation_type' => $validated['valuation_type'],
+            'valuation_type' => 'property',
         ]);
 
-        // Auto-complete the corresponding valuation stage
-        $stageKey = match ($validated['valuation_type']) {
-            'property' => 'property_valuation',
-            'vehicle' => 'vehicle_valuation',
-            'business' => 'business_valuation',
-            default => 'technical_valuation',
-        };
+        // Auto-complete the technical_valuation stage
+        $stageKey = 'technical_valuation';
 
         $stageService = app(LoanStageService::class);
         $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
