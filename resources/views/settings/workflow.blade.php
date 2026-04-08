@@ -1,0 +1,138 @@
+@extends('layouts.app')
+
+@section('header')
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ route('settings.index') }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
+            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">Workflow Configuration</h2>
+    </div>
+@endsection
+
+@section('content')
+<div class="py-4">
+    <div class="px-3 px-sm-4 px-lg-5">
+
+        {{-- Tabs --}}
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#banksTab">Banks & Products</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#branchesTab">Branches</a></li>
+        </ul>
+
+        <div class="tab-content">
+            {{-- Banks Tab --}}
+            <div class="tab-pane fade show active" id="banksTab">
+                @foreach($banks as $bank)
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>{{ $bank->name }}</strong>
+                                    @if($bank->code) <small class="text-muted">({{ $bank->code }})</small> @endif
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger shf-delete-bank" data-id="{{ $bank->id }}">Delete</button>
+                            </div>
+                            @if($bank->products->isNotEmpty())
+                                <div class="ms-3">
+                                    <small class="text-muted">Products:</small>
+                                    @foreach($bank->products as $product)
+                                        <span class="shf-badge shf-badge-gray me-1" style="font-size: 0.7rem;">
+                                            {{ $product->name }}
+                                            <a href="{{ route('settings.workflow.product-stages', $product) }}" class="text-decoration-none ms-1" title="Configure stages">⚙</a>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+
+                {{-- Add Bank --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6>Add Bank</h6>
+                        <form method="POST" action="{{ route('settings.workflow.banks.store') }}">
+                            @csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-5"><input type="text" name="name" class="form-control form-control-sm" placeholder="Bank name" required></div>
+                                <div class="col-sm-3"><input type="text" name="code" class="form-control form-control-sm" placeholder="Code (optional)"></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {{-- Add Product --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h6>Add Product</h6>
+                        <form method="POST" action="{{ route('settings.workflow.products.store') }}">
+                            @csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-4">
+                                    <select name="bank_id" class="form-select form-select-sm" required>
+                                        <option value="">Bank...</option>
+                                        @foreach($banks as $b) <option value="{{ $b->id }}">{{ $b->name }}</option> @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-sm-4"><input type="text" name="name" class="form-control form-control-sm" placeholder="Product name" required></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Branches Tab --}}
+            <div class="tab-pane fade" id="branchesTab">
+                @foreach($branches as $branch)
+                    <div class="card border-0 shadow-sm mb-2">
+                        <div class="card-body py-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ $branch->name }}</strong>
+                                @if($branch->code) <small class="text-muted">({{ $branch->code }})</small> @endif
+                                @if($branch->city) <small class="text-muted ms-2">{{ $branch->city }}</small> @endif
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger shf-delete-branch" data-id="{{ $branch->id }}">Delete</button>
+                        </div>
+                    </div>
+                @endforeach
+
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-body">
+                        <h6>Add Branch</h6>
+                        <form method="POST" action="{{ route('settings.workflow.branches.store') }}">
+                            @csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-sm-3"><input type="text" name="name" class="form-control form-control-sm" placeholder="Name" required></div>
+                                <div class="col-sm-2"><input type="text" name="code" class="form-control form-control-sm" placeholder="Code"></div>
+                                <div class="col-sm-2"><input type="text" name="city" class="form-control form-control-sm" placeholder="City"></div>
+                                <div class="col-sm-3"><input type="text" name="phone" class="form-control form-control-sm" placeholder="Phone"></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+$(function() {
+    var csrfToken = $('meta[name="csrf-token"]').attr('content');
+    $('.shf-delete-bank').on('click', function() {
+        if (!confirm('Delete this bank and all its products?')) return;
+        $.ajax({ url: '/settings/workflow/banks/' + $(this).data('id'), method: 'DELETE', data: { _token: csrfToken } })
+            .done(function() { location.reload(); });
+    });
+    $('.shf-delete-branch').on('click', function() {
+        if (!confirm('Delete this branch?')) return;
+        $.ajax({ url: '/settings/workflow/branches/' + $(this).data('id'), method: 'DELETE', data: { _token: csrfToken } })
+            .done(function() { location.reload(); });
+    });
+});
+</script>
+@endpush

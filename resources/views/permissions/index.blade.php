@@ -1,0 +1,88 @@
+@extends('layouts.app')
+
+@section('header')
+    <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Permission Management
+    </h2>
+@endsection
+
+@section('content')
+    <div class="py-4">
+        <div class="px-3 px-sm-4 px-lg-5">
+            <div class="shf-section">
+                <div class="shf-section-header">
+                    <div class="shf-section-number">
+                        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <span class="shf-section-title">Role × Permission Matrix</span>
+                </div>
+                <div class="shf-section-body">
+                    <p class="small mb-4" style="color: #6b7280;">
+                        Configure which permissions each role has by default. Super Admin always has all permissions.
+                    </p>
+
+                    <form method="POST" action="{{ route('permissions.update') }}">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Permission</th>
+                                        @foreach($roles as $role)
+                                            <th class="text-center">
+                                                {{ str_replace('_', ' ', ucfirst($role)) }}
+                                            </th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($permissions as $group => $perms)
+                                        <tr style="background: var(--accent-dim);">
+                                            <td colspan="{{ count($roles) + 1 }}" class="font-display fw-semibold small" style="color: #f15a29; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px;">
+                                                {{ $group }}
+                                            </td>
+                                        </tr>
+                                        @foreach($perms as $perm)
+                                            <tr>
+                                                <td>
+                                                    <span class="fw-medium">{{ $perm->name }}</span>
+                                                    @if($perm->description)
+                                                        <span class="d-block small" style="color: #9ca3af;">{{ $perm->description }}</span>
+                                                    @endif
+                                                </td>
+                                                @foreach($roles as $role)
+                                                    <td class="text-center">
+                                                        @if($role === 'super_admin')
+                                                            <input type="checkbox" checked disabled
+                                                                   class="shf-checkbox" style="width:16px;height:16px;opacity:1;cursor:not-allowed;">
+                                                        @else
+                                                            <input type="checkbox"
+                                                                   name="role[{{ $role }}][]"
+                                                                   value="{{ $perm->id }}"
+                                                                   {{ in_array($perm->id, $rolePermissions[$role] ?? []) ? 'checked' : '' }}
+                                                                   class="shf-checkbox" style="width:16px;height:16px;">
+                                                        @endif
+                                                    </td>
+                                                @endforeach
+                                            </tr>
+                                        @endforeach
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn-accent">
+                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                Save Permissions
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

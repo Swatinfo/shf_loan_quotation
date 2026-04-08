@@ -1,0 +1,1280 @@
+/* ============================================================
+   SHF DESIGN SYSTEM — Custom CSS Theme
+   Pure CSS (no build step required)
+   ============================================================ */
+
+/* ---- @font-face — Local Fonts ---- */
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --primary-dark: #3a3536bf;
+    --primary-dark-solid: #3a3536;
+    --primary-dark-light: #3a353696;
+    --accent: #f15a29;
+    --accent-warm: #f47929;
+    --accent-light: #f99d3e;
+    --accent-dim: rgba(241, 90, 41, 0.10);
+    --bg: #f8f8f8;
+    --bg-alt: #e6e7e8;
+    --text: #1a1a1a;
+    --text-muted: #6b7280;
+    --border: #bcbec0;
+    --white: #ffffff;
+    --red: #c0392b;
+    --green: #27ae60;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Font Families ---- */
+body {
+    font-family: 'Archivo', sans-serif;
+}
+
+.font-display {
+    font-family: 'Jost', sans-serif;
+}
+
+.font-body {
+    font-family: 'Archivo', sans-serif;
+}
+
+/* ---- Section Headers (Dark gradient + orange numbered circle) ---- */
+.shf-section {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.shf-section+.shf-section {
+    margin-top: 24px;
+}
+
+.shf-section-header {
+    background: linear-gradient(135deg, var(--primary-dark-solid) 0%, var(--primary-dark-light) 100%);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.shf-section-number {
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.shf-section-title {
+    font-family: 'Jost', sans-serif;
+    color: var(--white) !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.shf-section-body {
+    padding: 20px;
+}
+
+/* ---- Pill Buttons ---- */
+.btn-accent {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    text-decoration: none;
+}
+
+.btn-accent:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-accent-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 14px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    text-decoration: none;
+}
+
+.btn-accent-sm:hover {
+    opacity: 0.9;
+    color: var(--white);
+    text-decoration: none;
+}
+
+.btn-accent-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-accent-outline:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* White variant for use on dark backgrounds (navbar, headers) */
+.btn-accent-outline-white {
+    color: var(--white);
+}
+
+.btn-accent-outline-white:hover {
+    color: var(--white);
+}
+
+/* ---- Cards ---- */
+.shf-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+/* ---- Tags / Chips ---- */
+.shf-tag {
+    display: inline-flex;
+    align-items: center;
+    text-align: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+}
+
+.shf-tag-remove {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 0.6rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* ---- Bootstrap Table Overrides ---- */
+.table {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.table>thead>tr>th {
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom-width: 2px;
+    border-bottom-color: var(--border);
+    padding: 10px 14px;
+    background: transparent;
+}
+
+.table>tbody>tr>td {
+    padding: 10px 14px;
+    vertical-align: middle;
+    border-color: #f0f0f0;
+}
+
+.table-hover>tbody>tr:hover>td {
+    background: var(--accent-dim);
+}
+
+/* ---- Stats Card ---- */
+.shf-stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.shf-stat-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-dim);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.shf-stat-value {
+    font-family: 'Jost', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.shf-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* ---- Form Styles ---- */
+.shf-form-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--primary-dark-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.shf-input {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.88rem;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.5rem !important;
+}
+
+.shf-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.shf-input-sm {
+    padding: 5px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.4rem !important;
+}
+
+.shf-input-sm:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.shf-input.is-invalid,
+.shf-input-sm.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+}
+
+/* ---- Badges ---- */
+.shf-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.shf-badge-orange {
+    background: var(--accent-dim);
+    color: var(--accent-light);
+    border: 1px solid var(--accent);
+}
+
+.shf-badge-blue {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #93c5fd;
+}
+
+.shf-badge-gray {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.shf-badge-green {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+
+.shf-badge-purple {
+    background: #faf5ff;
+    color: #7c3aed;
+    border: 1px solid #c4b5fd;
+}
+
+.doc-sortable-ghost {
+    opacity: 0.4;
+    background: var(--accent-dim) !important;
+    border: 1px dashed var(--accent) !important;
+}
+
+.doc-drag-handle:hover {
+    color: var(--accent) !important;
+}
+
+.shf-badge-red {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+
+/* ---- Pagination ---- */
+.shf-pagination nav>div:first-child {
+    display: none;
+}
+
+.shf-pagination span[aria-current="page"] span {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    border-radius: 8px !important;
+    color: var(--white) !important;
+}
+
+.shf-pagination a {
+    border-radius: 8px !important;
+}
+
+.shf-pagination a:hover {
+    background: var(--accent-dim) !important;
+    color: var(--accent) !important;
+}
+
+/* ---- Per-Page Selector (inline with filters) ---- */
+.shf-per-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    height: fit-content;
+}
+
+.shf-per-page select {
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.78rem;
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--white);
+    outline: none;
+    cursor: pointer;
+}
+
+.shf-per-page select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.shf-per-page .shf-per-page-total {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+/* ---- Toast/Flash Messages ---- */
+.shf-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--primary-dark-solid);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: toastIn 0.3s ease;
+}
+
+.shf-toast.success {
+    border-left: 4px solid var(--green);
+}
+
+.shf-toast.error {
+    border-left: 4px solid var(--red);
+}
+
+.shf-toast.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes toastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+
+/* ---- Toast Wrapper (fixed bottom-right container) ---- */
+.shf-toast-wrapper {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+}
+
+/* ---- Nav Link Styles ---- */
+.shf-nav-link {
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+
+.shf-nav-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.shf-nav-active {
+    color: #fff;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 3px solid #f15a29;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ---- Tabs ---- */
+.shf-tabs {
+    display: flex;
+    background: var(--primary-dark-solid);
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px;
+}
+
+.shf-tab {
+    padding: 10px 16px;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    text-decoration: none;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+.shf-tab:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.shf-tab.active {
+    color: var(--white);
+    border-bottom-color: var(--accent);
+}
+
+/* ---- Checkbox Accent ---- */
+.shf-checkbox {
+    accent-color: var(--accent);
+}
+
+/* ---- Tenure / Selection Chips ---- */
+.shf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    user-select: none;
+    color: var(--text-muted);
+    background: none;
+}
+
+.shf-chip input {
+    display: none;
+}
+
+.shf-chip:has(input:checked),
+.shf-chip.active {
+    background: var(--accent);
+    color: var(--white);
+    border-color: var(--accent);
+}
+
+/* ---- Document Grid ---- */
+.shf-doc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.shf-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.shf-doc-item.checked {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+}
+
+/* ---- Page Header ---- */
+.shf-page-header {
+    background: linear-gradient(135deg, var(--primary-dark-solid) 0%, var(--primary-dark-light) 100%);
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+}
+
+.shf-page-header h1,
+.shf-page-header h2 {
+    font-family: 'Jost', sans-serif;
+    color: var(--white);
+    font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE STYLES
+   ============================================================ */
+
+/* ---- Tablets (max-width: 768px) ---- */
+@media (max-width: 768px) {
+    .shf-doc-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .shf-section-body {
+        padding: 14px;
+    }
+
+    .shf-section-header {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+
+    .shf-tabs {
+        gap: 0;
+    }
+
+    .shf-tab {
+        padding: 8px 12px;
+        font-size: 0.72rem;
+    }
+
+    .shf-page-header {
+        padding: 10px 14px;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .shf-stat-card {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .shf-stat-value {
+        font-size: 1.3rem;
+    }
+
+    .shf-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .table>thead>tr>th {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+    }
+
+    .table>tbody>tr>td {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+    }
+
+    .shf-toast {
+        bottom: 12px;
+        right: 12px;
+        left: 12px;
+        font-size: 0.78rem;
+        padding: 10px 14px;
+    }
+
+    .shf-form-label {
+        font-size: 0.65rem;
+    }
+
+    .shf-input {
+        padding: 7px 10px;
+        font-size: 0.82rem;
+    }
+
+    .btn-accent {
+        padding: 7px 16px;
+        font-size: 0.78rem;
+    }
+
+    .btn-accent-outline {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+    }
+
+    .shf-section-title {
+        font-size: 0.85rem;
+    }
+}
+
+/* ---- Mobile table: card layout ---- */
+@media (max-width: 768px) {
+    .shf-table-mobile thead {
+        display: none;
+    }
+
+    .shf-table-mobile tbody tr {
+        display: block;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+        padding: 12px 14px;
+        box-shadow: var(--shadow);
+    }
+
+    .shf-table-mobile tbody tr:hover {
+        background: var(--white);
+    }
+
+    .shf-table-mobile tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid #f5f5f5;
+        font-size: 0.82rem;
+    }
+
+    .shf-table-mobile tbody td:last-child {
+        border-bottom: none;
+        padding-top: 8px;
+    }
+
+    .shf-table-mobile tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        flex-shrink: 0;
+        margin-right: 12px;
+    }
+
+    .shf-table-mobile tbody td.td-actions::before {
+        content: none;
+    }
+
+    .shf-table-mobile tbody td.td-actions {
+        justify-content: flex-end;
+    }
+}
+
+/* ---- Small phones (max-width: 480px) ---- */
+@media (max-width: 480px) {
+    .shf-section-title {
+        font-size: 0.8rem;
+    }
+
+    .shf-stat-card {
+        padding: 10px 12px;
+    }
+
+    .shf-stat-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .shf-stat-value {
+        font-size: 1.1rem;
+    }
+
+    .shf-section-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.6rem;
+    }
+
+    .shf-tab {
+        padding: 7px 7px;
+        font-size: 0.68rem;
+    }
+
+    .shf-badge {
+        font-size: 0.62rem;
+        padding: 1px 6px;
+    }
+
+    .shf-tag {
+        padding: 2px 7px;
+        font-size: 0.68rem;
+    }
+
+    .shf-chip {
+        padding: 4px 9px;
+        font-size: 0.72rem;
+    }
+
+    .btn-accent {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+    }
+
+    .shf-section-body {
+        padding: 12px;
+    }
+
+    .shf-section-header {
+        padding: 8px 12px;
+    }
+}
+
+/* ============================================================
+   DATATABLES OVERRIDES — SHF Theme
+   ============================================================ */
+
+/* Hide built-in search box (we use custom filters) */
+.dataTables_filter {
+    display: none !important;
+}
+
+/* Top bar (length selector) */
+.shf-dt-top {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+}
+
+.shf-dt-top label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.shf-dt-top select {
+    padding: 4px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+}
+
+.shf-dt-top select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* Bottom bar (info + pagination) */
+.shf-dt-bottom {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+    gap: 10px;
+    float: right !important;
+}
+
+/* Info text */
+.shf-dt-bottom .dataTables_info {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Pagination */
+.shf-dt-bottom .dataTables_paginate {
+    margin: 0;
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item .page-link {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    border: 1px solid var(--border);
+    margin: 0 2px;
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item.active .page-link {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--white);
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item .page-link:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item.disabled .page-link {
+    color: var(--border);
+    background: transparent;
+}
+
+/* Processing indicator */
+.dataTables_processing {
+    background: var(--white) !important;
+    border: none !important;
+}
+
+/* Non-sortable column header */
+.table thead th.no-sort {
+    cursor: default;
+}
+
+/* Sort icons color */
+.table thead th.dt-orderable-asc span.dt-column-order,
+.table thead th.dt-orderable-desc span.dt-column-order {
+    color: var(--border);
+}
+
+.table thead th.dt-ordering-asc span.dt-column-order,
+.table thead th.dt-ordering-desc span.dt-column-order {
+    color: var(--accent);
+}
+
+/* DataTables responsive: hide dt-top on mobile */
+@media (max-width: 768px) {
+    .shf-dt-top {
+        display: none;
+    }
+
+    .shf-dt-bottom {
+        padding: 10px 14px;
+    }
+
+    .shf-dt-bottom .dataTables_info {
+        font-size: 0.72rem;
+    }
+
+    .shf-dt-bottom .dataTables_paginate .page-item .page-link {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+}
+
+/* ============================================================
+   BOOTSTRAP DATEPICKER OVERRIDES — SHF Theme
+   ============================================================ */
+.datepicker {
+    font-family: 'Archivo', sans-serif;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    z-index: 1055 !important;
+}
+.datepicker.datepicker-dropdown {
+    z-index: 1055 !important;
+}
+
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.disabled,
+.datepicker table tr td span.active,
+.datepicker table tr td span.active:hover {
+    background: var(--accent) !important;
+    background-image: none !important;
+    border-color: var(--accent) !important;
+    color: var(--white) !important;
+}
+
+.datepicker table tr td.today,
+.datepicker table tr td.today:hover {
+    background: var(--accent-dim) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.datepicker table tr td.day:hover,
+.datepicker table tr td span:hover {
+    background: var(--accent-dim);
+}
+
+.datepicker .datepicker-switch:hover,
+.datepicker .prev:hover,
+.datepicker .next:hover {
+    background: var(--accent-dim) !important;
+    accent-color: var(--accent) !important;
+}
+
+/* Disabled check mark color */
+input[type="checkbox"]:disabled:checked+label::after {
+    color: var(--accent) !important;
+    /* Grey checkmark */
+}
+
+/* Disabled box */
+input[type="checkbox"]:disabled+label::before {
+    background: var(--accent-dim) !important;
+    border-color: var(--accent) !important;
+}
+
+input[type="checkbox"]:disabled+label {
+    accent-color: var(--accent) !important;
+    cursor: not-allowed;
+}
+
+/* SHF Themed Checkbox */
+.shf-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.shf-checkbox:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* SHF Toggle Switch */
+.shf-toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #d1d5db;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    outline: none;
+}
+
+.shf-toggle:checked {
+    background: var(--accent);
+}
+
+.shf-toggle::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.shf-toggle:checked::before {
+    transform: translateX(16px);
+}
+
+/* Pagination — compact Bootstrap 5 style */
+.pagination {
+    margin-bottom: 0;
+    gap: 2px;
+}
+
+.pagination .page-link {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+.pagination .page-item.active .page-link {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.pagination .page-link:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #9ca3af;
+}
+
+/* ============================================================
+   LOAN TASK SYSTEM — Stage & Workflow Styles
+   ============================================================ */
+
+/* Stage status indicators (border-left on cards) */
+.shf-stage-pending {
+    border-left: 4px solid var(--bs-secondary) !important;
+}
+
+.shf-stage-in-progress {
+    border-left: 4px solid var(--bs-primary) !important;
+}
+
+.shf-stage-completed {
+    border-left: 4px solid var(--bs-success) !important;
+}
+
+.shf-stage-rejected {
+    border-left: 4px solid var(--bs-danger) !important;
+}
+
+.shf-stage-skipped {
+    border-left: 4px solid var(--bs-warning) !important;
+}
+
+/* Document collection items */
+.shf-doc-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    transition: background 0.15s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.shf-doc-item:hover {
+    background: #f8f9fa;
+}
+
+.shf-doc-item:active {
+    background: #f0f0f0;
+}
+
+.shf-doc-item:last-child {
+    border-bottom: none;
+}
+
+.shf-doc-received {
+    background: #f0fdf4;
+    border-left: 3px solid var(--bs-success);
+}
+
+.shf-doc-received:hover {
+    background: #e6f9ec;
+}
+
+.shf-doc-pending {
+    border-left: 3px solid var(--bs-secondary);
+}
+
+.shf-doc-rejected {
+    background: #fef2f2;
+    border-left: 3px solid var(--bs-danger);
+}
+
+.shf-doc-rejected:hover {
+    background: #fde8e8;
+}
+
+.shf-doc-item .shf-doc-actions {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.shf-doc-item:hover .shf-doc-actions {
+    opacity: 1;
+}
+
+/* Remarks */
+.shf-remark-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.shf-remark-item:last-child {
+    border-bottom: none;
+}
+
+/* Notification badge on nav bell */
+.shf-notification-badge {
+    font-size: 0.6rem;
+    padding: 2px 5px;
+}
+
+/* Parallel stage grid (2x2 on desktop, 1 col mobile) */
+.shf-parallel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .shf-parallel-grid {
+        grid-template-columns: 1fr;
+    }
+}

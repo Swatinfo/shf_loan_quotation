@@ -1,0 +1,10 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "loan-proposal",
+            "url": "https://shf_quote_laravel.test:8443/",
+            "port": 8443
+        }
+    ]
+}

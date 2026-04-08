@@ -1,0 +1,200 @@
+@extends('layouts.app')
+
+@section('header')
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ route('quotations.show', $quotation) }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
+            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+        </a>
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+            Convert Quotation #{{ $quotation->id }} to Loan Task
+        </h2>
+    </div>
+@endsection
+
+@section('content')
+<div class="py-4">
+    <div class="px-3 px-sm-4 px-lg-5" style="max-width: 48rem;">
+
+        <form method="POST" action="{{ route('quotations.convert.store', $quotation) }}">
+            @csrf
+
+            {{-- Section 1: Quotation Summary --}}
+            <div class="shf-section mb-4">
+                <div class="shf-section-header">
+                    <div class="shf-section-number">1</div>
+                    <span class="shf-section-title">Quotation Summary</span>
+                </div>
+                <div class="shf-section-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Customer</small>
+                            <strong>{{ $quotation->customer_name }}</strong>
+                            <span class="shf-badge shf-badge-gray ms-1" style="font-size: 0.7rem;">{{ $quotation->getTypeLabel() }}</span>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Loan Amount</small>
+                            <strong>{{ $quotation->formatted_amount }}</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Documents</small>
+                            {{ $quotation->documents->count() }} required documents
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Banks Compared</small>
+                            {{ $quotation->banks->pluck('bank_name')->implode(', ') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2: Select Bank --}}
+            <div class="shf-section mb-4">
+                <div class="shf-section-header">
+                    <div class="shf-section-number">2</div>
+                    <span class="shf-section-title">Select Bank for Loan</span>
+                </div>
+                <div class="shf-section-body">
+                    @foreach($quotation->banks as $index => $bank)
+                        @php $matchedBankId = $bankNameToId[$bank->bank_name] ?? null; @endphp
+                        <div class="form-check p-3 border rounded mb-2 {{ $index === 0 ? 'border-primary' : '' }}" id="bankCard{{ $index }}">
+                            <input class="form-check-input" type="radio" name="bank_index"
+                                   value="{{ $index }}" id="bank{{ $index }}"
+                                   data-bank-id="{{ $matchedBankId }}"
+                                   {{ old('bank_index', 0) == $index ? 'checked' : '' }}>
+                            <label class="form-check-label w-100" for="bank{{ $index }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>{{ $bank->bank_name }}</strong>
+                                    <span class="text-muted" style="font-size: 0.85rem;">
+                                        ROI: {{ $bank->roi_min }}% - {{ $bank->roi_max }}%
+                                    </span>
+                                </div>
+                                @if($bank->total_charges)
+                                    <small class="text-muted">Total Charges: ₹ {{ number_format($bank->total_charges) }}</small>
+                                @endif
+                            </label>
+                        </div>
+                    @endforeach
+                    @error('bank_index')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Section 3: Additional Details --}}
+            <div class="shf-section mb-4">
+                <div class="shf-section-header">
+                    <div class="shf-section-number">3</div>
+                    <span class="shf-section-title">Additional Details</span>
+                </div>
+                <div class="shf-section-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="shf-form-label">Branch <span class="text-danger">*</span></label>
+                            <select name="branch_id" class="shf-input w-100" required>
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" {{ old('branch_id', $defaultBranchId) == $branch->id ? 'selected' : '' }}>
+                                        {{ $branch->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label class="shf-form-label">Product <span class="text-danger">*</span></label>
+                            <select name="product_id" class="shf-input w-100" id="productSelect" required>
+                                <option value="">-- Select Product --</option>
+                                @foreach($products as $product)
+                                    <option value="{{ $product->id }}" data-bank-id="{{ $product->bank_id }}"
+                                            {{ old('product_id') == $product->id ? 'selected' : '' }}>
+                                        {{ $product->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label class="shf-form-label">Customer Phone <span class="text-danger">*</span></label>
+                            <input type="text" name="customer_phone" class="shf-input w-100" required
+                                   value="{{ old('customer_phone') }}" placeholder="+91 99999 99999" maxlength="20">
+                            @error('customer_phone')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label class="shf-form-label">Customer Email</label>
+                            <input type="email" name="customer_email" class="shf-input w-100"
+                                   value="{{ old('customer_email') }}" placeholder="customer@example.com">
+                            @error('customer_email')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <label class="shf-form-label">Assigned Advisor</label>
+                            <select name="assigned_advisor" class="shf-input w-100">
+                                <option value="">-- Select Advisor --</option>
+                                @foreach($advisors as $advisor)
+                                    <option value="{{ $advisor->id }}" {{ old('assigned_advisor', $defaultAdvisorId) == $advisor->id ? 'selected' : '' }}>
+                                        {{ $advisor->name }} ({{ $advisor->task_role_label }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="shf-form-label">Notes</label>
+                            <textarea name="notes" class="shf-input w-100" rows="3"
+                                      placeholder="Additional notes...">{{ old('notes', $quotation->additional_notes) }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Submit --}}
+            <div class="d-flex justify-content-end gap-3 mb-4">
+                <a href="{{ route('quotations.show', $quotation) }}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn-accent" style="padding: 10px 24px; font-weight: 600;">
+                    <svg style="width:16px;height:16px;margin-right:4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                    Convert to Loan Task
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+$(function() {
+    var $bankRadios = $('input[name="bank_index"]');
+    var $product = $('#productSelect');
+    var allOptions = $product.find('option').clone();
+
+    // Highlight selected bank card + filter products by matched bank_id
+    $bankRadios.on('change', function() {
+        $('.form-check.border').removeClass('border-primary');
+        $(this).closest('.form-check').addClass('border-primary');
+
+        var bankId = $(this).data('bank-id');
+
+        $product.empty().append('<option value="">-- Select Product --</option>');
+        if (bankId) {
+            allOptions.each(function() {
+                if ($(this).data('bank-id') == bankId) {
+                    $product.append($(this).clone());
+                }
+            });
+        }
+    });
+
+    // Trigger on page load
+    $bankRadios.filter(':checked').trigger('change');
+});
+</script>
+@endpush

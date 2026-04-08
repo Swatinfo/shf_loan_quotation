@@ -1,0 +1,35 @@
+{
+    "name": "SHF World",
+    "short_name": "SHF World",
+    "description": "Shreenathji Home Finance — Loan proposals, workflow & management",
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "background_color": "#f8f8f8",
+    "theme_color": "#3a3536",
+    "icons": [
+        {
+            "src": "/images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/images/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
