@@ -261,7 +261,7 @@ class DashboardDataTableTest extends TestCase
         $response->assertOk()
             ->assertJson(['success' => true, 'message' => 'Quotation deleted.']);
 
-        $this->assertSoftDeleted('quotations', ['id' => $quotation->id]);
+        $this->assertDatabaseMissing('quotations', ['id' => $quotation->id]);
     }
 
     public function test_dashboard_index_loads_without_quotation_data(): void

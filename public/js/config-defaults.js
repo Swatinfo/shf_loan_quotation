@@ -39,12 +39,6 @@ const CONFIG_DEFAULTS = {
             "Audited Financials (Last 3 years)", "ITR of Company (Last 3 years)",
             "ITR of Directors (Last 3 years)", "GST Registration Certificate",
             "Business Address Proof", "Passport Size Photographs of All Directors"
-        ],
-        salaried: [
-            "PAN Card", "Aadhaar Card", "Salary Slips (Last 3 months)",
-            "Bank Statement (12 months)", "ITR (Last 2 years)", "Form 16",
-            "Employment / Appointment Letter", "ID Card of Company",
-            "Property Documents (if applicable)", "Passport Size Photographs"
         ]
     },
     documents_gu: {
@@ -89,18 +83,6 @@ const CONFIG_DEFAULTS = {
             "GST નોંધણી પ્રમાણપત્ર",
             "વ્યવસાય સરનામાનો પુરાવો",
             "બધા ડિરેક્ટરોના પાસપોર્ટ સાઇઝ ફોટોગ્રાફ"
-        ],
-        salaried: [
-            "PAN કાર્ડ",
-            "આધાર કાર્ડ",
-            "સેલેરી સ્લિપ (છેલ્લા ૩ મહિના)",
-            "બેંક સ્ટેટમેન્ટ (૧૨ મહિના)",
-            "ITR (છેલ્લા ૨ વર્ષ)",
-            "ફોર્મ ૧૬",
-            "નોકરી / નિમણૂક પત્ર",
-            "કંપનીનું ID કાર્ડ",
-            "મિલકતના દસ્તાવેજો (જો લાગુ હોય)",
-            "પાસપોર્ટ સાઇઝ ફોટોગ્રાફ"
         ]
     }
 };

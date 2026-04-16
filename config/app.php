@@ -26,21 +26,8 @@ return [
 
     'chrome_path' => env('CHROME_PATH'),
     'pdf_service_url' => env('PDF_SERVICE_URL', 'http://127.0.0.1:3000/pdf'),
-    'pdf_service_key' => env('PDF_SERVICE_KEY', 'SwatTech%7854@2026'),
+    'pdf_service_key' => env('PDF_SERVICE_KEY', ''),
     'pdf_use_microservice' => (bool) env('PDF_USE_MICROSERVICE', false),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Impersonation — Allow All Users
-    |--------------------------------------------------------------------------
-    |
-    | When true, ALL authenticated users can impersonate others (dev/testing).
-    | When false (default/production), only super_admin can impersonate.
-    | super_admin users can NEVER be impersonated regardless of this setting.
-    |
-    */
-
-    'allow_impersonate_all' => (bool) env('ALLOW_IMPERSONATE_ALL', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -81,8 +68,6 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'asset_url' => env('ASSET_URL', null),
-
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
@@ -94,7 +79,7 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'UTC'),
+    'timezone' => 'UTC',
 
     /*
     |--------------------------------------------------------------------------

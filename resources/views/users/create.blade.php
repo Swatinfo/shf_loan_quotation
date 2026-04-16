@@ -2,7 +2,7 @@
 
 @section('header')
     <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; line-height: 1.75rem; margin: 0;">
-        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
         Create User
     </h2>
 @endsection
@@ -10,12 +10,6 @@
 @section('content')
     <div class="py-4">
         <div class="mx-auto px-3 px-sm-4 px-lg-5" style="max-width: 42rem;">
-            @if($copyFrom)
-                <div class="alert alert-info py-2 mb-3 d-flex align-items-center gap-2">
-                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
-                    Copying from <strong>{{ $copyFrom->name }}</strong> — change the name, email and password to create a new user.
-                </div>
-            @endif
             <div class="shf-section">
                 <div class="shf-section-header">
                     <div class="shf-section-number">1</div>
@@ -27,7 +21,7 @@
 
                         <div class="mb-3">
                             <label class="shf-form-label d-block mb-1">Name</label>
-                            <input type="text" id="name" name="name" class="shf-input" value="{{ old('name', $copyFrom?->name) }}" required autofocus>
+                            <input type="text" id="name" name="name" class="shf-input" value="{{ old('name') }}" required autofocus>
                             @if ($errors->has('name'))
                                 <ul class="list-unstyled mt-1 mb-0 small" style="color: #c0392b;">
                                     @foreach ($errors->get('name') as $message)
@@ -65,7 +59,7 @@
                             <label class="shf-form-label d-block mb-1">Role</label>
                             <select id="role" name="role" class="shf-input">
                                 @foreach($roles as $value => $label)
-                                    <option value="{{ $value }}" {{ old('role', $copyFrom?->role ?? 'staff') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    <option value="{{ $value }}" {{ old('role', 'staff') === $value ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
                             @if ($errors->has('role'))
@@ -75,102 +69,6 @@
                                     @endforeach
                                 </ul>
                             @endif
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="shf-form-label d-block mb-1">Task Role (Loan Workflow)</label>
-                            <select name="task_role" id="taskRoleSelect" class="shf-input">
-                                <option value="">— None (quotation only) —</option>
-                                @foreach(\App\Models\User::TASK_ROLE_LABELS as $value => $label)
-                                    <option value="{{ $value }}" {{ old('task_role', $copyFrom?->task_role) === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">Determines which loan stages this user can be assigned to</small>
-                        </div>
-
-                        @php
-                            $cTaskRole = old('task_role', $copyFrom?->task_role);
-                            $copyBankIds = $copyFrom ? $copyFrom->employerBanks->pluck('id')->toArray() : [];
-                            $copyLocationIds = $copyFrom ? $copyFrom->locations->pluck('id')->toArray() : [];
-                            $locStatesCreate = \App\Models\Location::with('children')->states()->active()->orderBy('name')->get();
-                            $allBanksCreate = \App\Models\Bank::active()->orderBy('name')->get();
-                            $singleCityRoles = ['bank_employee', 'office_employee'];
-                            $multiLocRoles = ['branch_manager', 'loan_advisor'];
-                            $bankRolesCreate = ['bank_employee', 'office_employee'];
-                        @endphp
-
-                        {{-- Single city for bank_employee/office_employee --}}
-                        <div id="createSingleCityField" style="{{ in_array($cTaskRole, $singleCityRoles) ? '' : 'display:none;' }}">
-                            <label class="shf-form-label d-block mb-1">City <span class="text-danger">*</span></label>
-                            <select name="assigned_locations[]" class="shf-input mb-3">
-                                <option value="">— Select City —</option>
-                                @foreach($locStatesCreate as $locState)
-                                    <optgroup label="{{ $locState->name }}">
-                                        @foreach($locState->children->where('is_active', true) as $locCity)
-                                            <option value="{{ $locCity->id }}" {{ in_array($locCity->id, old('assigned_locations', $copyLocationIds)) ? 'selected' : '' }}>{{ $locCity->name }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        {{-- Multiple locations for branch_manager/loan_advisor --}}
-                        <div id="createMultiLocationField" style="{{ in_array($cTaskRole, $multiLocRoles) ? '' : 'display:none;' }}">
-                            <label class="shf-form-label d-block mb-1">Assigned Locations</label>
-                            <div class="mb-3" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:8px;">
-                                @foreach($locStatesCreate as $locState)
-                                    <div class="mb-2">
-                                        <label class="d-inline-flex align-items-center gap-1 fw-semibold" style="font-size:0.85rem;cursor:pointer;">
-                                            <input type="checkbox" name="assigned_locations[]" value="{{ $locState->id }}" class="shf-checkbox" style="width:14px;height:14px;" {{ in_array($locState->id, old('assigned_locations', $copyLocationIds)) ? 'checked' : '' }}>
-                                            {{ $locState->name }}
-                                        </label>
-                                        @if($locState->children->where('is_active', true)->isNotEmpty())
-                                            <div class="ps-4 d-flex flex-wrap gap-2 mt-1">
-                                                @foreach($locState->children->where('is_active', true) as $locCity)
-                                                    <label class="d-inline-flex align-items-center gap-1" style="font-size:0.8rem;cursor:pointer;">
-                                                        <input type="checkbox" name="assigned_locations[]" value="{{ $locCity->id }}" class="shf-checkbox" style="width:13px;height:13px;" {{ in_array($locCity->id, old('assigned_locations', $copyLocationIds)) ? 'checked' : '' }}>
-                                                        {{ $locCity->name }}
-                                                    </label>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Single bank for bank_employee --}}
-                        <div id="createSingleBankField" style="{{ $cTaskRole === 'bank_employee' ? '' : 'display:none;' }}">
-                            <label class="shf-form-label d-block mb-1">Bank <span class="text-danger">*</span></label>
-                            <select name="assigned_banks[]" class="shf-input mb-3">
-                                <option value="">— Select Bank —</option>
-                                @foreach($allBanksCreate as $bank)
-                                    <option value="{{ $bank->id }}" {{ in_array($bank->id, old('assigned_banks', $copyBankIds)) ? 'selected' : '' }}>{{ $bank->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        {{-- Multiple banks for office_employee --}}
-                        <div id="createMultiBankField" style="{{ $cTaskRole === 'office_employee' ? '' : 'display:none;' }}">
-                            <label class="shf-form-label d-block mb-1">Assigned Banks</label>
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                @foreach($allBanksCreate as $bank)
-                                    <label class="d-inline-flex align-items-center gap-1" style="font-size:0.85rem;cursor:pointer;">
-                                        <input type="checkbox" name="assigned_banks[]" value="{{ $bank->id }}" class="shf-checkbox" style="width:14px;height:14px;" {{ in_array($bank->id, old('assigned_banks', $copyBankIds)) ? 'checked' : '' }}>
-                                        {{ $bank->name }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="shf-form-label d-block mb-1">Default Branch</label>
-                            <select name="default_branch_id" class="shf-input">
-                                <option value="">— None —</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}" {{ old('default_branch_id', $copyFrom?->default_branch_id) == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                                @endforeach
-                            </select>
                         </div>
 
                         <div class="mb-3">
@@ -210,7 +108,7 @@
                         </div>
 
                         <div class="d-flex align-items-center justify-content-end gap-3 mt-4 pt-4" style="border-top: 1px solid var(--border);">
-                            <a href="{{ route('users.index') }}" class="btn-accent-outline"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
+                            <a href="{{ route('users.index') }}" class="btn-accent-outline">Cancel</a>
                             <button type="submit" class="btn-accent">
                                 <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 Create User
@@ -222,19 +120,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-<script>
-$(function() {
-    $('#taskRoleSelect').on('change', function() {
-        var val = $(this).val();
-        var singleCityRoles = ['bank_employee', 'office_employee'];
-        var multiLocRoles = ['branch_manager', 'loan_advisor'];
-        $('#createSingleCityField').toggle(singleCityRoles.indexOf(val) !== -1);
-        $('#createMultiLocationField').toggle(multiLocRoles.indexOf(val) !== -1);
-        $('#createSingleBankField').toggle(val === 'bank_employee');
-        $('#createMultiBankField').toggle(val === 'office_employee');
-    });
-});
-</script>
-@endpush

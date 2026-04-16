@@ -23,13 +23,11 @@ Patterns and corrections captured during development. Review at session start.
 - **2026-02-27**: Use Bootstrap's built-in table classes (`table`, `table-hover`, etc.) for all tables — not custom `shf-table` with dark gradient headers. Keep it clean, no shadow backgrounds on tables.
 - **2026-02-27**: Use Bootstrap Datepicker (local vendor files) for all date inputs — not native `<input type="date">`.
 
-## Settings / Config
-- **2026-03-12**: When Eloquent model has `'array'` cast on a JSON column, pass the raw array — don't manually `json_encode`. Double-encoding causes data to be stored as a JSON string inside a JSON string.
-- **2026-03-12**: Settings forms with tag-based UI (banks, tenures, documents) must auto-add pending input values on form submit. Users expect typing a value and clicking "Save" to work — they shouldn't need to click "+ Add" first.
-- **2026-03-12**: Settings documents form: all doc type tabs must render their inputs on page load, not just the active tab. Otherwise, only the active tab's data is included in the form submission and other types get silently lost.
-
-## Documentation Sync
-- **2026-04-07**: ALWAYS update reference docs (database-schema.md, routes-reference.md, services-reference.md, models.md, permissions.md) AS PART of each phase implementation — not deferred. Mark "Update reference docs" complete only after actually updating them.
-
 ## Testing
 - **2026-02-27**: Auth and Profile tests (Breeze defaults) have pre-existing failures due to `EnsureUserIsActive` middleware and disabled registration. These are NOT caused by view changes — don't waste time debugging them during unrelated work.
+- **2026-02-27**: When testing `PdfGenerationService`, mock `renderHtml()` to return simple HTML — the template requires a complex data structure that's irrelevant to strategy/generation tests. Use `createPartialMock(PdfGenerationService::class, ['renderHtml'])`.
+
+## Architecture
+- **2026-02-27**: Don't hard-code OS checks (`PHP_OS_FAMILY`) as the only strategy selector. Use capability detection (is Chrome available? is exec() enabled?) and config overrides (`PDF_USE_MICROSERVICE`) for flexibility. The same binary (Chrome headless) works on both Windows and Linux.
+- **2026-02-28**: Never return `success: true` from a service when the DB save fails. A failed DB transaction means failure — even if the PDF was generated. Returning false success causes offline sync to delete queued items from IndexedDB, losing data permanently. Return `success: false` with both `error` and `filename` so callers can decide how to handle partial success.
+- **2026-02-28**: Sync endpoints (`SyncApiController`) must mirror the same logic as the online controller (`QuotationController`): auto-fill fields, log activity, validate response thoroughly (check `quotation` is not null, not just `success` flag).

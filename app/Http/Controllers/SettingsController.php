@@ -17,9 +17,8 @@ class SettingsController extends Controller
     {
         $config = $this->configService->load();
         $bankCharges = BankCharge::orderBy('bank_name')->get();
-        $loanBanks = \App\Models\Bank::active()->orderBy('name')->pluck('name')->toArray();
 
-        return view('settings.index', compact('config', 'bankCharges', 'loanBanks'));
+        return view('settings.index', compact('config', 'bankCharges'));
     }
 
     public function updateCompany(Request $request)

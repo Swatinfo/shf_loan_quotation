@@ -158,7 +158,6 @@ class QuotationService
                     'prepared_by_name'  => $templateData['preparedByName'] ?: null,
                     'prepared_by_mobile' => $templateData['preparedByMobile'] ?: null,
                     'selected_tenures' => $tenures,
-                    'location_id' => $input['location_id'] ?? null,
                 ]);
 
                 foreach ($templateData['banks'] as $bankData) {

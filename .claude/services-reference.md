@@ -29,12 +29,18 @@ Main entry point for creating a quotation.
 Generates PDF from quotation data.
 
 **Strategy** (three-tier, OS-agnostic):
-1. If `PDF_USE_MICROSERVICE=true` → force microservice (cURL POST to `PDF_SERVICE_URL` with `PDF_SERVICE_KEY`)
-2. Else if Chrome available → Chrome headless via `exec()` — saves HTML to tmp, runs Chrome `--print-to-pdf`
-   - Auto-detects Chrome at common paths (Windows/Linux/macOS) or uses `CHROME_PATH` env
-3. Else → microservice fallback
+1. **`PDF_USE_MICROSERVICE=true`** → microservice only (escape hatch for containerized Chrome setups)
+2. **Chrome available** → Chrome headless directly (fastest). If Chrome fails, falls back to microservice (if configured)
+3. **Chrome not available** → microservice via cURL to `PDF_SERVICE_URL` with `PDF_SERVICE_KEY`
 
-**Output**: `['success' => true, 'filename' => '...', 'path' => '...']`
+**Private helper methods**:
+- `isChromeAvailable(): bool` — checks `exec()` not disabled + Chrome binary exists (uses `command -v` on Linux for bare names)
+- `generateWithChrome(string $tmpHtml, string $filepath): ?array` — runs Chrome headless, uses `escapeshellarg()` on Linux
+- `generateWithMicroservice(string $html, string $filepath): ?array` — cURL POST with `CURLOPT_CONNECTTIMEOUT=5`, `CURLOPT_TIMEOUT=60`
+
+**Config**: `app.pdf_use_microservice` (bool, default `false`) — set `PDF_USE_MICROSERVICE=true` in `.env` to force microservice mode
+
+**Output**: `['success' => true, 'filename' => '...', 'path' => '...']` or `['error' => '...']`
 
 ### `renderHtml(array $data): string`
 Renders complete HTML document:
@@ -57,10 +63,8 @@ Renders complete HTML document:
 - `updateMany(array $updates)`: Update multiple sections
 - `reset()`: Reset to defaults from `config/app-defaults.php`
 
-### Config sections (flat top-level keys):
-`companyName`, `companyAddress`, `companyPhone`, `companyEmail`, `banks`, `tenures`, `documents_en`, `documents_gu`, `iomCharges`, `gstPercent`, `ourServices`
-
-**Note**: Config uses flat keys (e.g., `companyName` not `company.name`). Dot-notation only works for nested sections like `get('iomCharges.thresholdAmount')`.
+### Config sections:
+`company`, `banks`, `tenures`, `documents`, `iomCharges`, `gstPercent`, `ourServices`
 
 ---
 
@@ -71,15 +75,9 @@ Renders complete HTML document:
 2. **User Override**: Check `user_permissions` for explicit grant/deny
 3. **Role Default**: Check `role_permissions` for role-level permission
 
-### Public Methods:
-- `userHasPermission(User $user, string $slug): bool` — main permission check
-- `roleHasPermission(string $role, string $slug): bool` — role-level check
-- `getUserPermissions(User $user): array` — all permissions merged [slug → bool]
-- `getGroupedPermissions(): array` — all permissions grouped by 'group' field
-
 ### Caching:
-- User overrides: cached 5 minutes, key `user_perms:{userId}`
-- Role permissions: cached 5 minutes, key `role_perms:{role}`
+- User overrides: cached 5 minutes, key `user_permissions_{userId}`
+- Role permissions: cached 5 minutes, key `role_permissions_{role}`
 - Clear: `clearUserCache($user)`, `clearRoleCache($role)`, `clearAllCaches()`
 
 ---
@@ -92,108 +90,3 @@ Indian numbering system (Crore/Lakh/Thousand):
 - `toBilingual(int $num)`: "English / Gujarati"
 - `formatIndianNumber(int $num)`: "1,25,00,000"
 - `formatCurrency(int $num)`: "₹ 1,25,00,000"
-
----
-
-## LoanStageService (`app/Services/LoanStageService.php`) — Phase 1+5
-
-### Constants
-- `STAGE_ROLE_ELIGIBILITY`: Maps stage_key → eligible task_role[] for assignment filtering
-
-### Query Methods
-- `getOrderedStages()`: All main stages ordered by sequence
-- `getStageByKey(string $key)`: Find by stage_key
-- `getSubStages(string $parentKey)`: Child stages of parallel parent
-- `isParallelStage(string $key)`: Is it parallel parent or sub-stage
-- `getMainStageKeys()`: Ordered array of main stage keys
-
-### Initialization
-- `initializeStages(LoanDetail $loan)`: Creates 14 base stage_assignments + loan_progress
-- `autoCompleteStages(LoanDetail $loan, array $stageKeys)`: Mark stages as completed (used on conversion)
-
-### Transitions
-- `updateStageStatus(LoanDetail $loan, string $stageKey, string $newStatus, ?int $userId)`: Validates transition, blocks if pending queries, auto-advances
-- `getNextStage(string $currentKey)`: Next main stage key
-- `canStartStage(LoanDetail $loan, string $stageKey)`: Previous must be completed/skipped
-
-### Assignment
-- `assignStage(LoanDetail $loan, string $stageKey, int $userId)`: Manual assign
-- `autoAssignStage(LoanDetail $loan, string $stageKey)`: Auto-assign best-fit user (role+bank+branch)
-- `autoAssignParallelSubStages(LoanDetail $loan)`: Auto-assign all 4 parallel sub-stages
-- `findBestAssignee(string $stageKey, ?int $branchId, ?int $bankId, ?int $productId, ?int $loanCreatorId)`: Priority: ProductStage user → bank default → bank+branch → other eligible roles
-- `skipStage(LoanDetail $loan, string $stageKey, ?int $userId)`: Skip stage
-
-### Transfer & Rejection
-- `transferStage(LoanDetail $loan, string $stageKey, int $toUserId, ?string $reason)`: Transfer with history
-- `rejectLoan(LoanDetail $loan, string $stageKey, string $reason, ?int $userId)`: Reject entire loan (terminal)
-
-### Parallel Processing
-- `checkParallelCompletion(LoanDetail $loan)`: All sub-stages done? Auto-complete parent + advance
-- `getParallelSubStages(LoanDetail $loan)`: Get sub-stage assignments with stage+assignee
-
-### Progress
-- `recalculateProgress(LoanDetail $loan)`: Update loan_progress (count, percentage, snapshot)
-- `getLoanStageStatus(LoanDetail $loan)`: All assignments ordered by sequence
-
----
-
-## LoanConversionService (`app/Services/LoanConversionService.php`) — Phase 2
-
-### `convertFromQuotation(Quotation $quotation, int $bankIndex, array $extra = []): LoanDetail`
-Creates loan from quotation: copies customer data + selected bank, populates documents, initializes stages, auto-completes stages 1-2, auto-assigns stage 3.
-
-### `createDirectLoan(array $data): LoanDetail`
-Creates loan directly: generates loan number, populates documents from config defaults, initializes stages.
-
----
-
-## LoanDocumentService (`app/Services/LoanDocumentService.php`) — Phase 4
-
-- `populateFromQuotation(LoanDetail $loan, Quotation $quotation)`: Copy quotation docs to loan
-- `populateFromDefaults(LoanDetail $loan)`: From config/app-defaults.php by customer_type
-- `updateStatus(LoanDocument $doc, string $status, int $userId, ?string $rejectedReason)`: Change status (pending/received/rejected/waived)
-- `getProgress(LoanDetail $loan)`: Returns {total, resolved, received, rejected, pending, percentage}
-- `allRequiredResolved(LoanDetail $loan)`: All required docs received or waived
-- `addDocument(LoanDetail $loan, string $nameEn, ?string $nameGu, bool $required)`: Add custom doc
-- `removeDocument(LoanDocument $doc)`: Delete doc with ActivityLog
-
----
-
-## StageQueryService (`app/Services/StageQueryService.php`) — Phase 5
-
-- `raiseQuery(StageAssignment $assignment, string $queryText, int $userId)`: Create pending query (blocks stage completion)
-- `respondToQuery(StageQuery $query, string $responseText, int $userId)`: Add response, mark query as responded
-- `resolveQuery(StageQuery $query, int $userId)`: Mark query as resolved (unblocks stage)
-- `getQueriesForStage(StageAssignment $assignment)`: All queries with responses
-
----
-
-## NotificationService (`app/Services/NotificationService.php`) — Phase 6b
-
-- `notify(int $userId, string $title, string $message, string $type, ?int $loanId, ?string $stageKey, ?string $link)`: Create notification
-- `notifyStageAssignment(LoanDetail $loan, string $stageKey, int $assignedUserId)`: Notify user of stage assignment
-- `notifyStageCompleted(LoanDetail $loan, string $stageKey)`: Notify creator/advisor of stage completion
-- `notifyLoanCompleted(LoanDetail $loan)`: Notify on loan completion
-- `markRead(ShfNotification $notification)`: Mark single as read
-- `markAllRead(int $userId)`: Mark all as read for user
-- `getUnreadCount(int $userId)`: Count unread
-
----
-
-## RemarkService (`app/Services/RemarkService.php`) — Phase 6b
-
-- `addRemark(int $loanId, int $userId, string $remark, ?string $stageKey)`: Add remark with ActivityLog
-- `getRemarks(int $loanId, ?string $stageKey)`: Get remarks for loan, optionally filtered by stage
-
----
-
-## DisbursementService (`app/Services/DisbursementService.php`) — Phase 7a
-
-- `processDisbursement(LoanDetail $loan, array $data)`: Create/update disbursement, complete loan if not OTC pending
-- `clearOtc(DisbursementDetail $disbursement)`: Clear OTC, complete loan
-
----
-
-## LoanTimelineService (`app/Services/LoanTimelineService.php`) — Phase 10
-
-- `getTimeline(LoanDetail $loan)`: Builds complete lifecycle timeline merging quotation creation, loan creation, stage start/complete, transfers, queries, remarks, disbursement, rejection, completion. Returns sorted collection of timeline entries.

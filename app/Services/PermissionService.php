@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Permission;
 use App\Models\RolePermission;
-use App\Models\TaskRolePermission;
 use App\Models\User;
 use App\Models\UserPermission;
 use Illuminate\Support\Facades\Cache;
@@ -32,16 +31,8 @@ class PermissionService
             return $userOverride;
         }
 
-        // Fall back to role default OR task role (additive)
-        if ($this->roleHasPermission($user->role, $slug)) {
-            return true;
-        }
-
-        if ($user->task_role && $this->taskRoleHasPermission($user->task_role, $slug)) {
-            return true;
-        }
-
-        return false;
+        // Fall back to role default
+        return $this->roleHasPermission($user->role, $slug);
     }
 
     /**
@@ -59,7 +50,7 @@ class PermissionService
                 ->toArray();
         });
 
-        if (! isset($overrides[$slug])) {
+        if (!isset($overrides[$slug])) {
             return null;
         }
 
@@ -76,23 +67,6 @@ class PermissionService
         $permissions = Cache::remember($cacheKey, 300, function () use ($role) {
             return RolePermission::where('role', $role)
                 ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
-                ->pluck('permissions.slug')
-                ->toArray();
-        });
-
-        return in_array($slug, $permissions);
-    }
-
-    /**
-     * Check if a task role has a permission.
-     */
-    public function taskRoleHasPermission(string $taskRole, string $slug): bool
-    {
-        $cacheKey = "task_role_perms:{$taskRole}";
-
-        $permissions = Cache::remember($cacheKey, 300, function () use ($taskRole) {
-            return TaskRolePermission::where('task_role', $taskRole)
-                ->join('permissions', 'permissions.id', '=', 'task_role_permissions.permission_id')
                 ->pluck('permissions.slug')
                 ->toArray();
         });
@@ -146,11 +120,6 @@ class PermissionService
     {
         foreach (['super_admin', 'admin', 'staff'] as $role) {
             $this->clearRoleCache($role);
-        }
-
-        // Clear task role caches
-        foreach (User::TASK_ROLES as $taskRole) {
-            Cache::forget("task_role_perms:{$taskRole}");
         }
 
         // Clear user-specific caches

@@ -56,14 +56,12 @@ const TRANSLATIONS = {
             proprietor: 'Proprietor',
             partnership_llp: 'Partnership / LLP',
             pvt_ltd: 'Private Limited',
-            salaried: 'Salaried',
             all: 'All (Partnership/LLP + PVT LTD)'
         },
         gu: {
             proprietor: 'માલિકી',
             partnership_llp: 'ભાગીદારી / LLP',
             pvt_ltd: 'પ્રાઇવેટ લિમિટેડ',
-            salaried: 'પગારદાર',
             all: 'ભાગીદારી/LLP + પ્રાઇવેટ લિમિટેડ'
         }
     }
@@ -81,7 +79,7 @@ function getBilingualDocName(enName, docType, config) {
     const enDocs = config.documents_en || CONFIG_DEFAULTS.documents_en;
     const guDocs = config.documents_gu || CONFIG_DEFAULTS.documents_gu;
     // Search across all types for the English name
-    const types = ['proprietor', 'partnership_llp', 'pvt_ltd', 'salaried'];
+    const types = ['proprietor', 'partnership_llp', 'pvt_ltd'];
     for (const t of types) {
         const idx = (enDocs[t] || []).indexOf(enName);
         if (idx !== -1 && guDocs[t] && guDocs[t][idx]) {

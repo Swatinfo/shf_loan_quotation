@@ -64,8 +64,8 @@ var PdfRenderer = {
         };
 
         var typeLabels = {
-            en: { proprietor: 'Proprietor', partnership_llp: 'Partnership / LLP', pvt_ltd: 'Private Limited', salaried: 'Salaried', all: 'All (Partnership/LLP + PVT LTD)' },
-            gu: { proprietor: 'માલિકી', partnership_llp: 'ભાગીદારી / LLP', pvt_ltd: 'પ્રાઇવેટ લિમિટેડ', salaried: 'પગારદાર', all: 'ભાગીદારી/LLP + પ્રાઇવેટ લિમિટેડ' }
+            en: { proprietor: 'Proprietor', partnership_llp: 'Partnership / LLP', pvt_ltd: 'Private Limited', all: 'All (Partnership/LLP + PVT LTD)' },
+            gu: { proprietor: 'માલિકી', partnership_llp: 'ભાગીદારી / LLP', pvt_ltd: 'પ્રાઇવેટ લિમિટેડ', all: 'ભાગીદારી/LLP + પ્રાઇવેટ લિમિટેડ' }
         };
 
         var customerTypeLabel = (typeLabels.en[data.customerType] || data.customerType);

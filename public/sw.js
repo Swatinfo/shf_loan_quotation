@@ -1,8 +1,8 @@
 // ============================================================
 //  SERVICE WORKER — SHF Loan Proposal PWA (Laravel)
 // ============================================================
-var STATIC_CACHE = 'shf-static-v19';
-var DYNAMIC_CACHE = 'shf-dynamic-v19';
+var STATIC_CACHE = 'shf-static-v17';
+var DYNAMIC_CACHE = 'shf-dynamic-v17';
 
 // Only pre-cache actual static files (not auth-protected routes)
 var STATIC_ASSETS = [

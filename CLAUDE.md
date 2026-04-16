@@ -1,116 +1,239 @@
-# CLAUDE.md
+# Shreenathji Home Finance — Loan Proposal Generator
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Bilingual (English/Gujarati) loan quotation system. Generates comparison PDFs across banks with EMI calculations, charges, and required documents.
 
-## Project Overview
+## MANDATORY: Context Files
 
-Shreenathji Home Finance — a bilingual (English/Gujarati) loan management platform. Generates comparison PDFs across banks with EMI calculations, charges, and required documents. Includes a full loan task management system with 11-stage workflow (16 total including parallel sub-stages), document collection, stage assignments/transfers, notifications, disbursement tracking, and lifecycle timeline.
+### On Session Start
+**Before doing ANY work on ANY prompt**, you MUST read ALL of these files:
+
+1. **`tasks/lessons.md`** — past mistakes and patterns. Apply these to avoid repeating errors.
+2. **`tasks/todo.md`** — current task state. Resume incomplete tasks or note completed context.
+3. **`.claude/database-schema.md`** — all table schemas, columns, types, and permissions matrix.
+4. **`.claude/routes-reference.md`** — all route definitions, HTTP methods, controllers, and permissions.
+5. **`.claude/services-reference.md`** — all service methods, validation rules, and business logic.
+
+These files are NOT optional. Skipping them leads to repeated mistakes, wrong assumptions about schema/routes, and lost context. Read them silently — no need to summarize unless the user asks.
+
+### Before Each New Task (even mid-session)
+**Re-read the relevant files** before starting each new task or switching context:
+- Touching DB/models/migrations? → Re-read `.claude/database-schema.md`
+- Touching routes/controllers/middleware? → Re-read `.claude/routes-reference.md`
+- Touching services/validation/business logic? → Re-read `.claude/services-reference.md`
+- Starting any task? → Re-read `tasks/todo.md` and `tasks/lessons.md`
+
+In long sessions, these files may have been updated by earlier work. Always re-read before acting — never rely on stale memory from earlier in the conversation.
+
+### Keep Files in Sync (after every change)
+- Update `tasks/todo.md` with plan/progress for the current task
+- Update `tasks/lessons.md` after ANY user correction or discovered pattern
+- Update `.claude/database-schema.md` when changing tables, columns, or permissions
+- Update `.claude/routes-reference.md` when adding/changing routes or middleware
+- Update `.claude/services-reference.md` when modifying service methods or validation rules
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Backend | Laravel 12, PHP 8.4, SQLite |
-| Frontend | Blade + Bootstrap 5.3 + jQuery 3.7 (local vendor, no build step) |
+| Frontend | Blade + Bootstrap 5.3 + jQuery 3.7 (local vendor files, no build step) |
 | Auth | Laravel Breeze (session-based) |
-| PDF | Chrome headless (any OS) / PDF microservice fallback |
+| PDF | Chrome headless (Windows) / PDF microservice (Linux) |
 | Testing | PHPUnit 11 |
 | Formatting | Laravel Pint |
-
-## Development Commands
-
-```bash
-php artisan serve                           # Start dev server
-php artisan test --compact                  # Run all tests
-php artisan test --compact --filter=Name    # Run specific test
-vendor/bin/pint --dirty --format agent      # Format changed PHP files
-php artisan migrate                         # Run migrations
-```
 
 ## Architecture
 
 ```
 app/
 ├── Http/Controllers/       # Thin controllers, logic in services
-│   ├── Api/                # ConfigApi, NotesApi, SyncApi
-│   ├── Auth/               # Breeze auth controllers (8 files)
-│   ├── DashboardController
-│   ├── QuotationController
-│   ├── LoanController, LoanConversionController
-│   ├── LoanStageController, LoanDocumentController
-│   ├── LoanDisbursementController, LoanValuationController
-│   ├── LoanRemarkController, LoanSettingsController
-│   ├── WorkflowConfigController, NotificationController
-│   ├── ImpersonateController
-│   ├── UserController
-│   ├── PermissionController
-│   └── SettingsController
-├── Models/                 # 28 Eloquent models
-├── Traits/                 # HasAuditColumns (auto updated_by/deleted_by)
-├── Services/               # Business logic (13 services)
-│   ├── QuotationService, PdfGenerationService
-│   ├── ConfigService, PermissionService, NumberToWordsService
-│   ├── LoanStageService, LoanConversionService, LoanDocumentService
-│   ├── StageQueryService, NotificationService, RemarkService
-│   ├── DisbursementService, LoanTimelineService
+│   ├── Api/                # ConfigApiController, NotesApiController, SyncApiController
+│   ├── Auth/               # Breeze auth controllers
+│   ├── DashboardController # Quotation list + activity log
+│   ├── QuotationController # CRUD + PDF download
+│   ├── UserController      # User CRUD + toggle active
+│   ├── PermissionController# Permission matrix management
+│   └── SettingsController  # App config (company, banks, tenures, docs, charges)
+├── Models/                 # Eloquent models (see Models section)
+├── Services/               # Business logic layer (see Services section)
 └── Http/Middleware/         # CheckPermission, EnsureUserIsActive
 ```
 
-## Key Conventions
+## Models & Relationships
 
-- **Bilingual**: All user-facing content in English + Gujarati
-- **Indian currency**: `₹ X,XX,XXX` format (Indian comma system via `NumberToWordsService`)
-- **Activity logging**: `ActivityLog::log($action, $subject, $properties)`
-- **Config**: Never hardcode — use `ConfigService` (reads `app_config` table with `config/app-defaults.php` fallback)
-- **Views**: `@extends`/`@section` pattern only — never Blade component wrappers
-- **CSS prefix**: `shf-` for all custom classes in `public/css/shf.css`
-- **Customer types**: proprietor, partnership_llp, pvt_ltd, salaried, all
-- **Inline validation**: Controllers use inline validation (not Form Requests) — follow existing pattern
+```
+User ──┬── hasMany → UserPermission
+       ├── hasMany → Quotation
+       ├── hasMany → createdUsers (self-ref)
+       └── belongsTo → creator (self-ref)
 
-## Reference Documentation
+Quotation ──┬── belongsTo → User
+            ├── hasMany → QuotationBank
+            └── hasMany → QuotationDocument
 
-Token-efficient reference split into small, on-demand files. **Read only what you need:**
+QuotationBank ── hasMany → QuotationEmi
 
-| Area | File(s) |
-|------|---------|
-| All docs index | `.docs/README.md` |
-| Database schema | `.claude/database-schema.md` + `.docs/database.md` |
-| Routes & middleware | `.claude/routes-reference.md` |
-| Services & validation | `.claude/services-reference.md` |
-| Models & relationships | `.docs/models.md` |
-| Permissions & roles | `.docs/permissions.md` |
-| Quotation workflow | `.docs/quotations.md` |
-| Loan workflow (user) | `.docs/workflow-guide.md` |
-| Loan workflow (dev) | `.docs/workflow-developer.md` |
-| PDF generation | `.docs/pdf-generation.md` |
-| Frontend & CSS | `.docs/frontend.md` + `.docs/views.md` |
-| Settings config | `.docs/settings.md` |
-| API endpoints | `.docs/api.md` |
-| Offline/PWA | `.docs/offline-pwa.md` |
-| Users & roles | `.docs/users.md` |
-| Authentication | `.docs/authentication.md` |
-| Past lessons | `tasks/lessons.md` |
-| Current tasks | `tasks/todo.md` |
+Permission ──┬── hasMany → RolePermission
+             └── hasMany → UserPermission
 
-## STRICT Rules — Mandatory Read Gate
+ActivityLog ── belongsTo → User
+AppConfig   ── standalone (key-value config store)
+BankCharge  ── standalone (reference data)
+```
 
-**All detailed pre-read rules live in `.claude/rules/pre-read-gate.md`.**
+### Key Model Details
+- **User**: roles = `super_admin|admin|staff`, has `is_active` flag, `created_by` tracks creator
+- **Quotation**: stores `customer_type` (proprietor|partnership_llp|pvt_ltd|all), `selected_tenures` as JSON, `loan_amount` as unsigned bigint
+- **QuotationBank**: ROI range (min/max), all charge fields (PF, admin, stamp, notary, advocate, IOM, TC, 2 extras)
+- **QuotationEmi**: table name is `quotation_emi` (not quotation_emis), tenure in years
+- **AppConfig**: `config_key` + `config_json` pattern, stores company info, banks list, tenures, documents, charges, services, GST
 
-### BEFORE writing ANY code, you MUST:
-1. **Read `.claude/rules/pre-read-gate.md`** — find the row matching your task
-2. **Read the required files** listed for that task type
-3. **Read `tasks/lessons.md`** for relevant past corrections
-4. **State which files you read** in your response before showing code
+## Services (Business Logic Layer)
 
-**If you skip this gate and generate code from memory, the code WILL have wrong classes, missing patterns, or broken validation.**
+| Service | Purpose |
+|---------|---------|
+| `QuotationService` | Validates inputs, processes bank/EMI data, generates PDF, saves to DB in transaction |
+| `PdfGenerationService` | Renders bilingual HTML template, converts to PDF (OS-aware strategy) |
+| `ConfigService` | Manages app_config table with defaults fallback (`config/app-defaults.php`) |
+| `PermissionService` | 3-level permission resolution: SuperAdmin bypass → User override (grant/deny) → Role default. Cached 5min |
+| `NumberToWordsService` | Converts numbers to English/Gujarati words (Indian numbering: Crore/Lakh) |
 
-### Additional rules (auto-loaded from `.claude/rules/`):
-- `.claude/rules/pre-read-gate.md` — Task type to required reading mapping
-- `.claude/rules/coding-feedback.md` — Past corrections consolidated
-- `.claude/rules/project-context.md` — Domain context and conventions
-- `.claude/rules/workflow.md` — Planning, tracking, and verification rules
+## Permission System
 
-===
+- 18 permissions in 4 groups (Settings, Quotations, Users, System)
+- Defined in `config/permissions.php` with role defaults
+- Resolution: super_admin always passes → check user_permissions for grant/deny override → fall back to role_permissions
+- Middleware: `permission:slug_name` on routes
+- Middleware: `active` (EnsureUserIsActive) appended to all web routes
+- Cache: 5-minute TTL per user/role, clear via `PermissionService::clearAllCaches()`
+
+## Frontend Design System
+
+- **Brand colors**: Dark gray `#3a3536`, Accent orange `#f15a29`, Light gray `#f8f8f8`
+- **Fonts**: Jost (display), Archivo (body) via local woff2 files (`@font-face` in `shf.css`)
+- **CSS framework**: Bootstrap 5.3 (local `public/vendor/bootstrap/`)
+- **JS**: jQuery 3.7 (local `public/vendor/jquery/`) + Bootstrap Bundle JS
+- **CSS classes prefix**: `shf-` (e.g., `shf-section`, `shf-card`, `shf-table`, `shf-badge`, `shf-stat-card`, `shf-toast`)
+- **Button classes**: `btn-accent`, `btn-accent-outline`
+- **Custom CSS**: `public/css/shf.css`
+- **Custom JS**: `public/js/shf-app.js`
+- **Layouts**: `resources/views/layouts/app.blade.php` (auth), `guest.blade.php` (login) — use `@extends`/`@yield` pattern (not Blade components)
+- **View pattern**: All views use `@extends('layouts.app')` or `@extends('layouts.guest')` with `@section('header')` and `@section('content')`
+- **No Vite/build step** — all assets served locally from `public/`
+
+## Key Routes
+
+| Route | Controller | Permission |
+|-------|-----------|------------|
+| `/dashboard` | DashboardController@index | auth |
+| `/quotations/create` | QuotationController@create | create_quotation |
+| `POST /quotations/generate` | QuotationController@generate | generate_pdf |
+| `/quotations/{id}` | QuotationController@show | auth (own or view_all) |
+| `/users` | UserController (resource) | view/create/edit/delete_users |
+| `/permissions` | PermissionController | manage_permissions |
+| `/settings` | SettingsController | view_settings + section-specific |
+| `/activity-log` | DashboardController@activityLog | view_activity_log |
+| `GET /api/config/public` | ConfigApiController@public | none (public) |
+
+## Database
+
+- **Default**: SQLite (single file)
+- **Session/Cache/Queue**: All database-driven
+- **PDFs stored**: `storage/app/pdfs/`
+- **Migrations**: Prefixed with `0001_01_01_*` for core tables
+- **Seeders**: `PermissionSeeder` seeds all permissions + role defaults
+
+## PDF Generation
+
+- `QuotationController::generate()` accepts JSON POST → `QuotationService::generate()` → `PdfGenerationService::generate()`
+- HTML rendered server-side with embedded base64 fonts/images
+- Windows: Chrome headless via `exec()` (auto-detects Chrome path or uses `CHROME_PATH` env)
+- Linux: cURL to microservice (`PDF_SERVICE_URL` + `PDF_SERVICE_KEY` env vars)
+- Output: bilingual multi-page PDF with EMI comparison tables, charges table, document checklist
+
+## Project-Specific Conventions
+
+- **Bilingual content**: Always include both English and Gujarati where the app expects it (documents, labels, PDF content)
+- **Indian currency formatting**: Use `₹ X,XX,XXX` format (Indian comma system via `NumberToWordsService`)
+- **Activity logging**: Use `ActivityLog::log($action, $subject, $properties)` for all user-facing actions
+- **Config management**: Never hardcode app settings — use `ConfigService` which reads from `app_config` table with `config/app-defaults.php` fallback
+- **Inline validation**: Current controllers use inline validation (not Form Requests). Follow existing pattern unless refactoring
+- **Customer types**: `proprietor`, `partnership_llp`, `pvt_ltd`, `all` — each has different document requirements
+- **Legacy directory**: `/legacy/` contains old PHP code for reference only — do not modify
+
+## Keeping Documentation in Sync
+
+When you change code that affects architecture, models, routes, services, permissions, or validation rules, you **must** also update the corresponding reference files:
+- `.claude/database-schema.md` — table schemas, columns, permissions matrix
+- `.claude/routes-reference.md` — route definitions, methods, permissions
+- `.claude/services-reference.md` — service methods, validation rules, business logic
+- `tasks/lessons.md` — update after any user correction or discovered pattern
+- `tasks/todo.md` — update task progress as you work
+
+This ensures future sessions have accurate context. Do this as part of the same change, not as a separate step.
+
+## Workflow Orchestration
+
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately — don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review `tasks/lessons.md` at session start for relevant patterns
+
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes — don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests — then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## Environment Variables (PDF-specific)
+
+```
+CHROME_PATH=       # Optional: explicit Chrome path for Windows PDF generation
+PDF_SERVICE_URL=   # Linux: URL of PDF microservice
+PDF_SERVICE_KEY=   # Linux: API key for PDF microservice
+```
+
+---
 
 <laravel-boost-guidelines>
 === foundation rules ===

@@ -6,20 +6,15 @@
 
 @section('header')
     <div class="d-flex align-items-center justify-content-between">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            Dashboard
-        </h2>
-        <div class="d-flex gap-2">
-            @if(auth()->user()->hasPermission('create_quotation'))
-                <a href="{{ route('quotations.create') }}" class="btn-accent btn-accent-sm">
-                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    New Quotation
-                </a>
-            @endif
-        </div>
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">Dashboard</h2>
+        @if(auth()->user()->hasPermission('create_quotation'))
+            <a href="{{ route('quotations.create') }}" class="btn-accent btn-accent-sm">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Quotation
+            </a>
+        @endif
     </div>
 @endsection
 
@@ -29,11 +24,7 @@
 
             <!-- Stats Cards -->
             <div class="row g-3 mb-4">
-                @php $statCol = ($canViewQuotations && $loanStats) ? '2' : '4'; @endphp
-
-                {{-- Quotation Stats --}}
-                @if($canViewQuotations)
-                <div class="col-6 col-md-{{ $statCol }}">
+                <div class="col-sm-6 col-md-4">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,11 +33,12 @@
                         </div>
                         <div>
                             <div class="shf-stat-value">{{ number_format($stats['total']) }}</div>
-                            <div class="shf-stat-label">Quotations</div>
+                            <div class="shf-stat-label">Total Quotations</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-{{ $statCol }}">
+
+                <div class="col-sm-6 col-md-4">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +51,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-{{ $statCol }}">
+
+                <div class="col-sm-6 col-md-4">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,111 +65,10 @@
                         </div>
                     </div>
                 </div>
-                @endif
-
-                {{-- Loan Stats --}}
-                @if($loanStats)
-                    <div class="col-6 col-md-{{ $statCol }}">
-                        <div class="shf-stat-card" style="border-left: 3px solid #2563eb;">
-                            <div class="shf-stat-icon" style="background:#eff6ff;color:#2563eb;">
-                                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="shf-stat-value">{{ number_format($loanStats['active']) }}</div>
-                                <div class="shf-stat-label">Active Loans</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
-                        <div class="shf-stat-card" style="border-left: 3px solid #f15a29;">
-                            <div class="shf-stat-icon" style="background:#fff7ed;color:#f15a29;">
-                                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="shf-stat-value">{{ number_format($loanStats['my_tasks']) }}</div>
-                                <div class="shf-stat-label">My Tasks</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
-                        <div class="shf-stat-card" style="border-left: 3px solid #16a34a;">
-                            <div class="shf-stat-icon" style="background:#f0fdf4;color:#16a34a;">
-                                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="shf-stat-value">{{ number_format($loanStats['completed_month']) }}</div>
-                                <div class="shf-stat-label">Completed</div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
             </div>
 
-            {{-- Dashboard Tabs --}}
-            <div class="shf-tabs">
-                @if($loanStats)
-                    <button class="shf-tab{{ $defaultTab === 'tasks' ? ' active' : '' }}" data-tab="dash-tasks">
-                        My Tasks
-                        @if($loanStats['my_tasks'] > 0)
-                            <span class="shf-badge shf-badge-orange ms-1" class="shf-text-2xs">{{ $loanStats['my_tasks'] }}</span>
-                        @endif
-                    </button>
-                    <button class="shf-tab{{ $defaultTab === 'loans' ? ' active' : '' }}" data-tab="dash-loans">Loans</button>
-                @endif
-                @if($canViewQuotations)
-                    <button class="shf-tab{{ $defaultTab === 'quotations' ? ' active' : '' }}" data-tab="dash-quotations">Quotations</button>
-                @endif
-            </div>
-
-            {{-- My Tasks Tab --}}
-            @if($loanStats)
-            <div class="settings-tab-pane" id="tab-dash-tasks"{!! $defaultTab !== 'tasks' ? ' style="display:none;"' : '' !!}>
-                <div class="shf-section" style="border-top-left-radius:0;border-top-right-radius:0;">
-                    <div id="tasksFilterBar" class="shf-section-body d-flex align-items-center gap-3" style="border-bottom:1px solid #f0f0f0;">
-                        <div class="shf-per-page">
-                            <span>Show</span>
-                            <select id="taskPageLength">
-                                <option value="10">10</option>
-                                <option value="25" selected>25</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <input type="text" id="taskSearch" placeholder="Search tasks..." class="shf-input" style="max-width:250px;">
-                    </div>
-                    <div id="tasksDesktop" class="d-none d-md-block">
-                        <div class="table-responsive">
-                            <table id="tasksTable" class="table table-hover w-100 mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Loan #</th>
-                                        <th>Customer</th>
-                                        <th>Bank</th>
-                                        <th>Stage</th>
-                                        <th>Status</th>
-                                        <th>Assigned</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div id="tasksMobileCards" class="d-md-none p-3"></div>
-                    <div id="tasksEmptyState" style="display:none;"></div>
-                </div>
-            </div>
-            @endif
-
-            {{-- Quotations Tab --}}
-            @if($canViewQuotations)
-            <div class="settings-tab-pane" id="tab-dash-quotations"{!! $defaultTab !== 'quotations' ? ' style="display:none;"' : '' !!}>
-            <div class="shf-section" style="border-top-left-radius:0;border-top-right-radius:0;">
+            <!-- Quotation History Section -->
+            <div class="shf-section">
                 <div class="shf-section-header">
                     <div class="shf-section-number">
                         <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -187,18 +79,6 @@
                 <!-- Filters -->
                 <div class="shf-section-body" style="border-bottom: 1px solid #f0f0f0;">
                     <div class="row g-3 align-items-end">
-                        <div class="col-auto">
-                            <label class="shf-form-label d-block mb-1">&nbsp;</label>
-                            <div class="shf-per-page">
-                                <span>Show</span>
-                                <select id="dt-page-length">
-                                    <option value="10">10</option>
-                                    <option value="20" selected>20</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                </select>
-                            </div>
-                        </div>
                         <div class="col-12 col-md">
                             <label class="shf-form-label d-block mb-1">Search</label>
                             <input type="text" id="filter-search"
@@ -213,19 +93,6 @@
                                 <option value="proprietor">Proprietor</option>
                                 <option value="partnership_llp">Partnership/LLP</option>
                                 <option value="pvt_ltd">PVT LTD</option>
-                                <option value="salaried">Salaried</option>
-                            </select>
-                        </div>
-
-                        <div class="col-6 col-md-auto" style="min-width: 10rem;">
-                            <label class="shf-form-label d-block mb-1">Loan Status</label>
-                            <select id="filter-loan-status" class="shf-input">
-                                <option value="not_converted">Not Converted</option>
-                                <option value="active">Loan Active</option>
-                                <option value="converted">All Converted</option>
-                                <option value="completed">Loan Completed</option>
-                                <option value="rejected">Loan Rejected</option>
-                                <option value="all">All Quotations</option>
                             </select>
                         </div>
 
@@ -257,7 +124,6 @@
                                 Filter
                             </button>
                             <button type="button" id="btn-clear" class="btn-accent-outline btn-accent-sm">
-                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 Clear
                             </button>
                         </div>
@@ -320,51 +186,6 @@
                     @endif
                 </div>
             </div>
-            </div>{{-- /tab-dash-quotations --}}
-            @endif
-
-            {{-- Loans Tab --}}
-            @if($loanStats)
-            <div class="settings-tab-pane" id="tab-dash-loans"{!! $defaultTab !== 'loans' ? ' style="display:none;"' : '' !!}>
-                <div class="shf-section" style="border-top-left-radius:0;border-top-right-radius:0;">
-                    <div id="loansFilterBar" class="shf-section-body d-flex align-items-center gap-3" style="border-bottom:1px solid #f0f0f0;">
-                        <div class="shf-per-page">
-                            <span>Show</span>
-                            <select id="loanDashPageLength">
-                                <option value="10">10</option>
-                                <option value="25" selected>25</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <input type="text" id="loanDashSearch" placeholder="Search loans..." class="shf-input" style="max-width:250px;">
-                    </div>
-                    <div id="loansDashDesktop" class="d-none d-md-block">
-                        <div class="table-responsive">
-                            <table id="loansTableDash" class="table table-hover w-100 mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Loan #</th>
-                                        <th>Customer</th>
-                                        <th>Bank</th>
-                                        <th class="text-end">Amount</th>
-                                        <th>Stage</th>
-                                        <th>Status</th>
-                                        <th>Created</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div id="loansMobileCardsDash" class="d-md-none p-3"></div>
-                    <div id="loansDashFooter" class="text-center py-3" style="border-top:1px solid #f0f0f0;">
-                        <a href="{{ route('loans.index') }}" class="btn-accent-outline btn-accent-sm"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> View All Loans</a>
-                    </div>
-                    <div id="loansDashEmptyState" style="display:none;"></div>
-                </div>
-            </div>
-            @endif
 
         </div>
     </div>
@@ -383,8 +204,8 @@
                     <p class="small mb-0" style="color: #6b7280;">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer justify-content-center gap-2 border-0 pt-0 pb-4">
-                    <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</button>
-                    <button type="button" id="btn-confirm-delete" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
+                    <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btn-confirm-delete" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">Delete</button>
                 </div>
             </div>
         </div>
@@ -396,193 +217,17 @@
 <script src="/vendor/datatables/js/dataTables.bootstrap5.min.js"></script>
 <script>
 $(function() {
-    // Dashboard tab switching
-    var dtInitialized = false;
-    $('.shf-tab').on('click', function() {
-        var tab = $(this).data('tab');
-        $('.shf-tab').removeClass('active');
-        $(this).addClass('active');
-        $('.settings-tab-pane').hide();
-        $('#tab-' + tab).show();
-
-        // Lazy-init DataTables when tabs first shown, reload on re-visit
-        if (tab === 'dash-quotations') {
-            if (!dtInitialized) { initDataTable(); dtInitialized = true; }
-            else if (table) { table.ajax.reload(null, false); }
-        }
-        if (tab === 'dash-tasks') {
-            if (!tasksTableInit) { initTasksTable(); tasksTableInit = true; }
-            else if (tasksTable) { tasksTable.ajax.reload(null, false); }
-        }
-        if (tab === 'dash-loans') {
-            if (!loansTableInit) { initLoansTable(); loansTableInit = true; }
-            else if (loansTable) { loansTable.ajax.reload(null, false); }
-        }
-    });
-
-    var canViewAll = @json($permissions['view_all'] ?? false);
-    var canDownload = @json($permissions['download_pdf'] ?? false);
-    var canDelete = @json($permissions['delete_quotations'] ?? false);
+    var canViewAll = @json($permissions['view_all']);
+    var canDownload = @json($permissions['download_pdf']);
+    var canDelete = @json($permissions['delete_quotations']);
     var hasFilters = false;
     var deleteUrl = null;
     var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     var dataUrl = @json(route('dashboard.quotation-data'));
     var showingCached = false;
 
-    // Tasks & Loans DataTable state
-    var tasksTable = null, tasksTableInit = false;
-    var loansTable = null, loansTableInit = false;
-
     // --- Suppress DataTables error popup (always) ---
     $.fn.dataTable.ext.errMode = 'none';
-
-    var emptyTasksHtml = '<div class="p-5 text-center">'
-        + '<div class="shf-stat-icon mx-auto mb-3" style="width:64px;height:64px;background:#f0fdf4;color:#16a34a;">'
-        + '<svg style="width:32px;height:32px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
-        + '</div>'
-        + '<h3 class="font-display fw-semibold" style="font-size:1.125rem;color:#111827;">All caught up!</h3>'
-        + '<p class="mt-1 small" style="color:#6b7280;">No pending tasks assigned to you.</p></div>';
-
-    var emptyLoansHtml = '<div class="p-5 text-center">'
-        + '<div class="shf-stat-icon mx-auto mb-3" style="width:64px;height:64px;background:#eff6ff;color:#2563eb;">'
-        + '<svg style="width:32px;height:32px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>'
-        + '</div>'
-        + '<h3 class="font-display fw-semibold" style="font-size:1.125rem;color:#111827;">No active loans</h3>'
-        + '<p class="mt-1 small" style="color:#6b7280;">All loans are completed or no loans found.</p></div>';
-
-    // --- Tasks DataTable ---
-    function initTasksTable() {
-        if (tasksTable) return;
-        var dtLang = {
-            processing: '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></div>',
-            emptyTable: ' ',
-            zeroRecords: ' ',
-            info: 'Showing _START_ to _END_ of _TOTAL_', infoEmpty: '', infoFiltered: '(filtered from _MAX_)',
-            paginate: { previous: '&laquo;', next: '&raquo;' }
-        };
-        tasksTable = $('#tasksTable').DataTable({
-            processing: true, serverSide: true,
-            ajax: @json(route('dashboard.task-data')),
-            columns: [
-                { data: 'loan_number' },
-                { data: 'customer_name' },
-                { data: 'bank_name' },
-                { data: 'stage_name' },
-                { data: 'status_label' },
-                { data: 'assigned_at', className: 'text-muted' },
-                { data: 'actions_html', orderable: false, searchable: false, className: 'text-end' }
-            ],
-            order: [[4, 'asc']],
-            pageLength: 25, dom: 'rt<"shf-dt-bottom"ip>', language: dtLang,
-            drawCallback: function(settings) {
-                var total = settings._iRecordsDisplay;
-                var hasData = total > 0;
-                $('#tasksFilterBar').toggle(hasData);
-                $('#tasksDesktop').toggle(hasData);
-                $('#tasksTable_wrapper .shf-dt-bottom').toggle(hasData);
-                if (!hasData) {
-                    $('#tasksEmptyState').html(emptyTasksHtml).show();
-                    $('#tasksMobileCards').html('');
-                } else {
-                    $('#tasksEmptyState').hide();
-                    var data = this.api().rows({ page: 'current' }).data();
-                    var html = '';
-                    for (var i = 0; i < data.length; i++) {
-                        var d = data[i];
-                        var loc = d.location_name ? '<small class="text-info" style="font-size:0.7rem;">' + d.location_name + '</small>' : '';
-                        html += '<div class="shf-card mb-2 p-3">'
-                            + '<div class="d-flex justify-content-between align-items-start mb-2">'
-                            + '<div><strong>' + d.customer_name + '</strong><br><small class="text-muted">' + d.loan_number + '</small>' + (loc ? '<br>' + loc : '') + '</div>'
-                            + '<div>' + d.status_label + '</div></div>'
-                            + '<div class="d-flex justify-content-between align-items-center">'
-                            + '<small class="text-muted">' + d.stage_name + '</small>'
-                            + d.actions_html + '</div></div>';
-                    }
-                    $('#tasksMobileCards').html(html);
-                }
-            }
-        });
-        $('#taskPageLength').on('change', function() { tasksTable.page.len(parseInt(this.value)).draw(); });
-        var taskSearchTimer = null;
-        $('#taskSearch').on('keyup', function() {
-            clearTimeout(taskSearchTimer);
-            var val = this.value;
-            taskSearchTimer = setTimeout(function() { tasksTable.search(val).draw(); }, 300);
-        });
-    }
-
-    // --- Loans Dashboard DataTable ---
-    function initLoansTable() {
-        if (loansTable) return;
-        var dtLang = {
-            processing: '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></div>',
-            emptyTable: ' ',
-            zeroRecords: ' ',
-            info: 'Showing _START_ to _END_ of _TOTAL_', infoEmpty: '', infoFiltered: '(filtered from _MAX_)',
-            paginate: { previous: '&laquo;', next: '&raquo;' }
-        };
-        loansTable = $('#loansTableDash').DataTable({
-            processing: true, serverSide: true,
-            ajax: @json(route('dashboard.loan-data')),
-            columns: [
-                { data: 'loan_number' },
-                { data: 'customer_name' },
-                { data: 'bank_name' },
-                { data: 'formatted_amount', className: 'text-end' },
-                { data: 'stage_name' },
-                { data: 'status_label' },
-                { data: 'created_at', className: 'text-muted' },
-                { data: 'actions_html', orderable: false, searchable: false, className: 'text-end' }
-            ],
-            order: [[6, 'desc']],
-            pageLength: 25, dom: 'rt<"shf-dt-bottom"ip>', language: dtLang,
-            drawCallback: function(settings) {
-                var total = settings._iRecordsDisplay;
-                var hasData = total > 0;
-                $('#loansFilterBar').toggle(hasData);
-                $('#loansDashDesktop').toggle(hasData);
-                $('#loansDashFooter').toggle(hasData);
-                $('#loansTableDash_wrapper .shf-dt-bottom').toggle(hasData);
-                if (!hasData) {
-                    $('#loansDashEmptyState').html(emptyLoansHtml).show();
-                    $('#loansMobileCardsDash').html('');
-                } else {
-                    $('#loansDashEmptyState').hide();
-                    var data = this.api().rows({ page: 'current' }).data();
-                    var html = '';
-                    for (var i = 0; i < data.length; i++) {
-                        var d = data[i];
-                        var loc = d.location_name ? '<br><small class="text-info" style="font-size:0.7rem;">' + d.location_name + '</small>' : '';
-                        html += '<div class="shf-card mb-2 p-3">'
-                            + '<div class="d-flex justify-content-between align-items-start mb-2">'
-                            + '<div><strong>' + d.customer_name + '</strong><br><small class="text-muted">' + d.loan_number + '</small>' + loc + '</div>'
-                            + '<div>' + d.status_label + '</div></div>'
-                            + '<div class="d-flex justify-content-between align-items-center">'
-                            + '<span>' + d.formatted_amount + '</span>'
-                            + d.actions_html + '</div></div>';
-                    }
-                    $('#loansMobileCardsDash').html(html);
-                }
-            }
-        });
-        $('#loanDashPageLength').on('change', function() { loansTable.page.len(parseInt(this.value)).draw(); });
-        var loanSearchTimer = null;
-        $('#loanDashSearch').on('keyup', function() {
-            clearTimeout(loanSearchTimer);
-            var val = this.value;
-            loanSearchTimer = setTimeout(function() { loansTable.search(val).draw(); }, 300);
-        });
-    }
-
-    // Auto-init tables for the default active tab
-    @if($loanStats)
-    if (@json($defaultTab) === 'dash-tasks' || @json($defaultTab) === 'tasks') {
-        initTasksTable(); tasksTableInit = true;
-    }
-    if (@json($defaultTab) === 'dash-loans' || @json($defaultTab) === 'loans') {
-        initLoansTable(); loansTableInit = true;
-    }
-    @endif
 
     // --- Auto-reload when back online ---
     window.addEventListener('online', function() {
@@ -637,15 +282,11 @@ $(function() {
     }
 
     // --- Desktop DataTable ---
-    var table = null;
-    function initDataTable() {
-    if (table) return;
-    table = $('#quotations-table').DataTable({
+    var table = $('#quotations-table').DataTable({
         processing: true,
         serverSide: true,
         ajax: function(data, callback, settings) {
             data.customer_type = $('#filter-type').val();
-            data.loan_status = $('#filter-loan-status').val();
             data.date_from = getDateValue('#filter-date-from');
             data.date_to = getDateValue('#filter-date-to');
             data.created_by = $('#filter-created-by').val() || '';
@@ -673,9 +314,9 @@ $(function() {
         },
         columns: buildColumns(),
         order: [[getDateColumnIndex(), 'desc']],
-        pageLength: 25,
-        lengthMenu: [10, 25, 50, 100],
-        dom: 'rt<"shf-dt-bottom"ip>',
+        pageLength: 20,
+        lengthMenu: [10, 20, 50, 100],
+        dom: '<"shf-dt-top"l>rt<"shf-dt-bottom"ip>',
         language: {
             processing: '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div></div>',
             emptyTable: ' ',
@@ -683,53 +324,25 @@ $(function() {
             info: 'Showing _START_ to _END_ of _TOTAL_',
             infoEmpty: '',
             infoFiltered: '(filtered from _MAX_)',
+            lengthMenu: 'Show _MENU_',
             paginate: { previous: '&laquo;', next: '&raquo;' }
         },
         searching: true,
-        createdRow: function(row, data) {
-            if (data.is_converted) {
-                $(row).css('background', '#f0fdf4');
-            }
-        },
         drawCallback: function(settings) {
             var total = settings._iRecordsDisplay;
-            var $bottom = $('#quotations-table_wrapper .shf-dt-bottom');
             if (total === 0) {
                 updateEmptyState();
                 $('#empty-state').show();
-                $bottom.hide();
             } else {
                 $('#empty-state').hide();
-                $bottom.show();
             }
         }
     });
-    } // end initDataTable
-
-    // Custom per-page selector
-    $('#dt-page-length').on('change', function() {
-        if (table) {
-            table.page.len(parseInt(this.value)).draw();
-        }
-    });
-
-    // Init DataTable immediately if quotations tab is default
-    if (@json($defaultTab) === 'quotations') {
-        initDataTable();
-        dtInitialized = true;
-    }
 
     function buildColumns() {
         var cols = [
             { data: 'id', className: 'text-muted', width: '50px' },
-            {
-                data: 'customer_name',
-                className: 'fw-medium',
-                render: function(data, type, row) {
-                    var loc = row.location_name ? '<br><small class="text-info" style="font-size:0.7rem;">' + $('<span>').text(row.location_name).html() + '</small>' : '';
-                    return $('<span>').text(data).html() + loc;
-                }
-            },
+            { data: 'customer_name', className: 'fw-medium' },
             {
                 data: null,
                 render: function(data) {
@@ -781,18 +394,6 @@ $(function() {
                         '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>' +
                         '</svg></a>';
                 }
-                // Convert to Loan / View Loan
-                if (data.convert_url) {
-                    html += '<a href="' + data.convert_url + '" style="color:#2563eb;" title="Convert to Loan">' +
-                        '<svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>' +
-                        '</svg></a>';
-                } else if (data.loan_url) {
-                    html += '<a href="' + data.loan_url + '" style="color:#16a34a;" title="View Loan">' +
-                        '<svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>' +
-                        '</svg></a>';
-                }
                 // Delete
                 if (data.delete_url) {
                     html += '<button type="button" class="btn btn-link p-0 btn-delete" data-url="' + data.delete_url + '" style="color:#c0392b;" title="Delete">' +
@@ -814,7 +415,6 @@ $(function() {
 
     function updateEmptyState() {
         hasFilters = $('#filter-search').val() || $('#filter-type').val() ||
-                     $('#filter-loan-status').val() !== 'not_converted' ||
                      $('#filter-date-from').val() || $('#filter-date-to').val() ||
                      ($('#filter-created-by').length && $('#filter-created-by').val());
 
@@ -832,30 +432,29 @@ $(function() {
     $('#filter-search').on('keyup', function() {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(function() {
-            if (table) table.search($('#filter-search').val()).draw();
+            table.search($('#filter-search').val()).draw();
             loadMobileCards(true);
         }, 400);
     });
 
     // Re-draw on datepicker change
     $('.shf-datepicker').on('changeDate clearDate', function() {
-        if (table) table.draw();
+        table.draw();
         loadMobileCards(true);
     });
 
     $('#btn-filter').on('click', function() {
-        if (table) table.search($('#filter-search').val()).draw();
+        table.search($('#filter-search').val()).draw();
         loadMobileCards(true);
     });
 
     $('#btn-clear').on('click', function() {
         $('#filter-search').val('');
         $('#filter-type').val('');
-        $('#filter-loan-status').val('not_converted');
         $('#filter-date-from').datepicker('clearDates');
         $('#filter-date-to').datepicker('clearDates');
         $('#filter-created-by').val('');
-        if (table) table.search('').draw();
+        table.search('').draw();
         loadMobileCards(true);
     });
 
@@ -919,7 +518,6 @@ $(function() {
                 length: mobileLength,
                 'search[value]': $('#filter-search').val() || '',
                 customer_type: $('#filter-type').val() || '',
-                loan_status: $('#filter-loan-status').val() || 'not_converted',
                 date_from: getDateValue('#filter-date-from'),
                 date_to: getDateValue('#filter-date-to'),
                 created_by: $('#filter-created-by').val() || ''
@@ -971,10 +569,10 @@ $(function() {
             banksHtml = '<div class="d-flex flex-wrap gap-1 justify-content-end">';
             var show = q.banks.slice(0, 2);
             for (var i = 0; i < show.length; i++) {
-                banksHtml += '<span class="shf-tag shf-text-xs" style="padding:2px 6px;">' + $('<span>').text(show[i]).html() + '</span>';
+                banksHtml += '<span class="shf-tag" style="padding:2px 6px;font-size:0.65rem;">' + $('<span>').text(show[i]).html() + '</span>';
             }
             if (q.banks.length > 2) {
-                banksHtml += '<span class="shf-badge shf-badge-gray shf-text-2xs">+' + (q.banks.length - 2) + '</span>';
+                banksHtml += '<span class="shf-badge shf-badge-gray" style="font-size:0.65rem;">+' + (q.banks.length - 2) + '</span>';
             }
             banksHtml += '</div>';
         }
@@ -998,18 +596,6 @@ $(function() {
                 '</svg>PDF</a>';
         }
 
-        if (q.convert_url) {
-            actionsHtml += '<a href="' + q.convert_url + '" class="d-flex align-items-center gap-1" style="color:#2563eb;font-size:0.78rem;text-decoration:none;">' +
-                '<svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>' +
-                '</svg>Convert</a>';
-        } else if (q.loan_url) {
-            actionsHtml += '<a href="' + q.loan_url + '" class="d-flex align-items-center gap-1" style="color:#16a34a;font-size:0.78rem;text-decoration:none;">' +
-                '<svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>' +
-                '</svg>Loan</a>';
-        }
-
         if (q.delete_url) {
             actionsHtml += '<button type="button" class="btn btn-link p-0 d-flex align-items-center gap-1 ms-auto btn-delete" data-url="' + q.delete_url + '" style="color:#c0392b;font-size:0.78rem;text-decoration:none;">' +
                 '<svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
@@ -1018,13 +604,10 @@ $(function() {
         }
         actionsHtml += '</div>';
 
-        var locLine = q.location_name ? '<div class="text-info" style="font-size:0.7rem;">' + $('<span>').text(q.location_name).html() + '</div>' : '';
-
         return '<div class="shf-card mb-3 p-3">' +
             '<div class="d-flex align-items-start justify-content-between mb-2">' +
                 '<div>' +
                     '<div class="fw-semibold" style="font-size:0.9rem;">' + $('<span>').text(q.customer_name).html() + '</div>' +
-                    locLine +
                     '<div class="mt-1"><span class="shf-badge ' + q.type_badge_class + '">' + q.type_label + '</span></div>' +
                 '</div>' +
                 '<span style="color:#6b7280;font-size:0.72rem;">#' + q.id + '</span>' +

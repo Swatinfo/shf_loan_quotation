@@ -31,7 +31,7 @@ class ConfigService
     {
         AppConfig::updateOrCreate(
             ['config_key' => 'main'],
-            ['config_json' => $config]
+            ['config_json' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)]
         );
     }
 
@@ -99,29 +99,6 @@ class ConfigService
             return $defaults;
         }
 
-        $merged = array_replace_recursive($defaults, $loaded);
-
-        // Sequential arrays (lists) must be replaced entirely from DB,
-        // not merged per-index, so deleted items don't reappear from defaults.
-        $this->replaceSequentialArrays($merged, $loaded);
-
-        return $merged;
-    }
-
-    /**
-     * Recursively replace sequential (indexed) arrays in merged config
-     * with the DB values, so deletions from defaults are respected.
-     */
-    protected function replaceSequentialArrays(array &$merged, array $loaded): void
-    {
-        foreach ($loaded as $key => $value) {
-            if (is_array($value)) {
-                if (array_is_list($value)) {
-                    $merged[$key] = $value;
-                } elseif (isset($merged[$key]) && is_array($merged[$key])) {
-                    $this->replaceSequentialArrays($merged[$key], $value);
-                }
-            }
-        }
+        return array_replace_recursive($defaults, $loaded);
     }
 }

@@ -1,8 +1,8 @@
 // ============================================================
 //  SERVICE WORKER — SHF Loan Proposal PWA
 // ============================================================
-var STATIC_CACHE = 'shf-static-v18';
-var DYNAMIC_CACHE = 'shf-dynamic-v18';
+var STATIC_CACHE = 'shf-static-v17';
+var DYNAMIC_CACHE = 'shf-dynamic-v17';
 
 var STATIC_ASSETS = [
     '/',

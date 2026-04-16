@@ -33,17 +33,6 @@
                     </li>
                 @endif
 
-                @if (auth()->user()->hasPermission('view_loans'))
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('loans.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('loans.index') }}">
-                            <svg class="me-1" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
-                            Loans
-                        </a>
-                    </li>
-                @endif
-
                 @if (auth()->user()->hasPermission('view_users'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('users.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('users.index') }}">
@@ -57,23 +46,23 @@
 
                 @if (auth()->user()->hasPermission('view_settings'))
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('settings.*') || request()->routeIs('permissions.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('settings.index') }}">
+                        <a class="nav-link {{ request()->routeIs('settings.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('settings.index') }}">
                             <svg class="me-1" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            Quotation Settings
+                            Settings
                         </a>
                     </li>
                 @endif
 
-                @if (auth()->user()->hasPermission('manage_workflow_config'))
+                @if (auth()->user()->hasPermission('manage_permissions'))
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('loan-settings.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('loan-settings.index') }}">
+                        <a class="nav-link {{ request()->routeIs('permissions.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('permissions.index') }}">
                             <svg class="me-1" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
-                            Loan Settings
+                            Permissions
                         </a>
                     </li>
                 @endif
@@ -91,44 +80,8 @@
             </ul>
 
             <!-- Desktop User Menu (Dropdown) -->
-            <div class="d-none d-lg-flex align-items-center ms-auto gap-2">
-                {{-- Impersonation Banner --}}
-                @impersonating
-                    <a href="{{ route('impersonate.leave') }}"
-                       class="btn btn-warning btn-sm d-flex align-items-center gap-1 text-nowrap"
-                       style="font-size: 0.8rem;">
-                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span>Impersonating <strong>{{ Auth::user()->name }}</strong></span>
-                        <span class="badge bg-dark ms-1" style="font-size: 0.7rem;">Leave</span>
-                    </a>
-                @endImpersonating
-
-                {{-- Impersonate Button --}}
-                @canImpersonate
-                    @if(!app('impersonate')->isImpersonating())
-                        <div class="dropdown">
-                            <a class="nav-link p-1" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Impersonate User" style="color: rgba(255,255,255,0.7);">
-                                <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-end shadow" style="width: 340px; padding: 0.75rem;">
-                                <h6 class="dropdown-header px-0">Impersonate User</h6>
-                                <input type="text" class="form-control form-control-sm mb-2"
-                                       id="impersonateSearch" placeholder="Search by name, email or role..." autocomplete="off">
-                                <div id="impersonateResults" style="max-height: 250px; overflow-y: auto;">
-                                    <small class="text-muted">Type to search users...</small>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                @endCanImpersonate
-
-                {{-- Notification Bell --}}
-                <a class="nav-link p-1 position-relative" href="{{ route('notifications.index') }}" style="color: rgba(255,255,255,0.7);" title="Notifications">
-                    <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notifBadge" class="shf-text-2xs" style="padding: 2px 5px;"></span>
-                </a>
-
-                <span class="shf-badge me-1 {{ auth()->user()->isSuperAdmin() ? 'shf-badge-orange' : (auth()->user()->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}">
+            <div class="d-none d-lg-flex align-items-center ms-auto">
+                <span class="shf-badge me-3 {{ auth()->user()->isSuperAdmin() ? 'shf-badge-orange' : (auth()->user()->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}">
                     {{ auth()->user()->role_label }}
                 </span>
 
@@ -163,18 +116,6 @@
 
             <!-- Mobile Responsive Links -->
             <div class="d-lg-none pt-2 pb-3">
-                {{-- Mobile Impersonation Banner --}}
-                @impersonating
-                    <div class="px-2 mb-2">
-                        <a href="{{ route('impersonate.leave') }}"
-                           class="btn btn-warning btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
-                            <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Impersonating <strong>{{ Auth::user()->name }}</strong>
-                            <span class="badge bg-dark ms-1">Leave</span>
-                        </a>
-                    </div>
-                @endImpersonating
-
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('dashboard') }}">Dashboard</a>
@@ -186,12 +127,6 @@
                         </li>
                     @endif
 
-                    @if (auth()->user()->hasPermission('view_loans'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('loans.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('loans.index') }}">Loans</a>
-                        </li>
-                    @endif
-
                     @if (auth()->user()->hasPermission('view_users'))
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('users.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('users.index') }}">Users</a>
@@ -200,13 +135,13 @@
 
                     @if (auth()->user()->hasPermission('view_settings'))
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('settings.*') || request()->routeIs('permissions.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('settings.index') }}">Quotation Settings</a>
+                            <a class="nav-link {{ request()->routeIs('settings.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('settings.index') }}">Settings</a>
                         </li>
                     @endif
 
-                    @if (auth()->user()->hasPermission('view_loans'))
+                    @if (auth()->user()->hasPermission('manage_permissions'))
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('loan-settings.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('loan-settings.index') }}">Loan Settings</a>
+                            <a class="nav-link {{ request()->routeIs('permissions.*') ? 'active fw-bold' : '' }}" style="color: rgba(255,255,255,0.7);" href="{{ route('permissions.index') }}">Permissions</a>
                         </li>
                     @endif
 
@@ -244,105 +179,3 @@
         </div>
     </div>
 </nav>
-
-{{-- Notification badge polling --}}
-<script>
-(function() {
-    function updateNotifBadge() {
-        fetch('{{ route("api.notifications.count") }}')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var badge = document.getElementById('notifBadge');
-                if (!badge) return;
-                if (data.count > 0) {
-                    badge.textContent = data.count > 99 ? '99+' : data.count;
-                    badge.classList.remove('d-none');
-                } else {
-                    badge.classList.add('d-none');
-                }
-            }).catch(function() {});
-    }
-    updateNotifBadge();
-    setInterval(updateNotifBadge, 60000);
-})();
-</script>
-
-@canImpersonate
-@if(!app('impersonate')->isImpersonating())
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var searchInput = document.getElementById('impersonateSearch');
-    var resultsDiv = document.getElementById('impersonateResults');
-    if (!searchInput || !resultsDiv) return;
-
-    var timer;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(timer);
-        var search = this.value.trim();
-        if (search.length < 1) {
-            resultsDiv.innerHTML = '<small class="text-muted">Type to search users...</small>';
-            return;
-        }
-        timer = setTimeout(function() {
-            fetch('{{ route("impersonate.users") }}?search=' + encodeURIComponent(search))
-                .then(function(r) { return r.json(); })
-                .then(function(users) {
-                    if (!users.length) {
-                        resultsDiv.innerHTML = '<small class="text-muted">No users found</small>';
-                        return;
-                    }
-                    var html = '';
-                    users.forEach(function(u) {
-                        var name = u.name.replace(/</g, '&lt;');
-                        var email = u.email.replace(/</g, '&lt;');
-                        var role = u.role.replace(/_/g, ' ');
-                        html += '<a href="#" class="dropdown-item py-2 border-bottom shf-impersonate-user" '
-                            + 'data-id="' + u.id + '" data-name="' + name.replace(/"/g, '&quot;') + '">'
-                            + '<strong>' + name + '</strong><br>'
-                            + '<small class="text-muted">' + email + ' &middot; ' + role + '</small>'
-                            + '</a>';
-                    });
-                    resultsDiv.innerHTML = html;
-                });
-        }, 300);
-    });
-
-    // SweetAlert confirmation on user click
-    resultsDiv.addEventListener('click', function(e) {
-        var link = e.target.closest('.shf-impersonate-user');
-        if (!link) return;
-        e.preventDefault();
-
-        var userId = link.dataset.id;
-        var userName = link.dataset.name;
-
-        Swal.fire({
-            title: 'Impersonate User?',
-            html: 'You will be logged in as <strong>' + userName + '</strong>.<br><small class="text-muted">You can return to your account anytime by clicking "Leave".</small>',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#f15a29',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, impersonate',
-            cancelButtonText: 'Cancel',
-            focusCancel: true
-        }).then(function(result) {
-            if (result.isConfirmed) {
-                window.location.href = '/impersonate/take/' + userId;
-            }
-        });
-    });
-
-    // Auto-focus search when dropdown opens
-    var dropdown = searchInput.closest('.dropdown');
-    if (dropdown) {
-        dropdown.addEventListener('shown.bs.dropdown', function() {
-            searchInput.focus();
-            searchInput.value = '';
-            resultsDiv.innerHTML = '<small class="text-muted">Type to search users...</small>';
-        });
-    }
-});
-</script>
-@endif
-@endCanImpersonate

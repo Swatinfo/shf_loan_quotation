@@ -2,29 +2,19 @@
 
 @section('header')
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Quotation #{{ $quotation->id }}
-        </h2>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="{{ route('dashboard') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
-            @if(!$quotation->is_converted && auth()->user()->hasPermission('convert_to_loan'))
-                <a href="{{ route('quotations.convert', $quotation) }}" class="btn-accent btn-accent-sm">
-                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                    </svg>
-                    Convert to Loan
-                </a>
-            @elseif($quotation->is_converted)
-                <a href="{{ route('loans.show', $quotation->loan_id) }}" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
-                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                    </svg>
-                    View Loan #{{ $quotation->loan->loan_number }}
-                </a>
-            @endif
-            @if(auth()->user()->hasPermission('download_pdf'))
-                <a href="{{ route('quotations.download', $quotation) }}" class="btn-accent btn-accent-sm">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('dashboard') }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+                Quotation #{{ $quotation->id }}
+            </h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            @if(auth()->user()->hasPermission('download_pdf') && $quotation->pdf_filename)
+                <a href="{{ route('quotations.download-file', ['file' => $quotation->pdf_filename]) }}" class="btn-accent btn-accent-sm">
                     <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
@@ -33,7 +23,7 @@
             @endif
             @if(auth()->user()->hasPermission('delete_quotations'))
                 <form method="POST" action="{{ route('quotations.destroy', $quotation) }}"
-                      class="shf-confirm-delete" data-confirm-title="Delete this quotation?" data-confirm-text="This action cannot be undone.">
+                      onsubmit="return confirm('Delete this quotation? This cannot be undone.')">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">
@@ -72,8 +62,7 @@
                                         <span class="shf-badge
                                             {{ $quotation->customer_type === 'proprietor' ? 'shf-badge-green' :
                                                ($quotation->customer_type === 'partnership_llp' ? 'shf-badge-blue' :
-                                               ($quotation->customer_type === 'pvt_ltd' ? 'shf-badge-orange' :
-                                               ($quotation->customer_type === 'salaried' ? 'shf-badge-purple' : 'shf-badge-gray'))) }}">
+                                               ($quotation->customer_type === 'pvt_ltd' ? 'shf-badge-orange' : 'shf-badge-gray')) }}">
                                             {{ $quotation->getTypeLabel() }}
                                         </span>
                                     </dd>
@@ -82,12 +71,6 @@
                                     <dt class="shf-form-label">Loan Amount</dt>
                                     <dd class="mt-1 font-display fw-bold" style="font-size: 1.125rem; color: #f15a29;">{{ $quotation->formatted_amount }}</dd>
                                 </div>
-                                @if($quotation->location)
-                                    <div class="mb-3">
-                                        <dt class="shf-form-label">Location</dt>
-                                        <dd class="mt-1 small">{{ $quotation->location->parent?->name ? $quotation->location->parent->name . ' / ' : '' }}{{ $quotation->location->name }}</dd>
-                                    </div>
-                                @endif
                             </dl>
                         </div>
                         <div class="col-md-6">

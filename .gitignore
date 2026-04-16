@@ -23,14 +23,3 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-
-# Archives & backups
-*.zip
-*.tar.gz
-*.rar
-
-# Composer binary (use system install)
-composer.phar
-
-# Claude Code local settings
-.claude/settings.local.json

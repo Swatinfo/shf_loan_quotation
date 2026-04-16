@@ -5,15 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\HasAuditColumns;
 
 class Quotation extends Model
 {
-    use HasAuditColumns, SoftDeletes;
     protected $fillable = [
         'user_id',
-        'loan_id',
         'customer_name',
         'customer_type',
         'loan_amount',
@@ -23,7 +19,6 @@ class Quotation extends Model
         'prepared_by_name',
         'prepared_by_mobile',
         'selected_tenures',
-        'location_id',
     ];
 
     protected $casts = [
@@ -46,21 +41,6 @@ class Quotation extends Model
         return $this->hasMany(QuotationDocument::class);
     }
 
-    public function loan(): BelongsTo
-    {
-        return $this->belongsTo(LoanDetail::class, 'loan_id');
-    }
-
-    public function location(): BelongsTo
-    {
-        return $this->belongsTo(Location::class);
-    }
-
-    public function getIsConvertedAttribute(): bool
-    {
-        return $this->loan_id !== null;
-    }
-
     public function getFormattedAmountAttribute(): string
     {
         return '₹ ' . $this->formatIndianNumber($this->loan_amount);
@@ -72,7 +52,6 @@ class Quotation extends Model
             'proprietor' => 'Proprietor / પ્રોપ્રાઇટર',
             'partnership_llp' => 'Partnership / LLP / પાર્ટનરશિપ / LLP',
             'pvt_ltd' => 'PVT LTD / પ્રાઇવેટ લિમિટેડ',
-            'salaried' => 'Salaried / પગારદાર',
             'all' => 'All Types / બધા પ્રકાર',
             default => $this->customer_type,
         };
