@@ -17,13 +17,8 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('role_permissions', function (Blueprint $table) {
-            $table->id();
-            $table->enum('role', ['super_admin', 'admin', 'staff']);
-            $table->foreignId('permission_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['role', 'permission_id']);
-        });
+        // Legacy role_permissions table removed — replaced by role_permission pivot
+        // (kept as no-op so migration history stays consistent)
 
         Schema::create('user_permissions', function (Blueprint $table) {
             $table->id();

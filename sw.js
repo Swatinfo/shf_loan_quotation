@@ -1,76 +1,126 @@
 // ============================================================
-//  SERVICE WORKER — SHF Loan Proposal PWA
+//  SERVICE WORKER — SHF Loan Management PWA (Laravel)
 // ============================================================
-var STATIC_CACHE = 'shf-static-v17';
-var DYNAMIC_CACHE = 'shf-dynamic-v17';
+var SHF_SW_VERSION = '20260415220839';
+var STATIC_CACHE = 'shf-static-' + SHF_SW_VERSION;
+var DYNAMIC_CACHE = 'shf-dynamic-' + SHF_SW_VERSION;
 
+// Only pre-cache actual static files (not auth-protected routes)
 var STATIC_ASSETS = [
-    '/',
-    '/index.php',
-    '/config.php',
-    '/css/common.css',
-    '/css/index.css',
-    '/css/config.css',
-    '/js/config-defaults.js',
-    '/js/config-translations.js',
-    '/js/config-loader.js',
-    '/js/offline-manager.js',
-    '/js/pdf-renderer.js',
-    '/js/password-ui.js',
+    '/css/shf.css',
     '/images/logo3.png',
     '/images/background.png',
+    '/images/icon-192x192.png',
+    '/images/icon-512x512.png',
+    '/images/Shree-4.png',
     '/fonts/NotoSansGujarati-Regular.ttf',
     '/fonts/NotoSansGujarati-Bold.ttf',
-    '/favicon/android-chrome-192x192.png',
-    '/favicon/android-chrome-512x512.png',
-    '/favicon/apple-touch-icon.png',
     '/manifest.json'
 ];
 
 // Install: pre-cache static assets
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function (event) {
     event.waitUntil(
-        caches.open(STATIC_CACHE).then(function(cache) {
-            return cache.addAll(STATIC_ASSETS);
-        }).then(function() {
+        caches.open(STATIC_CACHE).then(function (cache) {
+            var promises = STATIC_ASSETS.map(function (url) {
+                return cache.add(url).catch(function (err) {
+                    console.warn('SW: Failed to cache', url, err);
+                });
+            });
+            return Promise.all(promises);
+        }).then(function () {
             return self.skipWaiting();
         })
     );
 });
 
 // Activate: clean old caches
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function (event) {
     event.waitUntil(
-        caches.keys().then(function(keys) {
+        caches.keys().then(function (keys) {
             return Promise.all(
-                keys.filter(function(key) {
+                keys.filter(function (key) {
                     return key !== STATIC_CACHE && key !== DYNAMIC_CACHE;
-                }).map(function(key) {
+                }).map(function (key) {
                     return caches.delete(key);
                 })
             );
-        }).then(function() {
+        }).then(function () {
             return self.clients.claim();
         })
     );
 });
 
 // Fetch routing
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch', function (event) {
     var url = new URL(event.request.url);
 
-    // Skip non-GET requests (POST to generate-pdf, save-config, etc.)
+    // Skip non-GET requests (POST forms, CSRF, logout, etc.)
     if (event.request.method !== 'GET') {
+        return;
+    }
+
+    // Skip browser extensions and non-same-origin
+    if (url.origin !== location.origin) {
+        return;
+    }
+
+    // PDF downloads: Network-First with cache (available offline after first download)
+    if (url.pathname.startsWith('/quotations/download-file') || url.pathname.match(/\/quotations\/\d+\/download/)) {
+        event.respondWith(
+            fetch(event.request).then(function (response) {
+                if (response.status === 200) {
+                    var clone = response.clone();
+                    caches.open(DYNAMIC_CACHE).then(function (cache) {
+                        cache.put(event.request, clone);
+                    });
+                }
+                return response;
+            }).catch(function () {
+                return caches.match(event.request).then(function (cached) {
+                    if (cached) return cached;
+                    return new Response('PDF not available offline. Please connect to the internet and try again.', {
+                        status: 503,
+                        headers: { 'Content-Type': 'text/plain' }
+                    });
+                });
+            })
+        );
+        return;
+    }
+
+    // AJAX data endpoints: skip SW caching, let client-side handle offline
+    if (url.pathname === '/dashboard/quotation-data') {
+        return;
+    }
+
+    // API config: Network-First (so it's available offline after first visit)
+    if (url.pathname === '/api/config/public') {
+        event.respondWith(
+            fetch(event.request).then(function (response) {
+                if (response.status === 200) {
+                    var clone = response.clone();
+                    caches.open(DYNAMIC_CACHE).then(function (cache) {
+                        cache.put(event.request, clone);
+                    });
+                }
+                return response;
+            }).catch(function () {
+                return caches.match(event.request).then(function (cached) {
+                    return cached || new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+                });
+            })
+        );
         return;
     }
 
     // Static assets: Cache-First
     if (isStaticAsset(url.pathname)) {
         event.respondWith(
-            caches.match(event.request).then(function(cached) {
-                return cached || fetch(event.request).then(function(response) {
+            caches.match(event.request).then(function (cached) {
+                return cached || fetch(event.request).then(function (response) {
                     var clone = response.clone();
-                    caches.open(STATIC_CACHE).then(function(cache) {
+                    caches.open(STATIC_CACHE).then(function (cache) {
                         cache.put(event.request, clone);
                     });
                     return response;
@@ -80,16 +130,31 @@ self.addEventListener('fetch', function(event) {
         return;
     }
 
-    // HTML pages + API GETs: Network-First with cache fallback
+    // HTML pages (Laravel routes): Network-First with cache fallback
+    // This caches pages as the user visits them, so they work offline later
     event.respondWith(
-        fetch(event.request).then(function(response) {
-            var clone = response.clone();
-            caches.open(DYNAMIC_CACHE).then(function(cache) {
-                cache.put(event.request, clone);
-            });
+        fetch(event.request).then(function (response) {
+            // Only cache successful HTML responses (not redirects/errors)
+            if (response.status === 200) {
+                var clone = response.clone();
+                caches.open(DYNAMIC_CACHE).then(function (cache) {
+                    cache.put(event.request, clone);
+                });
+            }
             return response;
-        }).catch(function() {
-            return caches.match(event.request);
+        }).catch(function () {
+            return caches.match(event.request).then(function (cached) {
+                if (cached) return cached;
+                // Fallback: return cached dashboard if available
+                return caches.match('/dashboard').then(function (fallback) {
+                    return fallback || new Response(
+                        '<html><body style="font-family:sans-serif;text-align:center;padding:60px 20px;background:#f8f8f8;">' +
+                        '<h1 style="color:#3a3536;">You are offline</h1>' +
+                        '<p style="color:#666;">Please check your internet connection and try again.</p></body></html>',
+                        { headers: { 'Content-Type': 'text/html' } }
+                    );
+                });
+            });
         })
     );
 });

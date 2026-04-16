@@ -1,19 +1,15 @@
 @extends('layouts.app')
+@section('title', 'Settings — SHF')
 
 @section('header')
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            Settings
-        </h2>
-        <form method="POST" action="{{ route('settings.reset') }}" onsubmit="return confirm('Reset ALL settings to defaults? This cannot be undone.')">
-            @csrf
-            <button type="submit" class="d-inline-flex align-items-center border rounded-pill small fw-semibold" style="padding:4px 16px;border-color:rgba(248,113,113,0.5)!important;color:#fca5a5;background:transparent;">
-                <svg style="width:14px;height:14px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Reset to Defaults
-            </button>
-        </form>
-    </div>
+    <h2 class="font-display fw-semibold text-white shf-page-title">
+        <svg class="shf-header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Quotation Settings
+    </h2>
 @endsection
 
 @section('content')
@@ -25,17 +21,18 @@
                 @php
                     $tabs = [
                         'company' => ['label' => 'Company', 'perm' => 'edit_company_info'],
-                        'banks' => ['label' => 'Banks', 'perm' => 'edit_banks'],
                         'charges' => ['label' => 'IOM Stamp Paper', 'perm' => 'edit_charges'],
                         'bank-charges' => ['label' => 'Bank Charges', 'perm' => 'edit_charges'],
                         'gst' => ['label' => 'GST', 'perm' => 'edit_gst'],
                         'services' => ['label' => 'Services', 'perm' => 'edit_services'],
                         'tenures' => ['label' => 'Tenures', 'perm' => 'edit_tenures'],
                         'documents' => ['label' => 'Documents', 'perm' => 'edit_documents'],
+                        'dvr' => ['label' => 'DVR', 'perm' => 'view_settings'],
+                        'permissions' => ['label' => 'Permissions', 'perm' => 'manage_permissions'],
                     ];
                     $activeTab = request('tab', 'company');
                 @endphp
-                @foreach($tabs as $key => $info)
+                @foreach ($tabs as $key => $info)
                     <button class="shf-tab{{ $activeTab === $key ? ' active' : '' }}" data-tab="{{ $key }}">
                         {{ $info['label'] }}
                     </button>
@@ -43,34 +40,41 @@
             </div>
 
             <!-- Tab Content -->
-            <div class="shf-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+            <div class="shf-card shf-section-no-top-radius">
 
                 {{-- Company Details --}}
-                <div class="settings-tab-pane p-4" id="tab-company"{!! $activeTab !== 'company' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-company"{!! $activeTab !== 'company' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.company') }}">
                         @csrf
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="shf-form-label d-block mb-1">Company Name</label>
-                                <input type="text" name="companyName" class="shf-input" value="{{ $config['companyName'] }}" required>
+                                <input type="text" name="companyName" class="shf-input"
+                                    value="{{ $config['companyName'] }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="shf-form-label d-block mb-1">Email</label>
-                                <input type="email" name="companyEmail" class="shf-input" value="{{ $config['companyEmail'] }}" required>
+                                <input type="email" name="companyEmail" class="shf-input"
+                                    value="{{ $config['companyEmail'] }}" required>
                             </div>
                             <div class="col-12">
                                 <label class="shf-form-label d-block mb-1">Address</label>
-                                <input type="text" name="companyAddress" class="shf-input" value="{{ $config['companyAddress'] }}" required>
+                                <input type="text" name="companyAddress" class="shf-input"
+                                    value="{{ $config['companyAddress'] }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="shf-form-label d-block mb-1">Phone</label>
-                                <input type="text" name="companyPhone" class="shf-input" value="{{ $config['companyPhone'] }}" required>
+                                <input type="text" name="companyPhone" class="shf-input"
+                                    value="{{ $config['companyPhone'] }}" required>
                             </div>
                         </div>
-                        @if(auth()->user()->hasPermission('edit_company_info'))
+                        @if (auth()->user()->hasPermission('edit_company_info'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save Company Details
                                 </button>
                             </div>
@@ -79,54 +83,52 @@
                 </div>
 
                 {{-- Banks --}}
-                <div class="settings-tab-pane p-4" id="tab-banks"{!! $activeTab !== 'banks' ? ' style="display:none;"' : '' !!}>
-                    <form method="POST" action="{{ route('settings.banks') }}" id="banksForm">
-                        @csrf
-                        <p class="small mb-3" style="color: #6b7280;">Banks available for quotation selection.</p>
-
-                        <div class="d-flex flex-wrap gap-2 mb-3" id="bankTagsContainer"></div>
-
-                        <div class="d-flex gap-2">
-                            <input type="text" id="newBankInput" class="shf-input flex-grow-1" placeholder="e.g. Yes Bank">
-                            <button type="button" id="addBankBtn" class="btn-accent btn-accent-sm">+ Add</button>
-                        </div>
-
-                        @if(auth()->user()->hasPermission('edit_banks'))
-                            <div class="mt-4 d-flex justify-content-end">
-                                <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    Save Banks
-                                </button>
-                            </div>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-banks"{!! $activeTab !== 'banks' ? '' : '' !!}>
+                    <p class="small mb-3 shf-text-gray">Banks available for quotation selection. Managed in <a
+                            href="{{ route('loan-settings.index') }}#banks">Loan Settings → Banks</a>.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach ($loanBanks as $bankName)
+                            <span class="shf-badge shf-badge-blue"
+                                style="font-size:0.8rem;padding:4px 12px;">{{ $bankName }}</span>
+                        @endforeach
+                        @if (empty($loanBanks))
+                            <small class="text-muted">No banks configured. Add banks in Loan Settings.</small>
                         @endif
-                    </form>
+                    </div>
                 </div>
 
                 {{-- IOM Stamp Paper Charges --}}
-                <div class="settings-tab-pane p-4" id="tab-charges"{!! $activeTab !== 'charges' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-charges"{!! $activeTab !== 'charges' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.charges') }}">
                         @csrf
-                        <p class="small mb-3" style="color: #6b7280;">IOM Stamp Paper charge structure.</p>
+                        <p class="small mb-3 shf-text-gray">IOM Stamp Paper charge structure.</p>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="shf-form-label d-block mb-1">Threshold Amount</label>
-                                <input type="number" name="iomCharges[thresholdAmount]" class="shf-input" value="{{ $config['iomCharges']['thresholdAmount'] }}" required>
-                                <p class="mt-1" style="font-size:0.75rem;color:#9ca3af;">Loan amount up to which fixed charge applies</p>
+                                <input type="number" name="iomCharges[thresholdAmount]" class="shf-input"
+                                    value="{{ $config['iomCharges']['thresholdAmount'] }}" required>
+                                <p class="mt-1 shf-text-xs shf-text-gray-light">Loan amount up to which fixed charge applies
+                                </p>
                             </div>
                             <div class="col-md-4">
                                 <label class="shf-form-label d-block mb-1">Fixed Charge (up to threshold)</label>
-                                <input type="number" name="iomCharges[fixedCharge]" class="shf-input" value="{{ $config['iomCharges']['fixedCharge'] }}" required>
+                                <input type="number" name="iomCharges[fixedCharge]" class="shf-input"
+                                    value="{{ $config['iomCharges']['fixedCharge'] }}" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="shf-form-label d-block mb-1">Percentage (above threshold)</label>
-                                <input type="number" name="iomCharges[percentageAbove]" step="0.01" class="shf-input" value="{{ $config['iomCharges']['percentageAbove'] }}" required>
-                                <p class="mt-1" style="font-size:0.75rem;color:#9ca3af;">e.g. 0.35 means 0.35% of loan amount</p>
+                                <input type="number" name="iomCharges[percentageAbove]" step="0.01" class="shf-input"
+                                    value="{{ $config['iomCharges']['percentageAbove'] }}" required>
+                                <p class="mt-1 shf-text-xs shf-text-gray-light">e.g. 0.35 means 0.35% of loan amount</p>
                             </div>
                         </div>
-                        @if(auth()->user()->hasPermission('edit_charges'))
+                        @if (auth()->user()->hasPermission('edit_charges'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save IOM Stamp Paper Charges
                                 </button>
                             </div>
@@ -135,10 +137,10 @@
                 </div>
 
                 {{-- Bank Charges --}}
-                <div class="settings-tab-pane p-4" id="tab-bank-charges"{!! $activeTab !== 'bank-charges' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-bank-charges"{!! $activeTab !== 'bank-charges' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.bank-charges') }}" id="bankChargesForm">
                         @csrf
-                        <p class="small mb-3" style="color: #6b7280;">Default charges per bank (used when generating quotations).</p>
+                        <p class="small mb-3 shf-text-gray">Default charges per bank (used when generating quotations).</p>
 
                         <div class="table-responsive">
                             <table class="table table-hover small">
@@ -158,12 +160,13 @@
                             </table>
                         </div>
 
-                        <button type="button" id="addChargeRowBtn" class="mt-3 small fw-semibold" style="background:none;border:none;color:#f15a29;cursor:pointer;">+ Add Bank Row</button>
-
-                        @if(auth()->user()->hasPermission('edit_charges'))
+                        @if (auth()->user()->hasPermission('edit_charges'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save Bank Charges
                                 </button>
                             </div>
@@ -172,18 +175,23 @@
                 </div>
 
                 {{-- GST --}}
-                <div class="settings-tab-pane p-4" id="tab-gst"{!! $activeTab !== 'gst' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-gst"{!! $activeTab !== 'gst' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.gst') }}">
                         @csrf
-                        <div style="max-width: 20rem;">
+                        <div class="shf-max-w-20">
                             <label class="shf-form-label d-block mb-1">GST Percentage (%)</label>
-                            <input type="number" name="gstPercent" step="0.01" class="shf-input" value="{{ $config['gstPercent'] }}" required>
-                            <p class="mt-1" style="font-size:0.75rem;color:#9ca3af;">Applied on PF & Admin charges. e.g. 18 for 18%</p>
+                            <input type="number" name="gstPercent" step="0.01" class="shf-input"
+                                value="{{ $config['gstPercent'] }}" required>
+                            <p class="mt-1 shf-text-xs shf-text-gray-light">Applied on PF & Admin charges. e.g. 18 for 18%
+                            </p>
                         </div>
-                        @if(auth()->user()->hasPermission('edit_gst'))
+                        @if (auth()->user()->hasPermission('edit_gst'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save GST
                                 </button>
                             </div>
@@ -192,18 +200,22 @@
                 </div>
 
                 {{-- Services --}}
-                <div class="settings-tab-pane p-4" id="tab-services"{!! $activeTab !== 'services' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-services"{!! $activeTab !== 'services' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.services') }}">
                         @csrf
                         <div>
                             <label class="shf-form-label d-block mb-1">Our Services (shown in PDF footer)</label>
                             <textarea name="ourServices" rows="4" class="shf-input" style="resize: vertical; min-height: 80px;">{{ $config['ourServices'] }}</textarea>
-                            <p class="mt-1" style="font-size:0.75rem;color:#9ca3af;">Comma-separated list of services displayed in every PDF footer.</p>
+                            <p class="mt-1 shf-text-xs shf-text-gray-light">Comma-separated list of services displayed in
+                                every PDF footer.</p>
                         </div>
-                        @if(auth()->user()->hasPermission('edit_services'))
+                        @if (auth()->user()->hasPermission('edit_services'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save Services
                                 </button>
                             </div>
@@ -212,22 +224,30 @@
                 </div>
 
                 {{-- Tenures --}}
-                <div class="settings-tab-pane p-4" id="tab-tenures"{!! $activeTab !== 'tenures' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-tenures"{!! $activeTab !== 'tenures' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.tenures') }}" id="tenuresForm">
                         @csrf
-                        <p class="small mb-3" style="color: #6b7280;">EMI tenure options (in years) for quotation generation.</p>
+                        <p class="small mb-3 shf-text-gray">EMI tenure options (in years) for quotation generation.</p>
 
                         <div class="d-flex flex-wrap gap-2 mb-3" id="tenureTagsContainer"></div>
 
-                        <div class="d-flex gap-2" style="max-width: 20rem;">
-                            <input type="number" id="newTenureInput" min="1" max="50" placeholder="e.g. 25" class="shf-input flex-grow-1">
-                            <button type="button" id="addTenureBtn" class="btn-accent btn-accent-sm">+ Add</button>
+                        <div class="d-flex align-items-center gap-2 shf-max-w-20">
+                            <input type="number" id="newTenureInput" min="1" max="50"
+                                placeholder="e.g. 25" class="shf-input flex-grow-1">
+                            <button type="button" id="addTenureBtn" class="btn-accent-sm"><svg class="shf-icon-sm"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4" />
+                                </svg> Add</button>
                         </div>
 
-                        @if(auth()->user()->hasPermission('edit_tenures'))
+                        @if (auth()->user()->hasPermission('edit_tenures'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save Tenures
                                 </button>
                             </div>
@@ -236,226 +256,530 @@
                 </div>
 
                 {{-- Documents --}}
-                <div class="settings-tab-pane p-4" id="tab-documents"{!! $activeTab !== 'documents' ? ' style="display:none;"' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-documents"{!! $activeTab !== 'documents' ? '' : '' !!}>
                     <form method="POST" action="{{ route('settings.documents') }}" id="documentsForm">
                         @csrf
-                        <p class="small mb-3" style="color: #6b7280;">Required documents per business type (bilingual: English + Gujarati).</p>
+                        <p class="small mb-3 shf-text-gray">Required documents per business type (bilingual: English +
+                            Gujarati).</p>
 
                         <!-- Sub-tabs for document types -->
                         <div class="d-flex gap-1 mb-3" style="border-bottom: 1px solid var(--border);">
-                            @foreach(['proprietor' => 'Proprietor', 'partnership_llp' => 'Partnership / LLP', 'pvt_ltd' => 'PVT LTD'] as $docType => $docLabel)
-                                <button type="button" class="doc-sub-tab small fw-semibold" data-doc-type="{{ $docType }}" style="padding:8px 12px;border:none;border-bottom:2px solid transparent;background:transparent;color:#6b7280;border-radius:4px 4px 0 0;cursor:pointer;">
+                            @foreach (['proprietor' => 'Proprietor', 'partnership_llp' => 'Partnership / LLP', 'pvt_ltd' => 'PVT LTD', 'salaried' => 'Salaried'] as $docType => $docLabel)
+                                <button type="button" class="doc-sub-tab small fw-semibold"
+                                    data-doc-type="{{ $docType }}"
+                                    style="padding:8px 12px;border:none;border-bottom:2px solid transparent;background:transparent;color:#6b7280;border-radius:4px 4px 0 0;cursor:pointer;">
                                     {{ $docLabel }}
                                 </button>
                             @endforeach
                         </div>
 
-                        @foreach(['proprietor', 'partnership_llp', 'pvt_ltd'] as $docType)
-                            <div class="doc-type-pane" id="docPane-{{ $docType }}" style="display:none;">
+                        @foreach (['proprietor', 'partnership_llp', 'pvt_ltd', 'salaried'] as $docType)
+                            <div class="doc-type-pane shf-collapse-hidden" id="docPane-{{ $docType }}">
                                 <div class="d-flex flex-column gap-2 mb-3" id="docList-{{ $docType }}"></div>
 
-                                <div class="d-flex gap-2">
-                                    <input type="text" class="shf-input flex-grow-1 newDocEn" placeholder="Document name (English)">
-                                    <input type="text" class="shf-input flex-grow-1 newDocGu" placeholder="દસ્તાવેજ નામ (Gujarati)">
-                                    <button type="button" class="btn-accent btn-accent-sm addDocBtn" data-doc-type="{{ $docType }}">+ Add</button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="text" class="shf-input flex-grow-1 newDocEn"
+                                        placeholder="Document name (English)">
+                                    <input type="text" class="shf-input flex-grow-1 newDocGu"
+                                        placeholder="દસ્તાવેજ નામ (Gujarati)">
+                                    <button type="button" class="btn-accent-sm addDocBtn"
+                                        data-doc-type="{{ $docType }}"><svg class="shf-icon-sm" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 4v16m8-8H4" />
+                                        </svg> Add</button>
                                 </div>
                             </div>
                         @endforeach
 
-                        @if(auth()->user()->hasPermission('edit_documents'))
+                        @if (auth()->user()->hasPermission('edit_documents'))
                             <div class="mt-4 d-flex justify-content-end">
                                 <button type="submit" class="btn-accent">
-                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Save Documents
                                 </button>
                             </div>
                         @endif
                     </form>
                 </div>
+
+                {{-- DVR Settings --}}
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-dvr">
+                    <p class="small mb-3 shf-text-gray">Configure contact types and visit purposes for Daily Visit Reports (DVR).</p>
+
+                    {{-- Contact Types --}}
+                    <div class="mb-4">
+                        <h6 class="font-display fw-semibold mb-3">Contact Types / સંપર્ક પ્રકાર</h6>
+                        <form method="POST" action="{{ route('settings.dvr-contact-types') }}" id="dvrContactTypesForm">
+                            @csrf
+                            <div class="d-flex flex-column gap-2 mb-3" id="dvrContactTypesList"></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" id="newContactTypeKey" class="shf-input" placeholder="key (e.g. architect)" style="width:8rem;">
+                                <input type="text" id="newContactTypeEn" class="shf-input flex-grow-1" placeholder="Label (English)">
+                                <input type="text" id="newContactTypeGu" class="shf-input flex-grow-1" placeholder="લેબલ (Gujarati)">
+                                <button type="button" id="addContactTypeBtn" class="btn-accent-sm">
+                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg> Add
+                                </button>
+                            </div>
+                            @if (auth()->user()->hasPermission('view_settings'))
+                                <div class="mt-3 d-flex justify-content-end">
+                                    <button type="submit" class="btn-accent">
+                                        <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Save Contact Types
+                                    </button>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+
+                    <hr class="my-4" style="border-color:var(--border);">
+
+                    {{-- Purposes --}}
+                    <div>
+                        <h6 class="font-display fw-semibold mb-3">Visit Purposes / મુલાકાત હેતુ</h6>
+                        <form method="POST" action="{{ route('settings.dvr-purposes') }}" id="dvrPurposesForm">
+                            @csrf
+                            <div class="d-flex flex-column gap-2 mb-3" id="dvrPurposesList"></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" id="newPurposeKey" class="shf-input" placeholder="key (e.g. site_visit)" style="width:8rem;">
+                                <input type="text" id="newPurposeEn" class="shf-input flex-grow-1" placeholder="Label (English)">
+                                <input type="text" id="newPurposeGu" class="shf-input flex-grow-1" placeholder="લેબલ (Gujarati)">
+                                <button type="button" id="addPurposeBtn" class="btn-accent-sm">
+                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg> Add
+                                </button>
+                            </div>
+                            @if (auth()->user()->hasPermission('view_settings'))
+                                <div class="mt-3 d-flex justify-content-end">
+                                    <button type="submit" class="btn-accent">
+                                        <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Save Purposes
+                                    </button>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+
+                {{-- Permissions Tab --}}
+                @if (auth()->user()->hasPermission('manage_permissions'))
+                    <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-permissions"{!! $activeTab !== 'permissions' ? '' : '' !!}>
+                        <p class="text-muted mb-3">Manage role-based permission assignments. <a
+                                href="{{ route('permissions.index') }}" class="btn-accent-sm">
+                                <svg class="shf-icon-2xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                Open Permission Manager
+                            </a></p>
+                    </div>
+                @endif
+
             </div>
         </div>
     </div>
 
     @push('scripts')
-    <script>
-    $(function () {
-        // ============================================================
-        //  TAB SWITCHING
-        // ============================================================
-        $('.shf-tabs').on('click', '.shf-tab', function () {
-            var tab = $(this).data('tab');
-            $('.shf-tab').removeClass('active');
-            $(this).addClass('active');
-            $('.settings-tab-pane').hide();
-            $('#tab-' + tab).show();
-        });
+        <script>
+            $(function() {
+                // ============================================================
+                //  TAB SWITCHING
+                // ============================================================
+                $('.shf-tabs').on('click', '.shf-tab', function() {
+                    var tab = $(this).data('tab');
+                    $('.shf-tab').removeClass('active');
+                    $(this).addClass('active');
+                    $('.settings-tab-pane').hide();
+                    $('#tab-' + tab).show();
+                    history.replaceState(null, '', '#' + tab);
+                });
+                // Restore tab from URL hash on page load
+                var hash = window.location.hash.substring(1);
+                if (hash && $('#tab-' + hash).length) {
+                    $('.shf-tab').removeClass('active');
+                    $('.shf-tab[data-tab="' + hash + '"]').addClass('active');
+                    $('.settings-tab-pane').hide();
+                    $('#tab-' + hash).show();
+                } else {
+                    // Show default active tab on page load
+                    $('.shf-tab.active').first().trigger('click');
+                }
 
-        // ============================================================
-        //  BANKS MANAGER
-        // ============================================================
-        var banks = @json($config['banks'] ?? []);
+                // ============================================================
+                //  FORM VALIDATION
+                // ============================================================
+                // Company Details
+                $('#tab-company form').on('submit', function(e) {
+                    if (!SHF.validateForm($(this), {
+                        companyName: { required: true, maxlength: 255, label: 'Company Name' },
+                        companyEmail: { required: true, email: true, label: 'Email' },
+                        companyAddress: { required: true, label: 'Address' },
+                        companyPhone: { required: true, maxlength: 20, label: 'Phone' }
+                    })) { e.preventDefault(); }
+                });
+                // IOM Stamp Paper Charges
+                $('#tab-charges form').on('submit', function(e) {
+                    if (!SHF.validateForm($(this), {
+                        'iomCharges[thresholdAmount]': { required: true, numeric: true, min: 0, label: 'Threshold Amount' },
+                        'iomCharges[fixedCharge]': { required: true, numeric: true, min: 0, label: 'Fixed Charge' },
+                        'iomCharges[percentageAbove]': { required: true, numeric: true, min: 0, label: 'Percentage' }
+                    })) { e.preventDefault(); }
+                });
+                // GST
+                $('#tab-gst form').on('submit', function(e) {
+                    if (!SHF.validateForm($(this), {
+                        gstPercent: { required: true, numeric: true, min: 0, max: 100, label: 'GST Percentage' }
+                    })) { e.preventDefault(); }
+                });
 
-        function renderBankTags() {
-            var html = '';
-            $.each(banks, function (idx, bank) {
-                html += '<span class="shf-tag">' +
-                    '<span>' + $('<span>').text(bank).html() + '</span>' +
-                    '<input type="hidden" name="banks[]" value="' + $('<span>').text(bank).html() + '">' +
-                    '<button type="button" class="shf-tag-remove removeBankBtn" data-idx="' + idx + '">&times;</button>' +
-                    '</span>';
-            });
-            $('#bankTagsContainer').html(html);
-        }
-        renderBankTags();
+                // ============================================================
+                //  TENURES MANAGER
+                // ============================================================
+                var tenures = @json($config['tenures'] ?? []);
 
-        $('#addBankBtn').on('click', function () {
-            var val = $.trim($('#newBankInput').val());
-            if (val && $.inArray(val, banks) === -1) {
-                banks.push(val);
-                renderBankTags();
-                $('#newBankInput').val('');
-            }
-        });
-        $('#newBankInput').on('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); $('#addBankBtn').click(); }
-        });
-        $(document).on('click', '.removeBankBtn', function () {
-            banks.splice($(this).data('idx'), 1);
-            renderBankTags();
-        });
-
-        // ============================================================
-        //  TENURES MANAGER
-        // ============================================================
-        var tenures = @json($config['tenures'] ?? []);
-
-        function renderTenureTags() {
-            var html = '';
-            $.each(tenures, function (idx, t) {
-                html += '<span class="shf-tag" style="background:#f0fdf4;border-color:#86efac;color:#16a34a;">' +
-                    '<span>' + t + ' Years</span>' +
-                    '<input type="hidden" name="tenures[]" value="' + t + '">' +
-                    '<button type="button" class="shf-tag-remove removeTenureBtn" data-idx="' + idx + '" style="background:#16a34a;">&times;</button>' +
-                    '</span>';
-            });
-            $('#tenureTagsContainer').html(html);
-        }
-        renderTenureTags();
-
-        $('#addTenureBtn').on('click', function () {
-            var val = parseInt($('#newTenureInput').val());
-            if (val && val > 0 && $.inArray(val, tenures) === -1) {
-                tenures.push(val);
-                tenures.sort(function (a, b) { return a - b; });
+                function renderTenureTags() {
+                    var html = '';
+                    $.each(tenures, function(idx, t) {
+                        html +=
+                            '<span class="shf-tag" style="background:#f0fdf4;border-color:#86efac;color:#16a34a;">' +
+                            '<span>' + t + ' Years</span>' +
+                            '<input type="hidden" name="tenures[]" value="' + t + '">' +
+                            '<button type="button" class="shf-tag-remove removeTenureBtn" data-idx="' + idx +
+                            '" style="background:#16a34a;">&times;</button>' +
+                            '</span>';
+                    });
+                    $('#tenureTagsContainer').html(html);
+                }
                 renderTenureTags();
-                $('#newTenureInput').val('');
-            }
-        });
-        $('#newTenureInput').on('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); $('#addTenureBtn').click(); }
-        });
-        $(document).on('click', '.removeTenureBtn', function () {
-            tenures.splice($(this).data('idx'), 1);
-            renderTenureTags();
-        });
 
-        // ============================================================
-        //  BANK CHARGES MANAGER
-        // ============================================================
-        var charges = @json($bankCharges->map(fn($c) => $c->toArray())->values());
+                $('#addTenureBtn').on('click', function() {
+                    var val = parseInt($('#newTenureInput').val());
+                    if (val && val > 0 && $.inArray(val, tenures) === -1) {
+                        tenures.push(val);
+                        tenures.sort(function(a, b) {
+                            return a - b;
+                        });
+                        renderTenureTags();
+                        $('#newTenureInput').val('');
+                    }
+                });
+                $('#newTenureInput').on('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        $('#addTenureBtn').click();
+                    }
+                });
+                $(document).on('click', '.removeTenureBtn', function() {
+                    tenures.splice($(this).data('idx'), 1);
+                    renderTenureTags();
+                });
+                // Auto-add pending tenure on form submit
+                $('#tenuresForm').on('submit', function() {
+                    var val = parseInt($('#newTenureInput').val());
+                    if (val && val > 0 && $.inArray(val, tenures) === -1) {
+                        tenures.push(val);
+                        tenures.sort(function(a, b) {
+                            return a - b;
+                        });
+                        renderTenureTags();
+                    }
+                });
 
-        function renderChargeRows() {
-            var html = '';
-            $.each(charges, function (idx, c) {
-                html += '<tr>' +
-                    '<td><input type="text" name="charges[' + idx + '][bank_name]" value="' + (c.bank_name || '') + '" class="shf-input small" style="width:8rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][pf]" value="' + (c.pf || 0) + '" step="0.01" class="shf-input small" style="width:6rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][admin]" value="' + (c.admin || 0) + '" class="shf-input small" style="width:5rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][stamp_notary]" value="' + (c.stamp_notary || 0) + '" class="shf-input small" style="width:5rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][registration_fee]" value="' + (c.registration_fee || 0) + '" class="shf-input small" style="width:5rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][advocate]" value="' + (c.advocate || 0) + '" class="shf-input small" style="width:5rem;" required></td>' +
-                    '<td><input type="number" name="charges[' + idx + '][tc]" value="' + (c.tc || 0) + '" class="shf-input small" style="width:5rem;" required></td>' +
-                    '<td>' +
-                    '<input type="hidden" name="charges[' + idx + '][extra1_name]" value="' + (c.extra1_name || '') + '">' +
-                    '<input type="hidden" name="charges[' + idx + '][extra1_amt]" value="' + (c.extra1_amt || 0) + '">' +
-                    '<input type="hidden" name="charges[' + idx + '][extra2_name]" value="' + (c.extra2_name || '') + '">' +
-                    '<input type="hidden" name="charges[' + idx + '][extra2_amt]" value="' + (c.extra2_amt || 0) + '">' +
-                    '<button type="button" class="removeChargeBtn fw-bold" data-idx="' + idx + '" style="background:none;border:none;color:#c0392b;font-size:1.2rem;cursor:pointer;">&times;</button>' +
-                    '</td></tr>';
+                // ============================================================
+                //  BANK CHARGES MANAGER
+                // ============================================================
+                // Bank charges: one row per DB bank, pre-filled from saved charges
+                var savedCharges = {};
+                @json($bankCharges->map(fn($c) => $c->toArray())->values()).forEach(function(c) {
+                    savedCharges[c.bank_name] = c;
+                });
+                var loanBanks = @json($loanBanks);
+
+                function renderChargeRows() {
+                    var html = '';
+                    loanBanks.forEach(function(bankName, idx) {
+                        var c = savedCharges[bankName] || {};
+                        html += '<tr>' +
+                            '<td><strong class="shf-text-sm">' + bankName + '</strong>' +
+                            '<input type="hidden" name="charges[' + idx + '][bank_name]" value="' + bankName +
+                            '">' +
+                            '</td>' +
+                            '<td><input type="number" name="charges[' + idx + '][pf]" value="' + (c.pf || 0) +
+                            '" step="0.01" class="shf-input small" style="width:6rem;"></td>' +
+                            '<td><input type="number" name="charges[' + idx + '][admin]" value="' + (c.admin ||
+                                0) + '" class="shf-input small" style="width:5rem;"></td>' +
+                            '<td><input type="number" name="charges[' + idx + '][stamp_notary]" value="' + (c
+                                .stamp_notary || 0) + '" class="shf-input small" style="width:5rem;"></td>' +
+                            '<td><input type="number" name="charges[' + idx + '][registration_fee]" value="' + (
+                                c.registration_fee || 0) +
+                            '" class="shf-input small" style="width:5rem;"></td>' +
+                            '<td><input type="number" name="charges[' + idx + '][advocate]" value="' + (c
+                                .advocate || 0) + '" class="shf-input small" style="width:5rem;"></td>' +
+                            '<td><input type="number" name="charges[' + idx + '][tc]" value="' + (c.tc || 0) +
+                            '" class="shf-input small" style="width:5rem;"></td>' +
+                            '<td>' +
+                            '<input type="hidden" name="charges[' + idx + '][extra1_name]" value="' + (c
+                                .extra1_name || '') + '">' +
+                            '<input type="hidden" name="charges[' + idx + '][extra1_amt]" value="' + (c
+                                .extra1_amt || 0) + '">' +
+                            '<input type="hidden" name="charges[' + idx + '][extra2_name]" value="' + (c
+                                .extra2_name || '') + '">' +
+                            '<input type="hidden" name="charges[' + idx + '][extra2_amt]" value="' + (c
+                                .extra2_amt || 0) + '">' +
+                            '</td></tr>';
+                    });
+                    $('#bankChargesBody').html(html);
+                }
+                renderChargeRows();
+
+                // ============================================================
+                //  DOCUMENTS MANAGER
+                // ============================================================
+                var docs = {
+                    proprietor: {
+                        en: @json($config['documents_en']['proprietor'] ?? []),
+                        gu: @json($config['documents_gu']['proprietor'] ?? [])
+                    },
+                    partnership_llp: {
+                        en: @json($config['documents_en']['partnership_llp'] ?? []),
+                        gu: @json($config['documents_gu']['partnership_llp'] ?? [])
+                    },
+                    pvt_ltd: {
+                        en: @json($config['documents_en']['pvt_ltd'] ?? []),
+                        gu: @json($config['documents_gu']['pvt_ltd'] ?? [])
+                    },
+                    salaried: {
+                        en: @json($config['documents_en']['salaried'] ?? []),
+                        gu: @json($config['documents_gu']['salaried'] ?? [])
+                    }
+                };
+                var currentDocTab = 'proprietor';
+
+                var sortableInstances = {};
+
+                function renderDocList(type) {
+                    var html = '';
+                    $.each(docs[type].en, function(idx, enVal) {
+                        var guVal = docs[type].gu[idx] || '';
+                        html +=
+                            '<div class="doc-sortable-item d-flex align-items-center gap-2 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);">' +
+                            '<span class="doc-drag-handle" style="cursor:grab;color:#9ca3af;font-size:1rem;padding:0 4px;" title="Drag to reorder">⠿</span>' +
+                            '<span class="fw-bold" style="font-size:0.75rem;color:rgba(255,255,255,0.85);width:1.5rem;">' +
+                            (idx + 1) + '.</span>' +
+                            '<input type="text" name="documents_en[' + type + '][]" value="' + $('<span>').text(
+                                enVal).html() + '" class="shf-input flex-grow-1 small" placeholder="English">' +
+                            '<input type="text" name="documents_gu[' + type + '][]" value="' + $('<span>').text(
+                                guVal).html() +
+                            '" class="shf-input flex-grow-1 small" placeholder="Gujarati">' +
+                            '<button type="button" class="btn-accent-sm removeDocBtn shf-btn-danger" data-type="' +
+                            type + '" data-idx="' + idx +
+                            '"><svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Remove</button>' +
+                            '</div>';
+                    });
+                    $('#docList-' + type).html(html);
+                    initSortable(type);
+                }
+
+                function initSortable(type) {
+                    var el = document.getElementById('docList-' + type);
+                    if (!el) return;
+                    if (sortableInstances[type]) sortableInstances[type].destroy();
+                    sortableInstances[type] = new Sortable(el, {
+                        handle: '.doc-drag-handle',
+                        animation: 150,
+                        ghostClass: 'doc-sortable-ghost',
+                        onEnd: function() {
+                            // Read new order from DOM inputs
+                            var newEn = [],
+                                newGu = [];
+                            $('#docList-' + type).find('.doc-sortable-item').each(function() {
+                                var inputs = $(this).find('input[type="text"]');
+                                newEn.push(inputs.eq(0).val());
+                                newGu.push(inputs.eq(1).val());
+                            });
+                            docs[type].en = newEn;
+                            docs[type].gu = newGu;
+                            renderDocList(type);
+                        }
+                    });
+                }
+
+                function switchDocTab(type) {
+                    currentDocTab = type;
+                    $('.doc-sub-tab').css({
+                        'border-bottom-color': 'transparent',
+                        'color': '#6b7280',
+                        'background': 'transparent'
+                    });
+                    $('.doc-sub-tab[data-doc-type="' + type + '"]').css({
+                        'border-bottom-color': '#f15a29',
+                        'color': '#f15a29',
+                        'background': 'rgba(241,90,41,0.05)'
+                    });
+                    $('.doc-type-pane').hide();
+                    $('#docPane-' + type).show();
+                    renderDocList(type);
+                }
+                // Render ALL doc types on load so form always submits all types
+                $.each(['proprietor', 'partnership_llp', 'pvt_ltd', 'salaried'], function(_, t) {
+                    renderDocList(t);
+                });
+                switchDocTab('proprietor');
+
+                $(document).on('click', '.doc-sub-tab', function() {
+                    switchDocTab($(this).data('doc-type'));
+                });
+
+                $(document).on('click', '.addDocBtn', function() {
+                    var type = $(this).data('doc-type');
+                    var $pane = $('#docPane-' + type);
+                    var enVal = $.trim($pane.find('.newDocEn').val());
+                    var guVal = $.trim($pane.find('.newDocGu').val());
+                    if (enVal) {
+                        docs[type].en.push(enVal);
+                        docs[type].gu.push(guVal || enVal);
+                        $pane.find('.newDocEn').val('');
+                        $pane.find('.newDocGu').val('');
+                        renderDocList(type);
+                    }
+                });
+
+                $(document).on('click', '.removeDocBtn', function() {
+                    var type = $(this).data('type');
+                    var idx = $(this).data('idx');
+                    docs[type].en.splice(idx, 1);
+                    docs[type].gu.splice(idx, 1);
+                    renderDocList(type);
+                });
+
+                // Auto-add any pending document input values on form submit
+                $('#documentsForm').on('submit', function() {
+                    $.each(['proprietor', 'partnership_llp', 'pvt_ltd', 'salaried'], function(_, type) {
+                        var $pane = $('#docPane-' + type);
+                        var enVal = $.trim($pane.find('.newDocEn').val());
+                        if (enVal) {
+                            var guVal = $.trim($pane.find('.newDocGu').val());
+                            docs[type].en.push(enVal);
+                            docs[type].gu.push(guVal || enVal);
+                            renderDocList(type);
+                        }
+                    });
+                });
             });
-            $('#bankChargesBody').html(html);
-        }
-        renderChargeRows();
 
-        $('#addChargeRowBtn').on('click', function () {
-            charges.push({ bank_name: '', pf: 0, admin: 0, stamp_notary: 0, registration_fee: 0, advocate: 0, tc: 0, extra1_name: '', extra1_amt: 0, extra2_name: '', extra2_amt: 0 });
-            renderChargeRows();
-        });
-        $(document).on('click', '.removeChargeBtn', function () {
-            charges.splice($(this).data('idx'), 1);
-            renderChargeRows();
-        });
+                // ============================================================
+                //  DVR CONTACT TYPES & PURPOSES MANAGER
+                // ============================================================
+                var dvrContactTypes = @json($config['dvrContactTypes'] ?? []);
+                var dvrPurposes = @json($config['dvrPurposes'] ?? []);
 
-        // ============================================================
-        //  DOCUMENTS MANAGER
-        // ============================================================
-        var docs = {
-            proprietor: { en: @json($config['documents_en']['proprietor'] ?? []), gu: @json($config['documents_gu']['proprietor'] ?? []) },
-            partnership_llp: { en: @json($config['documents_en']['partnership_llp'] ?? []), gu: @json($config['documents_gu']['partnership_llp'] ?? []) },
-            pvt_ltd: { en: @json($config['documents_en']['pvt_ltd'] ?? []), gu: @json($config['documents_gu']['pvt_ltd'] ?? []) }
-        };
-        var currentDocTab = 'proprietor';
+                function renderDvrList(items, containerId, inputPrefix) {
+                    var html = '';
+                    $.each(items, function(idx, item) {
+                        html += '<div class="d-flex align-items-center gap-2 p-2 rounded" style="background:var(--bg);border:1px solid var(--border);">'
+                            + '<span class="fw-bold shf-text-xs" style="width:1.5rem;">' + (idx + 1) + '.</span>'
+                            + '<input type="hidden" name="' + inputPrefix + '[' + idx + '][key]" value="' + $('<span>').text(item.key).html() + '">'
+                            + '<span class="shf-badge shf-badge-gray shf-text-2xs" style="min-width:5rem;">' + $('<span>').text(item.key).html() + '</span>'
+                            + '<input type="text" name="' + inputPrefix + '[' + idx + '][label_en]" value="' + $('<span>').text(item.label_en).html() + '" class="shf-input flex-grow-1 small" placeholder="English">'
+                            + '<input type="text" name="' + inputPrefix + '[' + idx + '][label_gu]" value="' + $('<span>').text(item.label_gu).html() + '" class="shf-input flex-grow-1 small" placeholder="Gujarati">'
+                            + '<button type="button" class="btn-accent-sm shf-btn-danger dvr-remove-btn" data-list="' + containerId + '" data-idx="' + idx + '">'
+                            + '<svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
+                            + '</button></div>';
+                    });
+                    $('#' + containerId).html(html);
+                }
 
-        function renderDocList(type) {
-            var html = '';
-            $.each(docs[type].en, function (idx, enVal) {
-                var guVal = docs[type].gu[idx] || '';
-                html += '<div class="d-flex align-items-center gap-2 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);">' +
-                    '<span class="fw-bold" style="font-size:0.75rem;color:#f15a29;width:1.5rem;">' + (idx + 1) + '.</span>' +
-                    '<input type="text" name="documents_en[' + type + '][]" value="' + $('<span>').text(enVal).html() + '" class="shf-input flex-grow-1 small" placeholder="English">' +
-                    '<input type="text" name="documents_gu[' + type + '][]" value="' + $('<span>').text(guVal).html() + '" class="shf-input flex-grow-1 small" placeholder="Gujarati">' +
-                    '<button type="button" class="removeDocBtn fw-bold" data-type="' + type + '" data-idx="' + idx + '" style="background:none;border:none;color:#c0392b;font-size:1.2rem;cursor:pointer;">&times;</button>' +
-                    '</div>';
+                renderDvrList(dvrContactTypes, 'dvrContactTypesList', 'dvrContactTypes');
+                renderDvrList(dvrPurposes, 'dvrPurposesList', 'dvrPurposes');
+
+                $('#addContactTypeBtn').on('click', function() {
+                    var key = $.trim($('#newContactTypeKey').val());
+                    var en = $.trim($('#newContactTypeEn').val());
+                    var gu = $.trim($('#newContactTypeGu').val());
+                    if (key && en) {
+                        key = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                        dvrContactTypes.push({ key: key, label_en: en, label_gu: gu || en });
+                        renderDvrList(dvrContactTypes, 'dvrContactTypesList', 'dvrContactTypes');
+                        $('#newContactTypeKey, #newContactTypeEn, #newContactTypeGu').val('');
+                    }
+                });
+
+                $('#addPurposeBtn').on('click', function() {
+                    var key = $.trim($('#newPurposeKey').val());
+                    var en = $.trim($('#newPurposeEn').val());
+                    var gu = $.trim($('#newPurposeGu').val());
+                    if (key && en) {
+                        key = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                        dvrPurposes.push({ key: key, label_en: en, label_gu: gu || en });
+                        renderDvrList(dvrPurposes, 'dvrPurposesList', 'dvrPurposes');
+                        $('#newPurposeKey, #newPurposeEn, #newPurposeGu').val('');
+                    }
+                });
+
+                $(document).on('click', '.dvr-remove-btn', function() {
+                    var listId = $(this).data('list');
+                    var idx = $(this).data('idx');
+                    if (listId === 'dvrContactTypesList') {
+                        dvrContactTypes.splice(idx, 1);
+                        renderDvrList(dvrContactTypes, 'dvrContactTypesList', 'dvrContactTypes');
+                    } else {
+                        dvrPurposes.splice(idx, 1);
+                        renderDvrList(dvrPurposes, 'dvrPurposesList', 'dvrPurposes');
+                    }
+                });
+
+                // Auto-add pending DVR items on form submit
+                $('#dvrContactTypesForm').on('submit', function() {
+                    var key = $.trim($('#newContactTypeKey').val());
+                    var en = $.trim($('#newContactTypeEn').val());
+                    if (key && en) {
+                        var gu = $.trim($('#newContactTypeGu').val());
+                        key = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                        dvrContactTypes.push({ key: key, label_en: en, label_gu: gu || en });
+                        renderDvrList(dvrContactTypes, 'dvrContactTypesList', 'dvrContactTypes');
+                    }
+                });
+                $('#dvrPurposesForm').on('submit', function() {
+                    var key = $.trim($('#newPurposeKey').val());
+                    var en = $.trim($('#newPurposeEn').val());
+                    if (key && en) {
+                        var gu = $.trim($('#newPurposeGu').val());
+                        key = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                        dvrPurposes.push({ key: key, label_en: en, label_gu: gu || en });
+                        renderDvrList(dvrPurposes, 'dvrPurposesList', 'dvrPurposes');
+                    }
+                });
             });
-            $('#docList-' + type).html(html);
-        }
 
-        function switchDocTab(type) {
-            currentDocTab = type;
-            $('.doc-sub-tab').css({ 'border-bottom-color': 'transparent', 'color': '#6b7280', 'background': 'transparent' });
-            $('.doc-sub-tab[data-doc-type="' + type + '"]').css({ 'border-bottom-color': '#f15a29', 'color': '#f15a29', 'background': 'rgba(241,90,41,0.05)' });
-            $('.doc-type-pane').hide();
-            $('#docPane-' + type).show();
-            renderDocList(type);
-        }
-        switchDocTab('proprietor');
-
-        $(document).on('click', '.doc-sub-tab', function () {
-            switchDocTab($(this).data('doc-type'));
-        });
-
-        $(document).on('click', '.addDocBtn', function () {
-            var type = $(this).data('doc-type');
-            var $pane = $('#docPane-' + type);
-            var enVal = $.trim($pane.find('.newDocEn').val());
-            var guVal = $.trim($pane.find('.newDocGu').val());
-            if (enVal) {
-                docs[type].en.push(enVal);
-                docs[type].gu.push(guVal || enVal);
-                $pane.find('.newDocEn').val('');
-                $pane.find('.newDocGu').val('');
-                renderDocList(type);
-            }
-        });
-
-        $(document).on('click', '.removeDocBtn', function () {
-            var type = $(this).data('type');
-            var idx = $(this).data('idx');
-            docs[type].en.splice(idx, 1);
-            docs[type].gu.splice(idx, 1);
-            renderDocList(type);
-        });
-    });
-    </script>
+            // Reset settings confirmation
+            $('#formResetSettings').on('submit', function(e) {
+                e.preventDefault();
+                var form = this;
+                Swal.fire({
+                    title: 'Reset ALL settings?',
+                    text: 'This will reset all settings to their defaults. This cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, reset all',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        </script>
     @endpush
 @endsection

@@ -6,101 +6,93 @@ Current and completed tasks. Updated as work progresses.
 
 ## In Progress
 
-*(none)*
+### Turnaround Time Report + Loan Duration (2026-04-15)
+
+- [x] **1. Loan listing** — `total_loan_time` already exists and shows on listing page
+- [x] **2. Report controller** — `ReportController@turnaround` + `turnaroundData` with filters
+- [x] **3. Report view** — Two tabs: Overall TAT + Stage-wise TAT with DataTables, color-coded
+- [x] **4. Route + permission** — `GET /reports/turnaround`, `view_reports` permission seeded
+- [x] **5. Update docs** — routes, permissions, views, loans
+
+### SHF Operational Manual v3 → v4 Update (2026-04-15)
+
+**Context:** DVR and quotation-to-loan-sanction are now in CRM. SHF expanding to new cities.
+
+- [x] **1. DVR Updates** — Manual DVR template → CRM DVR module reference with fields
+- [x] **2. Loan Journey Updates** — Added Quotation to inquiry stage, CRM flow description in Gujarati
+- [x] **3. Branch Expansion** — "Rajkot / Jamnagar" → dynamic "[Branch Name]" throughout
+- [x] **4. CRM Portal Guide** — Updated DVR, Quotation, Loans, Tasks module descriptions
+- [x] **5. Gujarati Grammar** — 42 fixes: English→Gujarati replacements, grammar corrections, typo fixes
+- [x] **6. Table Page-Breaks** — cantSplit + keepLines + keepNext on all 190 tables
+- [x] **7. New Sections** — Section 22: Branch Onboarding (14-item checklist), Section 23: Multi-City Expansion
+- [x] **8. Quick Reference Card** — Dynamic branch contacts, CRM DVR references
+- [x] **9. Version Control** — Updated to v4.0 with changelog
+
+---
+
+## Just Completed
+
+### Complete Documentation Regeneration (2026-04-15)
+
+All docs regenerated from code scan only. Plan: `.claude/plans/rustling-yawning-hennessy.md`
+
+**Phase 1: Backup**
+- [x] Create `.backups/2026-04-15/` directory structure
+- [x] Copy CLAUDE.md + Loan Lifecycle file
+- [x] Copy all .docs/ files (20)
+- [x] Copy .claude/ reference + rules files (8)
+- [x] Copy tasks/ files (2)
+
+**Phase 2: Rename**
+- [x] Rename `Loan Lifecycle - Roles & Actions.txt` → `Loan_Lifecycle_Roles_Actions.md`
+
+**Phase 3: Regenerate .claude/ reference files**
+- [x] `.claude/database-schema.md` — from migrations + models
+- [x] `.claude/routes-reference.md` — from route files
+- [x] `.claude/services-reference.md` — from services + controllers
+- [x] `.claude/file-suggestions.sh` — from file tree
+
+**Phase 4: Regenerate .claude/rules/**
+- [x] `rules/pre-read-gate.md`
+- [x] `rules/coding-feedback.md`
+- [x] `rules/project-context.md`
+- [x] `rules/workflow.md`
+- [x] `rules/laravel-boost.md`
+
+**Phase 5: Regenerate .docs/ (22 files)**
+- [x] README.md, api.md, authentication.md, dashboard.md
+- [x] database.md, frontend.md, general-tasks.md, models.md
+- [x] offline-pwa.md, pdf-generation.md, permissions.md, quotations.md
+- [x] settings.md, user-assignment.md, users.md, views.md
+- [x] workflow-developer.md, workflow-guide.md
+- [x] dvr.md (NEW), loans.md (NEW), roles.md (NEW), activity-log.md (NEW)
+
+**Phase 6: Regenerate CLAUDE.md**
+- [x] Write CLAUDE.md (130 lines, under 200 limit)
+- [x] Verify line count < 200
+
+**Phase 7: Update SeedScreenshotLoans.php**
+- [x] Verify stage keys match stages table (all 16 keys aligned)
+- [x] Verified $loans data + advance methods already match current workflow (no changes needed)
+- [x] No PHP changes, pint not needed
+
+**Phase 8: Rewrite Loan_Lifecycle_Roles_Actions.md**
+- [x] Complete 12-stage lifecycle with phases, roles, actions (16 stages total)
+
+---
+
+## Recently Completed
+
+- [x] Complete Documentation Regeneration from codebase scan (2026-04-15)
+- [x] Docket Login + OTC Clearance + Stage Tooling (2026-04-14)
+- [x] DVR (Daily Visit Report) Module (2026-04-14)
+- [x] Workflow Stage Flow Changes (2026-04-14)
+- [x] Branch Flow + User Assignment + Product Stage Replace (2026-04-14)
+- [x] jQuery Form Validation + Cleanup (2026-04-15)
+- [x] Documentation reorganization and regeneration (2026-04-13)
 
 ---
 
 ## Completed
 
-### Fix offline sync showing "synced" but not saving to database
-When going offline and coming back online, the sync showed "synced" toast but records were never persisted to the database.
-
-**Root cause**: `QuotationService::generate()` returned `success: true` even when DB transaction failed (catch block at line 213). `SyncApiController` trusted this flag and told the frontend to delete queued items from IndexedDB — permanent data loss.
-
-**Changes**:
-- [x] `QuotationService` catch block: Changed from `success: true` to `success: false` with error message (keeps filename for online flow fallback)
-- [x] `SyncApiController`: Added secondary check — requires `quotation` to be non-null for `success: true`
-- [x] `SyncApiController`: Added auto-fill `preparedByName`/`preparedByMobile` from auth user (matching QuotationController)
-- [x] `SyncApiController`: Added `ActivityLog::log()` on successful sync (with `source: offline_sync`)
-- [x] `QuotationController`: Handles new `success: false` + `filename` case — still returns PDF to online user even if DB save fails
-- [x] Created 9 tests in `tests/Feature/SyncApiTest.php` — all pass (auth, empty, success, DB failure, auto-fill, activity log, batch partial failures, validation error)
-- [x] Pint clean
-
-### Fix slow PDF generation on Linux
-PDF generation hard-coded `PHP_OS_FAMILY === 'Windows'` to decide strategy. On Linux, it always used the slow microservice path even when Chrome was installed.
-
-**Changes**:
-- [x] Refactored `PdfGenerationService::generate()` with three-tier strategy: force microservice → Chrome headless → microservice fallback
-- [x] Added `isChromeAvailable()`, `generateWithChrome()`, `generateWithMicroservice()` private methods
-- [x] Linux Chrome path uses `escapeshellarg()` for security (was unquoted)
-- [x] Added `CURLOPT_CONNECTTIMEOUT=5` (fail fast) + increased `CURLOPT_TIMEOUT` from 30→60
-- [x] Added `pdf_use_microservice` config key + `PDF_USE_MICROSERVICE` env var
-- [x] Updated `.env.example` with new option
-- [x] Created 12 tests in `tests/Feature/PdfGenerationServiceTest.php` — all pass
-- [x] Pint clean, updated services-reference.md
-
-### Fix DataTables offline — show cached data instead of blocking "offline" screen
-Previous fix showed a blocking "You are offline" message that hid the entire dashboard. App should remain usable offline since it's a PWA.
-
-**Fix plan**:
-- [x] Service worker: skip `/dashboard/quotation-data` so it doesn't serve cached HTML for JSON endpoint
-- [x] Bump SW cache version to v12 for update propagation
-- [x] DataTables: replace `ajax` object with function — cache response in localStorage, serve cached data when offline
-- [x] Mobile cards: same caching pattern — cache on success, serve cached on error
-- [x] Replace blocking `showOfflineState()` with subtle yellow "Offline — showing cached data" indicator
-- [x] Auto-reload when back online (removes indicator, fetches fresh data)
-- [x] Tests pass (15/15), Pint clean
-
----
-
-## Completed
-
-- [x] Phase 3: Remove x-app-layout / x-guest-layout — switch to @extends/@section
-  - Updated `layouts/app.blade.php` (`@hasSection`/`@yield`)
-  - Updated `layouts/guest.blade.php` (`@yield`)
-  - Converted 10 authenticated views
-  - Converted 6 auth views
-  - Deleted `AppLayout.php` and `GuestLayout.php` component classes
-  - Updated CLAUDE.md, MEMORY.md documentation
-  - Verified: zero remaining component references, Pint clean, no new test failures
-
-- [x] Fix mobile responsiveness across all pages
-  - **Navigation**: Changed `navbar-expand-sm` → `navbar-expand-lg` so hamburger menu shows on phones+tablets (<992px)
-  - **Navigation**: Updated desktop nav visibility from `d-sm-*` → `d-lg-*` breakpoints
-  - **Dashboard filters**: Changed from `col-sm-*` → `col-6 col-md-*` so fields pair up on mobile, full row on desktop
-  - **Dashboard table**: Added mobile card layout (`d-md-none`) with clean card UI, desktop table hidden on mobile (`d-none d-md-block`)
-  - **Users table**: Added mobile card layout with user info, badges, and action links
-  - **Activity log filters**: Changed from `col-sm-auto` → `col-6 col-md-auto` for better mobile stacking
-  - **Activity log table**: Added mobile card layout with badge, user, details
-  - **btn-accent-outline**: Fixed color from `var(--white)` to `var(--accent)` so it's visible on light backgrounds
-  - **CSS**: Added `shf-table-mobile` class for generic table-to-card mobile conversion
-  - **CSS**: Added `btn-accent-outline-white` variant for dark background usage
-
----
-
-### Remove auto-download PDFs on offline sync
-- [x] Removed `window.open()` auto-download loop from `offlineSync` handler in `quotations/create.blade.php`
-- [x] Updated toast to say "synced! Download from dashboard" instead of "synced & downloaded"
-- [x] Sync still creates quotations + PDFs server-side, user downloads manually
-
-### Bootstrap Tables + Datepicker Migration
-- [x] Downloaded Bootstrap Datepicker 1.10.0 to `public/vendor/datepicker/`
-- [x] Converted `shf-table` → Bootstrap `table table-hover` in 6 views
-- [x] Replaced `shf-table` CSS with Bootstrap table overrides in `shf.css`
-- [x] Converted 4 date inputs → Bootstrap Datepicker (dashboard + activity-log)
-- [x] Added datepicker CSS/JS globally in `layouts/app.blade.php`
-- [x] Updated DataTables CSS for Bootstrap table integration
-- [x] All 15 tests pass, Pint clean
-
-### Dashboard DataTables AJAX Implementation
-- [x] Download DataTables 2.2.2 + Bootstrap 5 integration files to `public/vendor/datatables/`
-- [x] Add `@stack('styles')` to `layouts/app.blade.php` `<head>` (after shf.css)
-- [x] Add `GET /dashboard/quotation-data` route in `routes/web.php`
-- [x] Add `quotationData()` AJAX endpoint to `DashboardController`
-- [x] Simplify `index()` in `DashboardController` — stats + users + permissions only
-- [x] Update `destroy()` in `QuotationController` to return JSON when `expectsJson()`
-- [x] Rewrite `dashboard.blade.php` with DataTables, mobile cards, AJAX delete, confirm modal
-- [x] Add DataTables CSS overrides to `public/css/shf.css`
-- [x] Write 15 feature tests in `tests/Feature/DashboardDataTableTest.php` — all pass
-- [x] Run Pint (clean) + tests (15 passed, 65 assertions)
-- [x] Update routes-reference.md
+(historical tasks archived to .ignore/tasks/todo.md)

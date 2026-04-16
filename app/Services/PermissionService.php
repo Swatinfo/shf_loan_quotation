@@ -3,36 +3,36 @@
 namespace App\Services;
 
 use App\Models\Permission;
-use App\Models\RolePermission;
 use App\Models\User;
 use App\Models\UserPermission;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class PermissionService
 {
     /**
      * Check if a user has a specific permission.
      *
-     * Resolution order:
+     * Resolution order (3-tier):
      * 1. Super Admin → always true
      * 2. User-specific grant/deny override
-     * 3. Role default permissions
+     * 3. Any of the user's roles grants the permission
      */
     public function userHasPermission(User $user, string $slug): bool
     {
-        // Super Admin bypass
-        if ($user->isSuperAdmin()) {
+        // 1. Super Admin bypass
+        if ($user->hasRole('super_admin')) {
             return true;
         }
 
-        // Check user-specific override
+        // 2. Check user-specific override
         $userOverride = $this->getUserOverride($user, $slug);
         if ($userOverride !== null) {
             return $userOverride;
         }
 
-        // Fall back to role default
-        return $this->roleHasPermission($user->role, $slug);
+        // 3. Check if ANY of the user's roles has this permission
+        return $this->userRolesHavePermission($user, $slug);
     }
 
     /**
@@ -50,7 +50,7 @@ class PermissionService
                 ->toArray();
         });
 
-        if (!isset($overrides[$slug])) {
+        if (! isset($overrides[$slug])) {
             return null;
         }
 
@@ -58,24 +58,52 @@ class PermissionService
     }
 
     /**
-     * Check if a role has a permission by default.
+     * Check if any of the user's roles has a given permission.
      */
-    public function roleHasPermission(string $role, string $slug): bool
+    public function userRolesHavePermission(User $user, string $slug): bool
     {
-        $cacheKey = "role_perms:{$role}";
+        $roleIds = $this->getUserRoleIds($user);
+        if (empty($roleIds)) {
+            return false;
+        }
 
-        $permissions = Cache::remember($cacheKey, 300, function () use ($role) {
-            return RolePermission::where('role', $role)
-                ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
-                ->pluck('permissions.slug')
-                ->toArray();
-        });
+        $permSlugs = $this->getRolePermissionSlugs($roleIds);
 
-        return in_array($slug, $permissions);
+        return in_array($slug, $permSlugs);
     }
 
     /**
-     * Get all permissions for a user (merged role + overrides).
+     * Get all role IDs for a user (cached).
+     */
+    protected function getUserRoleIds(User $user): array
+    {
+        $cacheKey = "user_role_ids:{$user->id}";
+
+        return Cache::remember($cacheKey, 300, function () use ($user) {
+            return $user->roles()->pluck('roles.id')->toArray();
+        });
+    }
+
+    /**
+     * Get permission slugs for a set of role IDs (cached).
+     */
+    protected function getRolePermissionSlugs(array $roleIds): array
+    {
+        sort($roleIds);
+        $cacheKey = 'role_perms:'.implode(',', $roleIds);
+
+        return Cache::remember($cacheKey, 300, function () use ($roleIds) {
+            return DB::table('role_permission')
+                ->whereIn('role_id', $roleIds)
+                ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
+                ->pluck('permissions.slug')
+                ->unique()
+                ->toArray();
+        });
+    }
+
+    /**
+     * Get all permissions for a user (merged roles + overrides).
      */
     public function getUserPermissions(User $user): array
     {
@@ -103,14 +131,20 @@ class PermissionService
     public function clearUserCache(User $user): void
     {
         Cache::forget("user_perms:{$user->id}");
+        Cache::forget("user_role_ids:{$user->id}");
     }
 
     /**
-     * Clear cached permissions for a role.
+     * Clear cached permissions for roles.
      */
-    public function clearRoleCache(string $role): void
+    public function clearRoleCache(): void
     {
-        Cache::forget("role_perms:{$role}");
+        // Clear all role permission combo caches
+        $roleIds = DB::table('roles')->pluck('id')->toArray();
+        // Clear individual and combo caches by pattern
+        foreach ($roleIds as $id) {
+            Cache::forget("role_perms:{$id}");
+        }
     }
 
     /**
@@ -118,13 +152,11 @@ class PermissionService
      */
     public function clearAllCaches(): void
     {
-        foreach (['super_admin', 'admin', 'staff'] as $role) {
-            $this->clearRoleCache($role);
-        }
+        $this->clearRoleCache();
 
-        // Clear user-specific caches
         User::pluck('id')->each(function ($userId) {
             Cache::forget("user_perms:{$userId}");
+            Cache::forget("user_role_ids:{$userId}");
         });
     }
 }

@@ -1,6 +1,6 @@
 <section>
     <header>
-        <p class="small" style="color: #6b7280;">
+        <p class="small shf-text-gray">
             {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
@@ -17,7 +17,7 @@
             <label for="name" class="shf-form-label">{{ __('Name') }}</label>
             <input id="name" name="name" type="text" class="shf-input w-100 mt-1" value="{{ old('name', $user->name) }}" required autofocus autocomplete="name">
             @if ($errors->has('name'))
-                <ul class="list-unstyled mt-1 mb-0 small" style="color: #c0392b;">
+                <ul class="list-unstyled mt-1 mb-0 small shf-text-error">
                     @foreach ($errors->get('name') as $message)
                         <li>{{ $message }}</li>
                     @endforeach
@@ -29,7 +29,7 @@
             <label for="email" class="shf-form-label">{{ __('Email') }}</label>
             <input id="email" name="email" type="email" class="shf-input w-100 mt-1" value="{{ old('email', $user->email) }}" required autocomplete="username">
             @if ($errors->has('email'))
-                <ul class="list-unstyled mt-1 mb-0 small" style="color: #c0392b;">
+                <ul class="list-unstyled mt-1 mb-0 small shf-text-error">
                     @foreach ($errors->get('email') as $message)
                         <li>{{ $message }}</li>
                     @endforeach
@@ -41,13 +41,13 @@
                     <p class="small mt-2" style="color: #374151;">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="btn btn-link p-0 small text-decoration-underline" style="color: #f15a29;">
+                        <button form="send-verification" class="btn btn-link p-0 small text-decoration-underline shf-text-accent">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 small fw-medium" style="color: #27ae60;">
+                        <p class="mt-2 small fw-medium shf-text-success-alt">
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -56,10 +56,10 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <button type="submit" class="btn-accent">{{ __('Save') }}</button>
+            <button type="submit" class="btn-accent"><svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> {{ __('Save') }}</button>
 
             @if (session('status') === 'profile-updated')
-                <p class="small fw-medium shf-saved-msg mb-0" style="color: #27ae60;">{{ __('Saved.') }}</p>
+                <p class="small fw-medium shf-saved-msg mb-0 shf-text-success-alt">{{ __('Saved.') }}</p>
             @endif
         </div>
     </form>

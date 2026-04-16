@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Permission;
-use App\Models\RolePermission;
 use Illuminate\Database\Seeder;
 
 class PermissionSeeder extends Seeder
@@ -12,11 +11,10 @@ class PermissionSeeder extends Seeder
     {
         $config = config('permissions');
 
-        // Create all permissions
-        $permissionIds = [];
+        // Create/update all permissions from config
         foreach ($config['groups'] as $group => $permissions) {
             foreach ($permissions as $perm) {
-                $permission = Permission::updateOrCreate(
+                Permission::updateOrCreate(
                     ['slug' => $perm['slug']],
                     [
                         'name' => $perm['name'],
@@ -24,27 +22,10 @@ class PermissionSeeder extends Seeder
                         'description' => $perm['description'] ?? null,
                     ]
                 );
-                $permissionIds[$perm['slug']] = $permission->id;
             }
         }
 
-        // Assign role defaults
-        foreach ($config['role_defaults'] as $role => $slugs) {
-            // Clear existing role permissions
-            RolePermission::where('role', $role)->delete();
-
-            if ($slugs === '*') {
-                // All permissions
-                foreach ($permissionIds as $slug => $id) {
-                    RolePermission::create(['role' => $role, 'permission_id' => $id]);
-                }
-            } else {
-                foreach ($slugs as $slug) {
-                    if (isset($permissionIds[$slug])) {
-                        RolePermission::create(['role' => $role, 'permission_id' => $permissionIds[$slug]]);
-                    }
-                }
-            }
-        }
+        // Role-permission mappings are managed by the unified_roles_system migration
+        // and editable at runtime via Permissions and Loan Settings pages.
     }
 }

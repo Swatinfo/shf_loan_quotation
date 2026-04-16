@@ -3,15 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Permission extends Model
 {
     protected $fillable = ['name', 'slug', 'group', 'description'];
 
-    public function rolePermissions(): HasMany
+    public function roles(): BelongsToMany
     {
-        return $this->hasMany(RolePermission::class);
+        return $this->belongsToMany(Role::class, 'role_permission');
     }
 
     public function userPermissions(): HasMany

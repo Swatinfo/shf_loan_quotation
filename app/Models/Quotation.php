@@ -2,14 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\HasAuditColumns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quotation extends Model
 {
+    use HasAuditColumns, SoftDeletes;
+
     protected $fillable = [
         'user_id',
+        'loan_id',
         'customer_name',
         'customer_type',
         'loan_amount',
@@ -19,6 +24,8 @@ class Quotation extends Model
         'prepared_by_name',
         'prepared_by_mobile',
         'selected_tenures',
+        'location_id',
+        'branch_id',
     ];
 
     protected $casts = [
@@ -41,9 +48,29 @@ class Quotation extends Model
         return $this->hasMany(QuotationDocument::class);
     }
 
+    public function loan(): BelongsTo
+    {
+        return $this->belongsTo(LoanDetail::class, 'loan_id');
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function getIsConvertedAttribute(): bool
+    {
+        return $this->loan_id !== null;
+    }
+
     public function getFormattedAmountAttribute(): string
     {
-        return '₹ ' . $this->formatIndianNumber($this->loan_amount);
+        return "₹\u{00A0}".$this->formatIndianNumber($this->loan_amount);
     }
 
     public function getTypeLabel(): string
@@ -52,6 +79,7 @@ class Quotation extends Model
             'proprietor' => 'Proprietor / પ્રોપ્રાઇટર',
             'partnership_llp' => 'Partnership / LLP / પાર્ટનરશિપ / LLP',
             'pvt_ltd' => 'PVT LTD / પ્રાઇવેટ લિમિટેડ',
+            'salaried' => 'Salaried / પગારદાર',
             'all' => 'All Types / બધા પ્રકાર',
             default => $this->customer_type,
         };
@@ -60,7 +88,9 @@ class Quotation extends Model
     private function formatIndianNumber($num): string
     {
         $num = (int) $num;
-        if ($num < 1000) return (string) $num;
+        if ($num < 1000) {
+            return (string) $num;
+        }
 
         $result = '';
         $lastThree = $num % 1000;
@@ -76,10 +106,11 @@ class Quotation extends Model
                 $groups[] = substr($remainStr, $start, $i - $start);
                 $i = $start;
             }
-            $result = implode(',', array_reverse($groups)) . ',';
+            $result = implode(',', array_reverse($groups)).',';
         }
 
         $result .= str_pad($lastThree, 3, '0', STR_PAD_LEFT);
+
         return ltrim($result, '0,') ?: '0';
     }
 }

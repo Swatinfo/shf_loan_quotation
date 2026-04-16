@@ -1,0 +1,25 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Storage & cache
+storage/
+bootstrap/cache/
+
+# Environment secrets
+.env
+.env.*
+
+# Backups & archives
+latest_bkp/
+*.zip
+
+# Lock files
+composer.lock
+package-lock.json
+
+# Test cache
+.phpunit.result.cache
+
+# Archived documentation
+.ignore/

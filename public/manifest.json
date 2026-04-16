@@ -1,7 +1,7 @@
 {
-    "name": "SHF Loan Proposal Generator",
-    "short_name": "SHF Loans",
-    "description": "Loan proposal generator with EMI comparison and PDF generation",
+    "name": "SHF World",
+    "short_name": "SHF World",
+    "description": "Shreenathji Home Finance — Loan Management",
     "start_url": "/dashboard",
     "display": "standalone",
     "background_color": "#f8f8f8",

@@ -1,0 +1,172 @@
+System Roles                                                                                              
+                                                                                                            
+  ┌─────────────┬───────────────────────────────────────────────────────────────────┐                       
+  │    Role     │                           Access Level                            │
+  ├─────────────┼───────────────────────────────────────────────────────────────────┤
+  │ Super Admin │ Full access to everything, cannot be restricted                   │
+  ├─────────────┼───────────────────────────────────────────────────────────────────┤
+  │ Admin       │ Full access to most features, manages users/settings/permissions  │
+  ├─────────────┼───────────────────────────────────────────────────────────────────┤
+  │ Staff       │ Day-to-day operations, creates quotations, manages assigned loans │
+  └─────────────┴───────────────────────────────────────────────────────────────────┘
+
+  Task Roles (Loan Assignments)
+
+  ┌─────────────────┬─────────────────────────────────────────────────────────────┐
+  │    Task Role    │                  Typical Responsibilities                   │
+  ├─────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Branch Manager  │ Oversees loans at branch level                              │
+  ├─────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Loan Advisor    │ Primary loan handler, manages documents, coordinates stages │
+  ├─────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Bank Employee   │ Bank-side approvals (BSM/OSV, sanction, e-sign)             │
+  ├─────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Office Employee │ Valuations, docket review, OTC clearance                    │
+  └─────────────────┴─────────────────────────────────────────────────────────────┘
+
+  ---
+  11-Stage Workflow — Role by Role
+
+  Stage 1: Inquiry
+
+  - Auto-completed on quotation conversion (no manual action)
+
+  Stage 2: Document Selection
+
+  - Auto-completed on quotation conversion (no manual action)
+
+  Stage 3: Document Collection
+
+  - Loan Advisor — Collects all required documents, marks them Received/Rejected/Waived, uploads attachments
+
+  Stage 4: Parallel Processing (5 sub-stages)
+
+  ┌──────────────────┬───────────────────┬─────────────────────────────────────────────────────────────┐
+  │    Sub-stage     │        Who        │                        What they do                         │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 4a: Application  │                   │ Enters bank application number + docket timeline            │
+  │ Number           │ Loan Advisor      │ (S+1/S+2/S+3/Custom). Must complete first — unlocks all     │
+  │                  │                   │ others.                                                     │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 4b: BSM/OSV      │ Bank Employee     │ Performs BSM/OSV verification with bank, clicks Complete    │
+  │ Approval         │                   │                                                             │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 4c: Legal        │ 3-phase handoff:  │                                                             │
+  │ Verification     │                   │                                                             │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │                  │ Phase 1: Task     │ Suggests legal advisor name → sends to bank                 │
+  │                  │ Owner (Advisor)   │                                                             │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │                  │ Phase 2: Bank     │ Reviews/confirms legal advisor → initiates legal            │
+  │                  │ Employee          │                                                             │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │                  │ Phase 3: Task     │ Completes when legal verification done                      │
+  │                  │ Owner             │                                                             │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 4d: Technical    │ Office Employee   │ Fills valuation form (property type, area, rates, GPS       │
+  │ Valuation        │                   │ location). Auto-completes on save.                          │
+  ├──────────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 4e: Property     │ Office Employee   │ Secondary valuation (product-specific, e.g. LAP only). Same │
+  │ Valuation        │                   │  form as 4d.                                                │
+  └──────────────────┴───────────────────┴─────────────────────────────────────────────────────────────┘
+  
+  now we want to have one more parallal process after  BSM/OSV   which is Loan Sencton Decision
+  so now new flow will be Once Paralla Processing Starts 
+  only 4a Application process is open all other are disabled
+  Once 4a is completed then only 4b is open other are disabled
+  Once 4b is completed then Legal Verification, Technical Valuation Property Valuation and new Loan Selection is opend, and Stage 5 gets Opended
+
+  Stage 5: Rate & PF Request (3-phase)
+
+  ┌───────┬─────────────────────┬───────────────────────────────────────────────────────────────────────┐
+  │ Phase │         Who         │                                Action                                 │
+  ├───────┼─────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ 1     │ Task Owner          │ Fills all 10 fields (interest rate, repo rate, fees, etc.) → sends to │
+  │       │ (Advisor)           │  bank                                                                 │
+  ├───────┼─────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ 2     │ Bank Employee       │ Reviews/modifies rate details → returns to owner                      │
+  ├───────┼─────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ 3     │ Task Owner          │ Reviews bank's changes (original values shown as hints) → completes   │
+  └───────┴─────────────────────┴───────────────────────────────────────────────────────────────────────┘
+
+  Stage 6: Sanction Letter (3-phase)
+
+  ┌───────┬──────────────┬──────────────────────────────────────────────────────────────────────────────┐
+  │ Phase │     Who      │                                    Action                                    │
+  ├───────┼──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ 1     │ Task Owner   │ Sends for sanction letter generation                                         │
+  ├───────┼──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ 2     │ Bank         │ Generates sanction letter → returns to owner                                 │
+  │       │ Employee     │                                                                              │
+  ├───────┼──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ 3     │ Task Owner   │ Fills sanction date, sanctioned amount, EMI → completes. Docket date         │
+  │       │              │ auto-calculated.                                                             │
+  └───────┴──────────────┴──────────────────────────────────────────────────────────────────────────────┘
+
+  Stage 7: Docket Login (3-phase)
+
+  ┌───────┬─────────────────┬──────────────────────────────────────────────┐
+  │ Phase │       Who       │                    Action                    │
+  ├───────┼─────────────────┼──────────────────────────────────────────────┤
+  │ 1     │ Task Owner      │ Enters login date → sends to office          │
+  ├───────┼─────────────────┼──────────────────────────────────────────────┤
+  │ 2     │ Office Employee │ Reviews docket submission → returns to owner │
+  ├───────┼─────────────────┼──────────────────────────────────────────────┤
+  │ 3     │ Task Owner      │ Completes the stage                          │
+  └───────┴─────────────────┴──────────────────────────────────────────────┘
+
+  Stage 8: KFS Generation
+
+  - Eligible user clicks Complete when KFS is generated
+  - System auto-assigns Stage 9 to Bank Employee
+
+  Stage 9: E-Sign & eNACH (3-phase)
+
+  ┌───────┬──────────────────────┬─────────────────────────────────────────────────┐
+  │ Phase │         Who          │                     Action                      │
+  ├───────┼──────────────────────┼─────────────────────────────────────────────────┤
+  │ 1     │ Bank Employee        │ Generates E-Sign & eNACH → transfers to owner   │
+  ├───────┼──────────────────────┼─────────────────────────────────────────────────┤
+  │ 2     │ Task Owner (Advisor) │ Completes E-Sign with customer → transfers back │
+  ├───────┼──────────────────────┼─────────────────────────────────────────────────┤
+  │ 3     │ Bank Employee        │ Confirms completion → stage done                │
+  └───────┴──────────────────────┴─────────────────────────────────────────────────┘
+
+  Stage 10: Disbursement
+
+  ┌──────────────┬───────────┬──────────────────────────────────────────────────────────────────────────┐
+  │    Method    │    Who    │                               What happens                               │
+  ├──────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Fund         │ Task      │ Enters loan account number, amount, date → Loan completes immediately    │
+  │ Transfer     │ Owner     │ (Stage 11 skipped)                                                       │
+  ├──────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Cheque       │ Task      │ Enters cheque details (number, date, amount) → advances to Stage 11      │
+  │              │ Owner     │                                                                          │
+  └──────────────┴───────────┴──────────────────────────────────────────────────────────────────────────┘
+
+  Stage 11: OTC Clearance (Cheque only)
+
+  - Office Employee — Enters cheque handover date → Loan Completed
+
+  ---
+  Auto-Assignment Priority
+
+  When a stage needs an assignee, the system checks in order:
+  1. Product Stage Config (branch/city/state-specific user)
+  2. Bank's default employee (for bank_employee stages)
+  3. Bank employee matching the branch
+  4. Bank employee (any branch)
+  5. Default office employee for branch (for office_employee stages)
+  6. Loan creator (if advisor/branch_manager)
+  7. Any user with eligible role in same branch
+  8. Any active user with eligible role
+
+  ---
+  Visibility Rules
+
+  A user can see a loan if they:
+  - Have view_all_loans permission, OR
+  - Created the loan, OR
+  - Are the assigned advisor, OR
+  - Are assigned to any stage, OR
+  - Are a branch manager for the loan's branch

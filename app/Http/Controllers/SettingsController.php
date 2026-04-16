@@ -17,8 +17,9 @@ class SettingsController extends Controller
     {
         $config = $this->configService->load();
         $bankCharges = BankCharge::orderBy('bank_name')->get();
+        $loanBanks = \App\Models\Bank::active()->orderBy('name')->pluck('name')->toArray();
 
-        return view('settings.index', compact('config', 'bankCharges'));
+        return view('settings.index', compact('config', 'bankCharges', 'loanBanks'));
     }
 
     public function updateCompany(Request $request)
@@ -150,6 +151,36 @@ class SettingsController extends Controller
         ActivityLog::log('settings_updated', null, ['section' => 'gst']);
 
         return back()->with('success', 'GST percentage updated.');
+    }
+
+    public function updateDvrContactTypes(Request $request)
+    {
+        $validated = $request->validate([
+            'dvrContactTypes' => 'required|array|min:1',
+            'dvrContactTypes.*.key' => 'required|string|max:50',
+            'dvrContactTypes.*.label_en' => 'required|string|max:100',
+            'dvrContactTypes.*.label_gu' => 'required|string|max:100',
+        ]);
+
+        $this->configService->updateSection('dvrContactTypes', array_values($validated['dvrContactTypes']));
+        ActivityLog::log('settings_updated', null, ['section' => 'dvr_contact_types']);
+
+        return back()->with('success', 'DVR contact types updated.');
+    }
+
+    public function updateDvrPurposes(Request $request)
+    {
+        $validated = $request->validate([
+            'dvrPurposes' => 'required|array|min:1',
+            'dvrPurposes.*.key' => 'required|string|max:50',
+            'dvrPurposes.*.label_en' => 'required|string|max:100',
+            'dvrPurposes.*.label_gu' => 'required|string|max:100',
+        ]);
+
+        $this->configService->updateSection('dvrPurposes', array_values($validated['dvrPurposes']));
+        ActivityLog::log('settings_updated', null, ['section' => 'dvr_purposes']);
+
+        return back()->with('success', 'DVR purposes updated.');
     }
 
     public function reset()

@@ -59,8 +59,12 @@ class PdfGenerationService
         // Ensure directories exist
         $pdfDir = storage_path('app/pdfs');
         $tmpDir = storage_path('app/tmp');
-        if (!is_dir($pdfDir)) mkdir($pdfDir, 0755, true);
-        if (!is_dir($tmpDir)) mkdir($tmpDir, 0755, true);
+        if (! is_dir($pdfDir)) {
+            mkdir($pdfDir, 0755, true);
+        }
+        if (! is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
 
         $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $data['customerName']);
         $now = now();
@@ -140,11 +144,13 @@ class PdfGenerationService
     private function generateWithChrome(string $tmpHtml, string $filepath): ?array
     {
         $chromePath = $this->getChromePath();
+        $profileDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'shf_chrome_' . uniqid();
 
         if (PHP_OS_FAMILY === 'Windows') {
             $cmd = '"' . $chromePath . '"'
                 . ' --headless --disable-gpu --no-sandbox --disable-software-rasterizer'
                 . ' --run-all-compositor-stages-before-draw'
+                . ' --user-data-dir="' . str_replace('/', '\\', $profileDir) . '"'
                 . ' --print-to-pdf="' . str_replace('/', '\\', $filepath) . '"'
                 . ' --no-pdf-header-footer'
                 . ' "' . str_replace('/', '\\', $tmpHtml) . '"'
@@ -153,18 +159,32 @@ class PdfGenerationService
             $cmd = escapeshellarg($chromePath)
                 . ' --headless --disable-gpu --no-sandbox --disable-software-rasterizer'
                 . ' --run-all-compositor-stages-before-draw'
+                . ' --user-data-dir=' . escapeshellarg($profileDir)
                 . ' --print-to-pdf=' . escapeshellarg($filepath)
                 . ' --no-pdf-header-footer'
                 . ' ' . escapeshellarg($tmpHtml)
                 . ' 2>&1';
         }
 
+        Log::info('Chrome PDF command', ['cmd' => $cmd]);
         exec($cmd, $output, $exitCode);
         @unlink($tmpHtml);
+        $this->removeDirectory($profileDir);
 
-        if (!file_exists($filepath)) {
+        // On Windows, give Chrome a moment to flush the file
+        if (PHP_OS_FAMILY === 'Windows' && $exitCode === 0 && ! file_exists($filepath)) {
+            usleep(500000); // 500ms
+        }
+
+        if (! file_exists($filepath)) {
             $errMsg = implode("\n", $output ?? []);
-            Log::error('Chrome PDF generation failed', ['exit_code' => $exitCode, 'output' => $errMsg]);
+            Log::error('Chrome PDF generation failed', [
+                'exit_code' => $exitCode,
+                'output' => $errMsg,
+                'filepath' => $filepath,
+                'filepath_exists' => file_exists($filepath),
+                'dir_contents' => glob(dirname($filepath) . '/*'),
+            ]);
 
             return ['error' => 'PDF generation failed (exit code ' . $exitCode . '): ' . $errMsg];
         }
@@ -217,6 +237,27 @@ class PdfGenerationService
         }
 
         return null;
+    }
+
+    /**
+     * Recursively remove a directory.
+     */
+    /**
+     * Recursively remove a directory.
+     */
+    private function removeDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+        @rmdir($dir);
     }
 
     /**
@@ -353,7 +394,7 @@ class PdfGenerationService
             .page-header { position: fixed; top: 0; left: 0; right: 0; }
             .page-footer { position: fixed; bottom: 0; left: 0; right: 0; }
             table.page-wrapper { width: 100%; border-collapse: collapse; }
-            table.page-wrapper > thead > tr > td { height: 100mm; }
+            table.page-wrapper > thead > tr > td { height: 42mm; }
             table.page-wrapper > tfoot > tr > td { height: 18mm; }
             table.page-wrapper > tbody > tr > td { vertical-align: top; }
 
@@ -445,56 +486,63 @@ class PdfGenerationService
         $html .= '<div class="page-header">';
         $html .= '<div class="header-bar">';
         $html .= '<table class="header-table"><tr>';
+        $branded = $data['branded'] ?? true;
         $html .= '<td style="width:40%;">';
-        if ($logoBase64) {
-            $html .= '<img src="' . $logoBase64 . '" class="header-logo">';
-        } else {
-            $html .= '<span style="font-size:24pt; font-weight:bold; color:' . $accent . ';">SHF</span><br>';
-            $html .= '<span style="font-size:7pt; color:' . $borderColor . ';">SHREENATHJI HOME FINANCE</span><br>';
-            $html .= '<span style="font-size:7pt; color:' . $borderColor . ';">SHAPING HAPPINESS FOREVER</span>';
+        if ($branded) {
+            if ($logoBase64) {
+                $html .= '<img src="' . $logoBase64 . '" class="header-logo">';
+            } else {
+                $html .= '<span style="font-size:24pt; font-weight:bold; color:' . $accent . ';">SHF</span><br>';
+                $html .= '<span style="font-size:7pt; color:' . $borderColor . ';">SHREENATHJI HOME FINANCE</span><br>';
+                $html .= '<span style="font-size:7pt; color:' . $borderColor . ';">SHAPING HAPPINESS FOREVER</span>';
+            }
         }
         $html .= '</td>';
         $html .= '<td style="width:60%; text-align:right;">';
         $html .= '<div class="header-title">' . $e($T['pdfTitle']) . '</div>';
         $html .= '<div class="header-sub">' . $e($T['date']) . ' ' . $e($data['date']) . '</div>';
-        $html .= '<div class="header-sub">' . $e($data['companyPhone']) . '  |  ' . $e($data['companyEmail']) . '</div>';
+        if ($branded) {
+            $html .= '<div class="header-sub">' . $e($data['companyPhone']) . '  |  ' . $e($data['companyEmail']) . '</div>';
+        }
         $html .= '</td></tr></table>';
         $html .= '</div>';
         $html .= '<div class="accent-bar"></div>';
-        $html .= '<div class="customer-box" style="margin:2mm 5mm 2mm 5mm;">';
-        $html .= '<table class="cust-table"><tr>';
-        $html .= '<td style="width:50%;">';
-        $html .= '<span class="label">' . $e($T['customer']) . '</span><br /><span class="value">' . $e($data['customerName']) . '</span><br>';
-        $html .= '<span class="label">' . $e($T['type']) . '</span><br /><span class="value">' . $e($customerTypeLabel) . '</span>';
-        $html .= '</td>';
-        $html .= '<td style="width:50%;">';
-        $html .= '<span class="label">' . $e($T['loanAmount']) . '</span><br /><span class="value">' . $e($loanFormatted) . '</span><br>';
-        $html .= '<span class="words">(' . $e($amountWords) . ')</span>';
-        $html .= '</td>';
-        $html .= '</tr>';
-        if (!empty($data['preparedByName']) || !empty($data['preparedByMobile'])) {
-            $html .= '<tr>';
-            $html .= '<td style="padding-top:1mm;">';
-            $html .= '<span class="label">' . $e($T['preparedBy']) . ':</span><br /> ';
-            if (!empty($data['preparedByName'])) {
-                $html .= '<span class="value">' . $e($data['preparedByName']) . '</span>';
-            }
-            $html .= '</td>';
-            $html .= '<td style="padding-top:1mm;">';
-            if (!empty($data['preparedByMobile'])) {
-                $html .= '  <span class="label">' . $e($T['mobile']) . '</span><br /> <span class="value">' . $e($data['preparedByMobile']) . '</span>';
-            }
-            $html .= '</td>';
-            $html .= '</tr>';
-        }
-        $html .= '</table></div>';
         $html .= '</div>';
+
+        // Customer box HTML — rendered in first page content only (not in fixed header)
+        $customerBoxHtml = '<div class="customer-box" style="margin:2mm 0mm 2mm 0mm;">';
+        $customerBoxHtml .= '<table class="cust-table"><tr>';
+        $customerBoxHtml .= '<td style="width:50%;">';
+        $customerBoxHtml .= '<span class="label">' . $e($T['customer']) . '</span><br /><span class="value">' . $e($data['customerName']) . '</span><br>';
+        $customerBoxHtml .= '<span class="label">' . $e($T['type']) . '</span><br /><span class="value">' . $e($customerTypeLabel) . '</span>';
+        $customerBoxHtml .= '</td>';
+        $customerBoxHtml .= '<td style="width:50%;">';
+        $customerBoxHtml .= '<span class="label">' . $e($T['loanAmount']) . '</span><br /><span class="value">' . $e($loanFormatted) . '</span><br>';
+        $customerBoxHtml .= '<span class="words">(' . $e($amountWords) . ')</span>';
+        $customerBoxHtml .= '</td>';
+        $customerBoxHtml .= '</tr>';
+        if (!empty($data['preparedByName']) || !empty($data['preparedByMobile'])) {
+            $customerBoxHtml .= '<tr>';
+            $customerBoxHtml .= '<td style="padding-top:1mm;">';
+            $customerBoxHtml .= '<span class="label">' . $e($T['preparedBy']) . ':</span><br /> ';
+            if (!empty($data['preparedByName'])) {
+                $customerBoxHtml .= '<span class="value">' . $e($data['preparedByName']) . '</span>';
+            }
+            $customerBoxHtml .= '</td>';
+            $customerBoxHtml .= '<td style="padding-top:1mm;">';
+            if (!empty($data['preparedByMobile'])) {
+                $customerBoxHtml .= '  <span class="label">' . $e($T['mobile']) . '</span><br /> <span class="value">' . $e($data['preparedByMobile']) . '</span>';
+            }
+            $customerBoxHtml .= '</td>';
+            $customerBoxHtml .= '</tr>';
+        }
+        $customerBoxHtml .= '</table></div>';
 
         // ---- FIXED FOOTER ----
         $html .= '<div class="page-footer">';
         $html .= '<div class="footer-bar">';
         $html .= '<div class="footer-accent"></div>';
-        if (!empty($data['ourServices'])) {
+        if ($branded && !empty($data['ourServices'])) {
             $html .= '<div style="color:' . $footerMuted . '; font-size:10pt; padding:1.5mm 18mm 0; text-align:center;">';
             $html .= '<strong>Our Services:</strong> ' . $e($data['ourServices']);
             $html .= '</div>';
@@ -509,6 +557,9 @@ class PdfGenerationService
         $html .= '<tfoot><tr><td></td></tr></tfoot>';
         $html .= '<tbody><tr><td>';
         $html .= '<div class="content">';
+
+        // Customer details — first page only
+        $html .= $customerBoxHtml;
 
         // Documents
         $docsPerPage = 15;

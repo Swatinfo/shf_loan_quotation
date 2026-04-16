@@ -1,7 +1,7 @@
 {
-    "name": "SHF Loan Proposal Generator",
+    "name": "SHF Loan Management",
     "short_name": "SHF Loans",
-    "description": "Loan proposal generator with EMI comparison and PDF generation",
+    "description": "Loan Management with EMI comparison and PDF generation",
     "start_url": "/index.php",
     "display": "standalone",
     "background_color": "#f8f8f8",
