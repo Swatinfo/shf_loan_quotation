@@ -286,6 +286,43 @@
             </div>
         </div>
 
+        {{-- Notification bell badge — poll /api/notifications/count every 60s.
+             Updates every `.js-notif-badge` element (topbar bell + any page-level
+             clones) and exposes window.updateNotifBadge() so other scripts can
+             trigger an immediate refresh after marking notifications read. --}}
+        <script>
+            (function () {
+                'use strict';
+                var URL = @json(route('api.notifications.count'));
+
+                function apply(count) {
+                    document.querySelectorAll('.js-notif-badge').forEach(function (b) {
+                        if (!count || count <= 0) {
+                            b.classList.add('d-none');
+                            b.textContent = '';
+                        } else {
+                            b.classList.remove('d-none');
+                            b.textContent = count > 99 ? '99+' : String(count);
+                        }
+                    });
+                }
+
+                window.updateNotifBadge = function () {
+                    fetch(URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (data) { if (data && typeof data.count !== 'undefined') { apply(data.count); } })
+                        .catch(function () {});
+                };
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', window.updateNotifBadge);
+                } else {
+                    window.updateNotifBadge();
+                }
+                setInterval(window.updateNotifBadge, 60000);
+            })();
+        </script>
+
         {{-- Existing push helper script (window.SHFPush) --}}
         <script src="{{ asset('newtheme/js/push-notifications.js') }}?v={{ $v }}"></script>
         <script>

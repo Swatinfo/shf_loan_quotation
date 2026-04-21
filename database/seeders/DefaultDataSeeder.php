@@ -59,10 +59,27 @@ class DefaultDataSeeder extends Seeder
             DB::table('quotations')->delete();
         }
 
-        $this->seedSampleQuotationAndLoan();
-        $this->seedExtraPendingQuotations();
-        $this->seedGeneralTaskSamples();
-        $this->seedDvrSamples();
+        if (env('SEED_QUOTATIONS') == 1) {
+            $this->seedSampleQuotationAndLoan();
+            $this->seedExtraPendingQuotations();
+        }
+        if (env('DELETE_EXISTING_TASKS') == 1) {
+            // Clear general tasks (comments first — FK to general_tasks)
+            DB::table('general_task_comments')->delete();
+            DB::table('general_tasks')->delete();
+        }
+
+        if (env('SEED_TASKS') == 1) {
+            $this->seedGeneralTaskSamples();
+        }
+
+        if (env('DELETE_EXISTING_DVR') == 1) {
+            DB::table('daily_visit_reports')->delete();
+        }
+
+        if (env('SEED_DVR') == 1) {
+            $this->seedDvrSamples();
+        }
     }
 
     private function purgeLoanData(): void
@@ -907,6 +924,13 @@ class DefaultDataSeeder extends Seeder
                 ->pluck('location_id')
                 ->toArray();
 
+            // HDFC (1), Axis (3), Kotak (4) products don't run KFS Generation or
+            // E-Sign/eNACH through this platform — those happen at the bank.
+            // The UI toggle reads `is_enabled`, so disabling there turns the
+            // switch off on the product-stages page.
+            $disabledBankIds = [1, 3, 4];
+            $disabledStageKeys = ['kfs', 'esign'];
+
             $order = 0;
             foreach ($stages as $stage) {
                 $assignedRole = $stage->assigned_role ?? 'task_owner';
@@ -919,9 +943,12 @@ class DefaultDataSeeder extends Seeder
                     $defaultUserId = $officeEmployeeId;
                 }
 
+                $stageDisabledForBank = in_array($product->bank_id, $disabledBankIds, true)
+                    && in_array($stage->stage_key, $disabledStageKeys, true);
+
                 DB::table('product_stages')->updateOrInsert(
                     ['product_id' => $product->id, 'stage_id' => $stage->id],
-                    ['is_enabled' => true, 'allow_skip' => false, 'auto_skip' => false, 'sort_order' => $order++, 'default_user_id' => $defaultUserId, 'created_at' => now(), 'updated_at' => now()]
+                    ['is_enabled' => ! $stageDisabledForBank, 'allow_skip' => false, 'auto_skip' => $stageDisabledForBank, 'sort_order' => $order++, 'default_user_id' => $defaultUserId, 'created_at' => now(), 'updated_at' => now()]
                 );
 
                 $ps = DB::table('product_stages')
@@ -1907,8 +1934,10 @@ class DefaultDataSeeder extends Seeder
                         'advocate' => $charges->advocate ?? 0,
                         'iom' => 0,
                         'tc' => $charges->tc ?? 0,
-                        'extra1Name' => null, 'extra1Amount' => 0,
-                        'extra2Name' => null, 'extra2Amount' => 0,
+                        'extra1Name' => null,
+                        'extra1Amount' => 0,
+                        'extra2Name' => null,
+                        'extra2Amount' => 0,
                         'total' => 0,
                     ],
                     'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($row, $avgRoi) {
@@ -2030,9 +2059,21 @@ class DefaultDataSeeder extends Seeder
         }
 
         $contactNames = [
-            'Vipul Parsana', 'Rajesh Patel', 'Amit Shah', 'Priya Mehta', 'Suresh Kumar',
-            'Meera Joshi', 'Kiran Desai', 'Nilesh Bhatt', 'Hetal Trivedi', 'Darshan Raval',
-            'Anand Mehta', 'Bhavesh Shah', 'Chirag Pandya', 'Divya Joshi', 'Esha Vora',
+            'Vipul Parsana',
+            'Rajesh Patel',
+            'Amit Shah',
+            'Priya Mehta',
+            'Suresh Kumar',
+            'Meera Joshi',
+            'Kiran Desai',
+            'Nilesh Bhatt',
+            'Hetal Trivedi',
+            'Darshan Raval',
+            'Anand Mehta',
+            'Bhavesh Shah',
+            'Chirag Pandya',
+            'Divya Joshi',
+            'Esha Vora',
         ];
 
         // Templates: (visit_offset_days, follow_up_offset, follow_up_done)
