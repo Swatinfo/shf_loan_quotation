@@ -1,0 +1,239 @@
+/* Newtheme loan disbursement — resources/views/newtheme/loans/disbursement.blade.php */
+
+.ld-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    margin-left: 10px;
+    border-radius: 999px;
+    background: var(--accent, #f15a29);
+    color: #fff;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+}
+
+.ld-card { margin-bottom: 14px; }
+.ld-req { color: var(--red, #c0392b); }
+.ld-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ld-fieldset[disabled] { opacity: 0.85; }
+
+/* ========== Alerts ========== */
+.ld-alert { margin-bottom: 14px; border-left-width: 3px; border-left-style: solid; }
+.ld-alert-red   { border-left-color: var(--red, #c0392b);   background: var(--red-soft, rgba(192,57,43,0.06)); color: var(--red, #c0392b); }
+.ld-alert-amber { border-left-color: var(--amber, #d97706); background: var(--amber-soft, rgba(217,119,6,0.06)); color: var(--amber, #b85a00); }
+.ld-alert-green { border-left-color: var(--green, #1f8c4d); background: var(--green-soft, rgba(39,174,96,0.08)); color: var(--green, #1f8c4d); }
+
+.ld-info {
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    background: var(--blue-soft, rgba(37,99,235,0.08));
+    color: var(--blue, #2563eb);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+/* ========== Grid + fields ========== */
+.ld-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+@media (max-width: 700px) {
+    .ld-grid { grid-template-columns: 1fr; }
+}
+
+.ld-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 12px;
+}
+.ld-field:last-child { margin-bottom: 0; }
+.ld-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.lbl-sm { font-size: 10px; }
+
+.ld-textarea {
+    width: 100%;
+    height: auto !important;
+    padding: 10px !important;
+    line-height: 1.45;
+    resize: vertical;
+    min-height: 72px;
+    font-family: inherit;
+}
+
+/* ========== Amount field (₹-prefixed) ========== */
+.ld-amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.ld-amount .ld-rupee {
+    position: absolute;
+    left: 10px;
+    font-size: 14px;
+    color: var(--ink-3);
+    pointer-events: none;
+    z-index: 1;
+}
+.ld-amount-input {
+    padding-left: 24px !important;
+    flex: 1 1 auto;
+}
+.ld-amount-sm .ld-rupee { font-size: 12.5px; left: 8px; }
+.ld-amount-sm .ld-amount-input { padding-left: 20px !important; font-size: 13px; }
+
+.ld-words { font-size: 11.5px; color: var(--ink-4); min-height: 14px; line-height: 1.4; margin-top: 2px; }
+.ld-warning { font-size: 11.5px; color: var(--amber, #d97706); margin-top: 4px; }
+.ld-warning.is-danger { color: var(--red, #c0392b); }
+.ld-warning.is-warning { color: var(--amber, #d97706); }
+.ld-warning-inline { margin-left: 6px; }
+
+/* ========== Method cards (radio group) ========== */
+.ld-method-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+@media (max-width: 700px) {
+    .ld-method-grid { grid-template-columns: 1fr; }
+}
+.ld-method-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.ld-method-card:hover { border-color: var(--accent, #f15a29); background: var(--paper-2, #f4f2f0); }
+.ld-method-card.is-selected {
+    border-color: var(--accent, #f15a29);
+    background: rgba(241, 90, 41, 0.06);
+    box-shadow: 0 2px 10px rgba(241, 90, 41, 0.1);
+}
+.ld-method-radio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.ld-method-tick {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--line-strong, #c9c5c3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    flex: 0 0 auto;
+    transition: all 0.15s;
+}
+.ld-method-tick svg { width: 14px; height: 14px; }
+.ld-method-card.is-selected .ld-method-tick {
+    background: var(--accent, #f15a29);
+    border-color: var(--accent, #f15a29);
+    color: #fff;
+}
+.ld-method-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* ========== Cheque table ========== */
+.ld-cheque-wrap {
+    margin-top: 12px;
+    padding: 14px;
+    background: var(--paper-2, #f4f2f0);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+.ld-cheque-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.ld-cheque-title {
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ld-cheque-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1.2fr 1fr 1fr 44px;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    align-items: end;
+}
+@media (max-width: 900px) {
+    .ld-cheque-row { grid-template-columns: 1fr 1fr; }
+    .ld-cheque-remove { grid-column: 1 / -1; justify-self: end; }
+}
+@media (max-width: 500px) {
+    .ld-cheque-row { grid-template-columns: 1fr; }
+}
+.ld-cheque-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.ld-cheque-remove { display: flex; justify-content: center; align-items: end; }
+.ld-cheque-remove .btn { height: 32px; padding: 0 10px; }
+
+.ld-cheque-total {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px dashed var(--line);
+    font-size: 12.5px;
+    color: var(--ink-3);
+}
+.ld-cheque-total strong { color: var(--ink); }
+
+/* ========== Actions bar ========== */
+.ld-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+/* ========== Error state ========== */
+.input.is-invalid {
+    border-color: var(--red, #c0392b) !important;
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+}
+
+.datepicker-dropdown { z-index: 10050; }

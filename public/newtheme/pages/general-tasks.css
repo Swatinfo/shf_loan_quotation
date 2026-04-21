@@ -1,0 +1,244 @@
+/* Page-specific styles for resources/views/newtheme/general-tasks/index.blade.php */
+
+/* ===== Filters ===== */
+.gt-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.gt-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gt-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.gt-field .err {
+    font-size: 11.5px;
+    color: var(--red);
+    margin-top: 4px;
+    min-height: 14px;
+}
+.gt-field .input.input-error,
+.gt-field input.input-error,
+.gt-field select.input-error,
+.gt-field textarea.input-error {
+    border-color: var(--red, #c0392b) !important;
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+}
+
+/* Collapsed-by-default filters card — same pattern as quotations page */
+.gt-filters-card .gt-filters-toggle { cursor: pointer; user-select: none; }
+.gt-filters-card .gt-chevron {
+    display: inline-flex;
+    margin-left: 4px;
+    color: var(--ink-3);
+    transition: transform 0.15s;
+}
+.gt-filters-card .gt-chevron svg { width: 14px; height: 14px; }
+.gt-filters-card.collapsed .gt-chevron { transform: rotate(-90deg); }
+.gt-filters-card.collapsed .gt-filters-body { display: none; }
+
+.gt-filters-card .gt-filter-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin-right: 6px;
+}
+.gt-filters-card .gt-filter-icon svg { width: 18px; height: 18px; }
+.gt-filters-card .gt-active-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    margin-left: 8px;
+    background: var(--paper-2, #f4f2f0);
+    color: var(--ink-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.gt-filters-card .gt-active-count.has-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* ===== Results ===== */
+.gt-loader { padding: 24px; text-align: center; color: var(--ink-4); font-size: 13px; }
+
+.gt-results .tbl thead th { background: var(--paper-2); }
+.gt-results .tbl tbody tr { cursor: default; }
+.gt-results .tbl .col-actions { width: auto; min-width: 140px; text-align: right; }
+
+/* Priority + status pills rendered inline from server HTML */
+.gt-pill-overdue   { background: rgba(192,57,43,0.10); color: var(--red, #c0392b); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 700; }
+.gt-pill-today     { background: rgba(241,90,41,0.14); color: var(--accent-deep, #c0392b); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 700; }
+.gt-pill-soon      { background: rgba(37,99,235,0.12); color: var(--blue, #2563eb); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 700; }
+
+/* Per-row action buttons — semantic tones like the quotations listing */
+.gt-actions { display: inline-flex; gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
+.gt-act {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--line-strong, #c9c5c3);
+    background: #fff;
+    color: var(--ink-3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.1s;
+    flex-shrink: 0;
+}
+.gt-act .i { width: 14px; height: 14px; }
+.gt-act.tone-info    { background: var(--blue-soft, rgba(37,99,235,0.12));  border-color: rgba(37,99,235,0.55);  color: var(--blue, #2563eb); }
+.gt-act.tone-info:hover    { background: var(--blue, #2563eb); color: #fff; border-color: var(--blue, #2563eb); }
+.gt-act.tone-success { background: var(--green-soft, rgba(39,174,96,0.12)); border-color: rgba(39,174,96,0.55); color: var(--green, #1f8c4d); }
+.gt-act.tone-success:hover { background: var(--green, #27ae60); color: #fff; border-color: var(--green, #27ae60); }
+.gt-act.tone-accent  { background: var(--accent, #f15a29); border-color: var(--accent, #f15a29); color: #fff; }
+.gt-act.tone-accent:hover  { background: var(--accent-deep, #c0392b); border-color: var(--accent-deep, #c0392b); color: #fff; }
+.gt-act.tone-danger  { background: var(--red-soft, rgba(192,57,43,0.10)); border-color: rgba(192,57,43,0.55); color: var(--red, #c0392b); }
+.gt-act.tone-danger:hover  { background: var(--red, #c0392b); border-color: var(--red, #c0392b); color: #fff; }
+
+/* ===== Pager ===== */
+.gt-pager {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-3);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.gt-pager .gt-pages { display: flex; gap: 4px; }
+.gt-pager .gt-pg-btn {
+    min-width: 28px; height: 28px; padding: 0 8px;
+    border-radius: 6px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); font-size: 12px; cursor: pointer;
+}
+.gt-pager .gt-pg-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+.gt-pager .gt-pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ===== Create/edit modal ===== */
+.gt-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(20, 18, 19, 0.55);
+    z-index: 1200;
+}
+.gt-modal {
+    position: fixed;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 32px);
+    max-width: 560px;
+    max-height: calc(100vh - 40px);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+    z-index: 1201;
+    display: flex;
+    flex-direction: column;
+}
+.gt-modal form { display: flex; flex-direction: column; min-height: 0; }
+.gt-modal-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+}
+.gt-modal-hd h3 { font-family: 'Jost', sans-serif; font-weight: 600; font-size: 16px; margin: 0; color: var(--ink); }
+.gt-modal-hd .icon-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: none;
+    background: none; color: var(--ink-3); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.gt-modal-hd .icon-btn:hover { background: var(--paper-2); color: var(--ink); }
+.gt-modal-bd {
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.gt-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 599px) {
+    .gt-row-2 { grid-template-columns: 1fr; }
+}
+.gt-modal-ft {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+}
+
+/* Loan-search autocomplete panel */
+.gt-loan-results {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+}
+.gt-loan-results.open { display: block; }
+.gt-loan-results .item {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    cursor: pointer;
+    line-height: 1.4;
+}
+.gt-loan-results .item:hover { background: var(--paper-2); }
+
+/* ===== Phone — action cell full-width + grid buttons ===== */
+@media (max-width: 768px) {
+    .gt-results .tbl .col-actions,
+    table.tbl td.col-actions {
+        width: 100% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px;
+        padding-top: 8px !important;
+        margin-top: 4px;
+        border-top: 1px dashed var(--line);
+    }
+    table.tbl td.col-actions::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        flex: 0 0 auto !important;
+        text-align: left;
+        margin-bottom: 2px;
+    }
+    .gt-actions {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)) !important;
+        gap: 8px;
+        width: 100%;
+    }
+    .gt-actions form { display: inline-flex; width: 100%; }
+    .gt-actions form .gt-act { width: 100%; }
+    .gt-act { width: 100%; height: 38px; min-width: 0; }
+    .gt-act .i { width: 16px; height: 16px; }
+}

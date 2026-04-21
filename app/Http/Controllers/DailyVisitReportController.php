@@ -28,8 +28,13 @@ class DailyVisitReportController extends Controller
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $contactTypes = $config['dvrContactTypes'] ?? [];
         $purposes = $config['dvrPurposes'] ?? [];
+        $canCreate = $user->hasPermission('create_dvr');
 
-        return view('dvr.index', compact('canViewAll', 'isBdh', 'isBranchManager', 'users', 'contactTypes', 'purposes'));
+        $template = 'newtheme.dvr.index';
+
+        return view($template, compact(
+            'canViewAll', 'isBdh', 'isBranchManager', 'users', 'contactTypes', 'purposes', 'canCreate'
+        ));
     }
 
     /**
@@ -70,12 +75,15 @@ class DailyVisitReportController extends Controller
         // Follow-up filter (default: exclude completed follow-ups)
         $followUpFilter = $request->input('follow_up', 'active');
         if ($followUpFilter === 'active') {
-            // Show visits without follow-up + visits with pending follow-up (exclude done)
+            // Show: visits without follow-up + visits with pending follow-up +
+            // visits that had a follow-up logged against them (so the "N
+            // follow-ups taken" chain stays visible in the default view).
             $query->where(function ($q) {
                 $q->where('follow_up_needed', false)
                     ->orWhere(function ($q2) {
                         $q2->where('follow_up_needed', true)->where('is_follow_up_done', false);
-                    });
+                    })
+                    ->orWhereNotNull('follow_up_visit_id');
             });
         } elseif ($followUpFilter === 'pending') {
             $query->pendingFollowUps();
@@ -129,7 +137,43 @@ class DailyVisitReportController extends Controller
         $contactTypeLabels = collect($config['dvrContactTypes'] ?? [])->pluck('label_en', 'key')->toArray();
         $purposeLabels = collect($config['dvrPurposes'] ?? [])->pluck('label_en', 'key')->toArray();
 
-        $data = $visits->map(function (DailyVisitReport $visit) use ($user, $contactTypeLabels, $purposeLabels) {
+        // Preload chain links so we can count follow-ups per visit without
+        // N+1 queries. childMap: parent_id => child_id. parentMap: id =>
+        // parent_id. Every visit in the chain reports the same total so that
+        // a child (e.g. the follow-up visit itself) also shows the count —
+        // not just the chain root.
+        $childMap = DailyVisitReport::query()
+            ->whereNotNull('follow_up_visit_id')
+            ->pluck('follow_up_visit_id', 'id')
+            ->all();
+        $parentMap = DailyVisitReport::query()
+            ->whereNotNull('parent_visit_id')
+            ->pluck('parent_visit_id', 'id')
+            ->all();
+
+        $countFollowUps = function (int $visitId) use ($childMap, $parentMap): int {
+            // Walk up to the chain root via parent_visit_id.
+            $root = $visitId;
+            $seenUp = [];
+            while (isset($parentMap[$root]) && ! isset($seenUp[$root])) {
+                $seenUp[$root] = true;
+                $root = $parentMap[$root];
+            }
+
+            // Walk down from the root via follow_up_visit_id, counting hops.
+            $count = 0;
+            $cursor = $root;
+            $seenDown = [];
+            while (isset($childMap[$cursor]) && ! isset($seenDown[$cursor])) {
+                $seenDown[$cursor] = true;
+                $cursor = $childMap[$cursor];
+                $count++;
+            }
+
+            return $count;
+        };
+
+        $data = $visits->map(function (DailyVisitReport $visit) use ($user, $contactTypeLabels, $purposeLabels, $countFollowUps) {
             $loanInfo = '';
             if ($visit->loan) {
                 $loanInfo = '<a href="'.route('loans.show', $visit->loan_id).'" class="text-decoration-none">'
@@ -143,9 +187,12 @@ class DailyVisitReportController extends Controller
             // Follow-up status (same urgency logic as personal task due dates)
             $followUpHtml = '—';
             $followUpUrgency = null;
-            if ($visit->follow_up_needed) {
+            if ($visit->is_follow_up_done && ! $visit->follow_up_needed) {
+                // Visit saved with no pending follow-up — closed/completed.
+                $followUpHtml = '<span class="shf-badge shf-badge-green shf-text-2xs">Completed</span>';
+            } elseif ($visit->follow_up_needed) {
                 if ($visit->is_follow_up_done) {
-                    $followUpHtml = '<span class="shf-badge shf-badge-green shf-text-2xs">Done</span>';
+                    $followUpHtml = '<span class="shf-badge shf-badge-green shf-text-2xs">Completed</span>';
                     if ($visit->follow_up_visit_id) {
                         $followUpHtml .= ' <a href="'.route('dvr.show', $visit->follow_up_visit_id).'" class="shf-text-2xs">View</a>';
                     }
@@ -176,6 +223,13 @@ class DailyVisitReportController extends Controller
             $contactTypeLabel = $contactTypeLabels[$visit->contact_type] ?? ucfirst(str_replace('_', ' ', $visit->contact_type));
             $purposeLabel = $purposeLabels[$visit->purpose] ?? ucfirst(str_replace('_', ' ', $visit->purpose));
 
+            // Number of follow-up visits in the chain below this visit.
+            $followUpsTaken = $countFollowUps($visit->id);
+            if ($followUpsTaken > 0) {
+                $label = $followUpsTaken === 1 ? 'follow-up taken' : 'follow-ups taken';
+                $followUpHtml .= '<br><span class="shf-badge shf-badge-blue shf-text-2xs">'.$followUpsTaken.' '.$label.'</span>';
+            }
+
             return [
                 'id' => $visit->id,
                 'visit_date' => $visit->visit_date->format('d M Y'),
@@ -194,6 +248,7 @@ class DailyVisitReportController extends Controller
                 'follow_up_urgency' => $followUpUrgency,
                 'follow_up_needed' => $visit->follow_up_needed,
                 'is_follow_up_done' => $visit->is_follow_up_done,
+                'follow_ups_taken' => $followUpsTaken,
                 'show_url' => route('dvr.show', $visit),
                 'can_edit' => $visit->isEditableBy($user),
                 'can_delete' => $visit->isDeletableBy($user),
@@ -217,11 +272,21 @@ class DailyVisitReportController extends Controller
         $user = Auth::user();
         $validated['user_id'] = $user->id;
         $validated['visit_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
-        $validated['follow_up_needed'] = ! empty($validated['follow_up_needed']);
         $validated['branch_id'] = $user->default_branch_id;
 
+        // Derive follow-up state from the date. No date entered = visit is
+        // closed (follow_up_needed = false, is_follow_up_done = true) so it
+        // doesn't sit "pending" forever. A date entered = follow_up_needed = true
+        // (still open) regardless of the checkbox.
         if (! empty($validated['follow_up_date'])) {
             $validated['follow_up_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
+            $validated['follow_up_needed'] = true;
+            $validated['is_follow_up_done'] = false;
+        } else {
+            $validated['follow_up_needed'] = false;
+            $validated['follow_up_date'] = null;
+            $validated['follow_up_notes'] = null;
+            $validated['is_follow_up_done'] = true;
         }
 
         $visit = DailyVisitReport::create($validated);
@@ -271,7 +336,9 @@ class DailyVisitReportController extends Controller
 
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return view('dvr.show', compact('dvr', 'contactTypes', 'purposes', 'contactTypeLabels', 'purposeLabels', 'visitChain', 'users'));
+        $template = 'newtheme.dvr.show';
+
+        return view($template, compact('dvr', 'contactTypes', 'purposes', 'contactTypeLabels', 'purposeLabels', 'visitChain', 'users') + ['pageKey' => 'dvr']);
     }
 
     public function update(Request $request, DailyVisitReport $dvr)
@@ -284,12 +351,17 @@ class DailyVisitReportController extends Controller
         $validated = $request->validate(DvrValidationRules::update());
 
         $validated['visit_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
-        $validated['follow_up_needed'] = ! empty($validated['follow_up_needed']);
 
+        // Derive follow-up state from the date (mirrors store()).
         if (! empty($validated['follow_up_date'])) {
             $validated['follow_up_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
+            $validated['follow_up_needed'] = true;
+            $validated['is_follow_up_done'] = false;
         } else {
+            $validated['follow_up_needed'] = false;
             $validated['follow_up_date'] = null;
+            $validated['follow_up_notes'] = null;
+            $validated['is_follow_up_done'] = true;
         }
 
         $dvr->update($validated);

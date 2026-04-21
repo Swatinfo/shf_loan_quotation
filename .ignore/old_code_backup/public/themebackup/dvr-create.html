@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New DVR entry SHF</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="dvr.html">DVR</a> <span class="sep">/</span> New entry</div>
+<h1>New DVR entry</h1><div class="sub">Daily Visit Report — log a visit, call, or check-in</div></div>
+<div class="head-actions"><a class="btn" href="dvr.html">Cancel</a><button class="btn" data-action="toast" data-arg="Saved as draft">Save draft</button>
+<button class="btn primary" data-action="submit" data-arg="DVR entry submitted" data-next="dvr.html">Submit entry</button></div></div></header>
+<main class="content"><form data-form><div class="grid c-main">
+<div>
+ <div class="card"><div class="card-hd"><div class="t">Visit details</div></div><div class="card-bd"><div class="form-grid">
+ <div class="field"><label>Date</label><input class="input shf-date" type="date" value="2026-04-20"></div>
+ <div class="field"><label>Start time</label><input class="input" type="time" value="10:00"></div>
+ <div class="field"><label>End time</label><input class="input" type="time" value="11:30"></div>
+ <div class="field"><label>Visit type<span class="req">*</span></label>
+ <div class="segmented" data-seg="type">
+ <span class="seg-opt active" data-val="meet">Customer meet</span>
+ <span class="seg-opt" data-val="call">Phone call</span>
+ <span class="seg-opt" data-val="branch">Branch visit</span>
+ <span class="seg-opt" data-val="bank">Bank visit</span>
+ <span class="seg-opt" data-val="site">Site FI</span>
+ </div><input type="hidden" name="type" value="meet">
+ </div>
+ <div class="field full"><label>Locationaddress<span class="req">*</span></label>
+ <input class="input" placeholder="Search address or pick on map…" required>
+ <div class="map-placeholder" data-map="visit-loc" style="margin-top:8px;"></div>
+ </div>
+ <div class="field"><label>Customercontact</label><select class="input"><option>Anil Patel SHF-2026-0479</option><option>Priya Mehta SHF-2026-0482</option><option>Kiran Desai SHF-2026-0488</option><option value="other">Othernew lead</option></select></div>
+ <div class="field"><label>Outcome</label><select class="input"><option>Positiveproceed</option><option>Need follow-up</option><option>Negative</option><option>Reschedule</option><option>No-show</option></select></div>
+ <div class="field full"><label>Notes</label><textarea class="input" rows="4" placeholder="What happened? Next steps?"></textarea></div>
+ <div class="field full"><label>Attachments</label><div class="upload-zone"><div class="text-sm">Drop photosdocs here or <a href="#" class="link">browse</a></div><div class="text-xs text-muted">JPG, PNG, PDFmax 10 MB each</div></div></div>
+ </div></div></div>
+</div>
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Today so far</div></div><div class="card-bd" style="padding:0;">
+<div class="dvr-row" style="padding:10px 14px;border-bottom:1px solid var(--line);"><div class="dvr-time">08:45</div><div class="dvr-dot green"></div><div class="dvr-body"><div class="dvr-t">Branch check-in</div><div class="text-xs text-muted">Maninagar</div></div></div>
+<div class="dvr-row" style="padding:10px 14px;border-bottom:1px solid var(--line);"><div class="dvr-time">10:15</div><div class="dvr-dot blue"></div><div class="dvr-body"><div class="dvr-t">Anil Patel — site visit</div><div class="text-xs text-muted">Bopal</div></div></div>
+<div class="dvr-row" style="padding:10px 14px;"><div class="dvr-time">12:30</div><div class="dvr-dot amber"></div><div class="dvr-body"><div class="dvr-t">HDFC branchrate desk</div><div class="text-xs text-muted">Vastrapur</div></div></div>
+</div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Geo-summary</div></div><div class="card-bd">
+<div class="kv-stack"><div class="kv"><span>Distance today</span><strong>34.2 km</strong></div><div class="kv"><span>Locations</span><strong>4</strong></div><div class="kv"><span>Time on field</span><strong>5h 20m</strong></div></div>
+</div></div>
+</aside>
+</div></form></main>
+
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('dvr');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/dvr-create.js?v=1"></script>
+</body></html>

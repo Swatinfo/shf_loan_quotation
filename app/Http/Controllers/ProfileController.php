@@ -16,8 +16,11 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
-        return view('profile.edit', [
+        $template = 'newtheme.profile.edit';
+
+        return view($template, [
             'user' => $request->user(),
+            'pageKey' => 'profile',
         ]);
     }
 

@@ -52,7 +52,7 @@ All are session-auth, apply user-scoped filters (visibility rules from the relev
 
 ## Create actions
 
-Primary create CTAs (New Quotation / New Task / New Visit) are **no longer in the dashboard header or tab toolbars**. They live in the mobile FAB (`partials/mobile-fab.blade.php`, visible < xl) and on their respective listing page headers (`/quotations`, `/general-tasks`, `/dvr`).
+Primary create CTAs (New Quotation / New Task / New Visit) are **no longer in the dashboard header or tab toolbars**. They live in the mobile FAB (`newtheme/partials/fab.blade.php`, visible < xl) and on their respective listing page headers (`/quotations`, `/general-tasks`, `/dvr`).
 
 The inline modals `#dashCreateTaskModal` and `#dashCreateDvrModal` still exist in the dashboard view for the empty-state CTA inside the Personal Tasks tab. They are not triggered from the main header any more. Modal markup is **not** shared across pages — each host view (dashboard, general-tasks index, dvr index) carries its own instance, kept simple because controllers inject page-specific variables.
 

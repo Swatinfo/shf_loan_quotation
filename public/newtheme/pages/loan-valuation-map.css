@@ -1,0 +1,253 @@
+/* Newtheme loan valuation-map — fully rewritten in newtheme vocabulary.
+   No Bootstrap, no legacy shf-* styles — pure .card / .input / .btn. */
+
+/* ====================== Page-header chip ====================== */
+.vm-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    margin-left: 10px;
+    border-radius: 999px;
+    background: var(--green, #1f8c4d);
+    color: #fff;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+}
+
+/* ====================== Cards / required markers ====================== */
+.vm-card { margin-bottom: 14px; }
+.vm-req { color: var(--red, #c0392b); }
+
+.vm-alert {
+    margin-bottom: 14px;
+    border-left: 3px solid var(--red, #c0392b);
+    background: var(--red-soft, rgba(192,57,43,0.06));
+}
+.vm-alert ul { margin: 6px 0 0 18px; font-size: 12.5px; color: var(--red, #c0392b); }
+
+/* ====================== Grids ====================== */
+.vm-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.vm-grid:last-child { margin-bottom: 0; }
+.vm-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 800px) {
+    .vm-grid,
+    .vm-grid-3 { grid-template-columns: 1fr; }
+}
+
+.vm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.vm-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.vm-field-full { margin-bottom: 14px; }
+.vm-field-wide { grid-column: 1 / -1; }
+
+/* ====================== Inputs ====================== */
+/* The newtheme .input is already tall-enough at 15px; don't override. Just
+   make sure our textareas don't collapse. */
+.vm-textarea {
+    width: 100%;
+    height: auto !important;
+    padding: 10px !important;
+    line-height: 1.45;
+    resize: vertical;
+    min-height: 72px;
+    font-family: inherit;
+}
+.vm-readonly {
+    background: var(--paper-2, #f4f2f0) !important;
+    color: var(--ink-2) !important;
+}
+
+/* Input + inline action button (Search / Parse) */
+.vm-input-action {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+}
+.vm-input-action .input { flex: 1 1 auto; }
+.vm-input-action .btn { flex: 0 0 auto; }
+
+/* ====================== Amount (₹-prefixed) field ====================== */
+.vm-amount {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.vm-amount .vm-rupee {
+    position: absolute;
+    left: 10px;
+    font-size: 14px;
+    color: var(--ink-3);
+    pointer-events: none;
+    z-index: 1;
+}
+.vm-amount-input {
+    padding-left: 24px !important;
+    flex: 1 1 auto;
+}
+.vm-amount-hero .input {
+    height: 44px;
+    font-size: 18px !important;
+    font-weight: 700;
+    color: var(--green, #1f8c4d);
+    background: var(--green-soft, rgba(39,174,96,0.10)) !important;
+    border-color: rgba(39,174,96,0.4);
+}
+.vm-amount-hero .vm-rupee {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--green, #1f8c4d);
+}
+
+/* Amount-words helper below amount inputs */
+.vm-words {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    min-height: 14px;
+    line-height: 1.4;
+}
+
+/* ====================== Search results dropdown (driven by shared script) ======
+   The script generates `<div class="p-2 border-bottom shf-text-xs">` items —
+   style them here via parent `#searchResults` so we don't need to touch the
+   shared script. */
+.vm-field-search { position: relative; }
+.vm-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    z-index: 1200;
+    display: block;
+}
+.vm-search-results.d-none { display: none; }
+.vm-search-results > div {
+    padding: 8px 10px !important;
+    font-size: 12.5px;
+    color: var(--ink);
+    cursor: pointer;
+    border: 0 !important;
+    border-bottom: 1px solid var(--line-soft, #eee) !important;
+    line-height: 1.4;
+}
+.vm-search-results > div:last-child { border-bottom: 0 !important; }
+.vm-search-results > div:hover { background: var(--paper-2, #f4f2f0); }
+
+/* ====================== Map ====================== */
+.vm-map-wrap { margin-top: 4px; }
+.vm-map-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.vm-map-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-3);
+    font-size: 11.5px;
+    font-weight: 500;
+}
+.vm-map-hint svg { width: 14px; height: 14px; color: var(--accent, #f15a29); }
+.vm-map-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.vm-coord-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-3);
+}
+
+.vm-map {
+    height: 360px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    z-index: 1;
+    background: var(--paper-2, #f4f2f0);
+    overflow: hidden;
+}
+
+/* Leaflet panes must stack above newtheme chrome but below topbar. */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom { z-index: 1; }
+.leaflet-container { font-family: 'Archivo', system-ui, sans-serif; font-size: 12px; }
+
+/* ====================== Actions bar ====================== */
+.vm-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+/* ====================== Invalid field state ====================== */
+.input.is-invalid {
+    border-color: var(--red, #c0392b) !important;
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+}
+.shf-validation-error {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: var(--red, #c0392b);
+    font-weight: 500;
+}
+
+/* ====================== Datepicker z-index above cards ====================== */
+.datepicker-dropdown { z-index: 10050; }
+
+/* ====================== Legacy shf-icon-* shims for shared script ======
+   The shared scripts partial re-inserts SVGs with these sizing classes
+   (e.g. Copy / My Location button reset). Give them real dimensions. */
+.shf-icon-2xs { width: 14px !important; height: 14px !important; }
+.shf-icon-xs  { width: 12px !important; height: 12px !important; }
+.shf-icon-sm  { width: 14px !important; height: 14px !important; }
+
+/* Bootstrap-style spinner shim for "Locating…" state of My Location button. */
+.spinner-border {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    vertical-align: -0.125em;
+    border: 0.18em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: vm-spin 0.75s linear infinite;
+}
+.spinner-border-sm { width: 0.8rem; height: 0.8rem; border-width: 0.14em; }
+@keyframes vm-spin { to { transform: rotate(360deg); } }

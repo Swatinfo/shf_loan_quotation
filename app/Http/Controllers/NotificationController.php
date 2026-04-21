@@ -33,7 +33,12 @@ class NotificationController extends Controller
 
         $notifications = $unread->concat($recentRead);
 
-        return view('notifications.index', compact('notifications'));
+        $template = 'newtheme.notifications.index';
+
+        return view($template, [
+            'notifications' => $notifications,
+            'pageKey' => 'notifications',
+        ]);
     }
 
     public function unreadCount(): JsonResponse

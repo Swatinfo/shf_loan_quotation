@@ -6,13 +6,17 @@
 //  If offline, any page/API request returns the offline shell or 503,
 //  so stale data is never shown.
 // ============================================================
-var SHF_SW_VERSION = '20260418190650';
+var SHF_SW_VERSION = '20260421173300';
 var STATIC_CACHE = 'shf-static-' + SHF_SW_VERSION;
 var OFFLINE_URL = '/offline.html';
 
 var STATIC_ASSETS = [
     OFFLINE_URL,
-    '/css/shf.css',
+    '/newtheme/css/shf.css',
+    '/newtheme/assets/shf.css',
+    '/newtheme/assets/shf-extras.css',
+    '/newtheme/assets/shf-workflow.css',
+    '/newtheme/assets/shf-modals.css',
     '/images/logo3.png',
     '/images/background.png',
     '/images/icon-192x192.png',

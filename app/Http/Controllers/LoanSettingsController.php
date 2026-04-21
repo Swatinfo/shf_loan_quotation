@@ -41,7 +41,9 @@ class LoanSettingsController extends Controller
             return $c->bank_id.'_'.$c->stage_id;
         })->map->first();
 
-        return view('loan-settings.index', compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles', 'bankStageConfigs'));
+        $template = 'newtheme.loan-settings.index';
+
+        return view($template, compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles', 'bankStageConfigs'));
     }
 
     /**

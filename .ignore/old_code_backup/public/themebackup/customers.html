@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customers · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Customers</div>
+ <h1>Customers</h1><div class="sub">312 total48 with active loans126 inquiries this month</div></div>
+ <div class="head-actions">
+ <button class="btn" data-action="toast" data-arg="Import CSV">Import CSV</button>
+ <button class="btn" data-action="toast" data-arg="Export">Export</button>
+ <a class="btn primary" href="customer-create.html">+ Add customer</a>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="cust">
+ <a class="tab active" id="cust-tab-all" data-panel="all">All <span class="count">312</span></a>
+ <a class="tab" id="cust-tab-leads" data-panel="leads">Leads <span class="count">84</span></a>
+ <a class="tab" id="cust-tab-prequal" data-panel="prequal">Pre-qualified <span class="count">42</span></a>
+ <a class="tab" id="cust-tab-active" data-panel="active">Active <span class="count">48</span></a>
+ <a class="tab" id="cust-tab-alumni" data-panel="alumni">Alumni <span class="count">138</span></a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="cust">
+ <div class="card">
+ <div class="card-hd" style="padding:12px 18px;">
+ <div class="filter-row">
+ <div class="search-wrap"><input class="input" placeholder="Name, phone, PAN…"></div>
+ <button class="btn sm">Employment ▾</button>
+ <button class="btn sm">CIBIL ▾</button>
+ <button class="btn sm">Income band ▾</button>
+ <button class="btn sm">Source ▾</button>
+ <div style="margin-left:auto;" class="text-xs text-muted" id="count-label">312 customers</div>
+ </div>
+ </div>
+ <div class="card-bd" style="padding:0;">
+ <div id="cust-panel-all" data-panel-id="all"><div id="rows-all"></div></div>
+ <div id="cust-panel-leads" data-panel-id="leads" style="display:none;"><div id="rows-leads"></div></div>
+ <div id="cust-panel-prequal" data-panel-id="prequal" style="display:none;"><div id="rows-prequal"></div></div>
+ <div id="cust-panel-active" data-panel-id="active" style="display:none;"><div id="rows-active"></div></div>
+ <div id="cust-panel-alumni" data-panel-id="alumni" style="display:none;"><div id="rows-alumni"></div></div>
+ <div class="tbl-footbar"><div>Showing 10</div><div class="pager"><span class="pg">‹</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">…</span><span class="pg">32</span><span class="pg">›</span></div></div>
+ </div>
+ </div>
+</div>
+</main>
+<div id="__shell_tweaks"></div></div>
+
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('customers');</script>
+<script>
+(function(){[name, initials, avStyle, pan, phone, emp, income, cibil, cibilColor, source, tag{l,s}, last, cat]
+ const C = [
+ ['Priya Mehta','PM','','ABCPM1234 · R','+91 98240 11122','Salaried','₹ 1,24,000',782,'#107a4f','Walk-in',{l:'1 active',s:'background:var(--paper-2);'},'Today 10:22','active'],
+ ['Anil Patel','AP','background:#efd3c0;color:#8a3a10;','ABCPP1234 · F','+91 98980 22211','Partnership','₹ 2,05,000',748,'#107a4f','DSABharat Loans',{l:'1 active',s:'background:var(--paper-2);'},'1h ago','active'],
+ ['Rashmika Shah','RS','background:#d4e4f2;color:#1d4e89;','CDEPS9912 · K','+91 97250 33344','Salaried','₹ 1,85,000',801,'#107a4f','ReferralAnil Patel',{l:'Lead',s:'',c:'blue'},'2d','leads'],
+ ['Kiran Desai','KD','background:#d9eed9;color:#107a4f;','ABCPD4455 · R','+91 98790 55566','Pvt Ltd Director','₹ 6,25,000',768,'#107a4f','Ad FB campaign',{l:'Pre-qualified',s:'background:#f4e6c7;color:#8a5a10;'},'3d','prequal'],
+ ['Jayesh Trivedi','JT','background:#f4e6c7;color:#8a5a10;','ABCPT7788 · H','+91 94280 99900','Proprietor','₹ 95,000',702,'#b7791f','Walk-in',{l:'Disbursed',s:'',c:'green'},'4d','active'],
+ ['Dhaval Joshi','DJ','background:#e5dcf2;color:#6b4c97;','ABCPJ1122 · D','+91 98250 88877','Salaried','₹ 1,42,000',714,'#b7791f','DSADream Homes',{l:'OTC pending',s:'',c:'amber'},'1w','active'],
+ ['Shilpa Rao','SR','background:#fae3e3;color:#9c1f2e;','ABCPR3344 · S','+91 97270 44441','Salaried','₹ 98,000',762,'#107a4f','Referral',{l:'1 active',s:'background:var(--paper-2);'},'6d','active'],
+ ['Meera Oza','MO','','ABCPO5566 · M','+91 93760 12345','Self-employed','₹ 68,000',755,'#107a4f','Alumni',{l:'Alumni',s:'background:#e5dcf2;color:#6b4c97;'},'2w','alumni'],
+ ['Nirav Bhatt','NB','background:#d4e4f2;color:#1d4e89;','ABCPB7777 · N','+91 98240 77788','Salaried','₹ 2,15,000',792,'#107a4f','Walk-in',{l:'1 active',s:'background:var(--paper-2);'},'5d','active'],
+ ['Kavya Iyer','KI','','ABCPI9898 · K','+91 98250 66655','SalariedSenior','₹ 2,75,000',808,'#107a4f','Referral',{l:'Lead',s:'',c:'blue'},'1w','leads'],
+ ['Suresh Mistry','SM','background:#d9eed9;color:#107a4f;','ABCPM1010 · S','+91 98251 20202','Proprietor','₹ 1,15,000',728,'#b7791f','Walk-in',{l:'Pre-qualified',s:'background:#f4e6c7;color:#8a5a10;'},'8d','prequal'],
+ ['Ritesh Parekh','RP','background:#efd3c0;color:#8a3a10;','ABCPP2020 · R','+91 98252 30303','Partnership','₹ 3,45,000',756,'#107a4f','Alumni',{l:'Alumni',s:'background:#e5dcf2;color:#6b4c97;'},'3w','alumni'],
+ ['Pooja Mehta','PM','','ABCPM3030 · P','+91 98253 40404','Salaried','₹ 2,45,000',790,'#107a4f','Referral',{l:'Lead',s:'',c:'blue'},'12d','leads']
+ ];
+ function row(c){
+ const [n,ini,av,pan,ph,e,inc,cb,cc,src,tg,lt] = c;
+ const bSty = tg.s ? `style="${tg.s}"` : '';
+ return `<tr class="clickable" onclick="location='customer-show.html'">
+ <td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="${av}">${ini}</div><div><div style="font-weight:500;">${n}</div><div class="text-xs text-muted font-mono">${pan}</div></div></div></td>
+ <td>${ph}</td><td>${e}</td><td class="num tnum">${inc}</td>
+ <td><span class="cibil" style="--c:${cc};">${cb}</span></td>
+ <td>${src}</td>
+ <td><span class="badge ${tg.c||''} sq" ${bSty}>${tg.l}</span></td>
+ <td>${lt}</td><td></td>
+ <td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="customer-show.html">View details</a><a href="customer-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a><hr>
+ <a href="#" class="danger" data-confirm-delete="Customer">Delete</a>
+ </div>
+ </div></td></tr>`;
+ }
+ function table(rows){
+ if (!rows.length) return `<div class="empty-state" style="padding:48px 24px;text-align:center;color:var(--ink-2);"><div style="font-size:36px;margin-bottom:8px;">👤</div><div style="font-weight:600;">No customers in this segment</div></div>`;
+ return `<table class="tbl"><thead><tr><th>Customer</th><th>Phone</th><th>Employment</th><th class="num">Income (mo.)</th><th>CIBIL</th><th>Source</th><th>Tag</th><th>Last touch</th><th></th><th style="width:48px;text-align:right;"></th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>`;
+ }
+ document.getElementById('rows-all').innerHTML = table(C);
+ document.getElementById('rows-leads').innerHTML = table(C.filter(c=>c[12]==='leads'));
+ document.getElementById('rows-prequal').innerHTML = table(C.filter(c=>c[12]==='prequal'));
+ document.getElementById('rows-active').innerHTML = table(C.filter(c=>c[12]==='active'));
+ document.getElementById('rows-alumni').innerHTML = table(C.filter(c=>c[12]==='alumni'));
+})();
+</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('cust', ["all","leads","prequal","active","alumni"]);</script>
+<script src="assets/customers.js?v=1"></script>
+</body></html>

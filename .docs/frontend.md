@@ -1,15 +1,23 @@
 # Frontend (CSS + JS)
 
-Bootstrap 5.3 + jQuery 3.7, local vendor files, no build step. Custom `shf-*` design system in `public/css/shf.css`.
+Bootstrap 5.3 + jQuery 3.7, local vendor files, no build step. Newtheme is the only theme: all views under `resources/views/newtheme/`, all assets under `public/newtheme/`. The pre-newtheme source is preserved in `.ignore/old_code_backup/` (tracked in git).
+
+Design tokens and component classes live across several stylesheets:
+- `public/newtheme/assets/shf.css` — newtheme design system (topbar, cards, buttons, forms)
+- `public/newtheme/assets/shf-extras.css`, `shf-workflow.css`, `shf-modals.css` — shared overlays and workflow/modal styles
+- `public/newtheme/css/shf.css` — legacy `shf-*` classes kept for screens that still render legacy markup (loan stages, documents, valuation, quotation show, settings)
+- `public/newtheme/pages/*.css` — per-page stylesheets (e.g. `dashboard.css`, `loans.css`, `quotation-show.css`)
 
 ## Vendor stack
 
-Loaded globally in `resources/views/layouts/app.blade.php`:
+Loaded globally in `resources/views/newtheme/layouts/app.blade.php`:
 
-- **CSS**: Bootstrap 5.3, Bootstrap Datepicker, SHF custom (`css/shf.css`), SweetAlert2
-- **JS**: jQuery 3.7.1, Bootstrap bundle 5.3, Bootstrap Datepicker, SortableJS, SweetAlert2, SHF App, offline-manager, pdf-renderer
+- **CSS**: newtheme bundle (`shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css`), Bootstrap Datepicker, SweetAlert2
+- **JS**: jQuery 3.7.1, Bootstrap Datepicker, SortableJS, SweetAlert2, newtheme runtime (`shf-newtheme.js`, `shf-interactive.js`, `shf-dropdown.js`, `shf-tab-persist.js`), push-notifications
 
-Vendor directories under `public/vendor/`: `bootstrap`, `datatables`, `datepicker`, `jquery`, `leaflet`, `sortablejs`, `sweetalert2`.
+Some pages additionally load Bootstrap bundle + legacy `public/newtheme/js/shf-app.js` (quotation create, loan stages, valuation, settings) — done per-page, not globally.
+
+Vendor directories under `public/newtheme/vendor/`: `bootstrap`, `datepicker`, `jquery`, `leaflet`, `sortablejs`, `sweetalert2`.
 
 Fonts under `public/fonts/`:
 - Jost (Regular, Medium, SemiBold, Bold) — display/headers, via `font-display` class
@@ -166,7 +174,7 @@ Named: `.shf-role-loan-advisor` `#2563eb`, `.shf-role-bank-employee` `#d97706`, 
 - Use the global Bootstrap Datepicker (loaded in layout). Don't add native `<input type="date">`.
 - Class: `.shf-datepicker` (or variants: `-past`, `-custom`). Initialized by `shf-app.js`.
 
-## JS API — `SHF.*` (public/js/shf-app.js)
+## JS API — `SHF.*` (public/newtheme/js/shf-app.js)
 
 ### Validation
 
@@ -208,13 +216,11 @@ On failure: adds `.is-invalid`, inline error div `.shf-validation-error`, scroll
 - Radio in multi-select auto-checks the neighboring checkbox
 - Textarea auto-expand fallback for browsers lacking `field-sizing: content`
 
-## JS API — `SHFLoans.*` (public/js/shf-loans.js)
+## JS API — `SHFLoans.*` (archived)
 
-- `SHFLoans.initProductDropdown()` — filter `#productSelect` options by `data-bank-id` when `#bankSelect` changes
-- `SHFLoans.showToast(message, type)` — `success` / `error` / `info` (default) bottom-right alert that auto-dismisses after 4s
-- `SHFLoans.init()` — called on DOMContentLoaded
+The `SHFLoans.*` helpers lived in `public/js/shf-loans.js` (bank-dependent product dropdown, loan toasts). That file now sits in the archive at `.ignore/old_code_backup/public/js/shf-loans.js`. If a newtheme page needs that logic, copy the file into `public/newtheme/js/` and load it from the relevant blade.
 
-## Global inline scripts (layouts/app.blade.php)
+## Global inline scripts (newtheme/layouts/app.blade.php)
 
 - **Notification badge polling** — `updateNotifBadge()` every 60s, calls `/api/notifications/count`
 - **Impersonate search modal** — SweetAlert2 user picker
@@ -235,10 +241,10 @@ Alternative: use `.shf-table-mobile` on simpler tables — CSS transforms rows i
 
 Below xl (< 1200 px — same breakpoint the top navbar uses with `navbar-expand-xl`), the app hands navigation off to two fixed widgets instead of a hamburger:
 
-- **Bottom nav** (`resources/views/partials/bottom-nav.blade.php`) — 5 slots: `Dashboard · Loans · DVR · Tasks · More`. Class `.shf-bottom-nav` + `.shf-bottom-nav-item`. **More** opens a Bootstrap bottom `offcanvas` (`#shfMoreOffcanvas`) listing Quotations, Customers, Users, Settings, Activity Log, Reports, Notifications, Profile, Logout — all permission-gated.
-- **Mobile FAB** (`resources/views/partials/mobile-fab.blade.php`) — expanding create-actions launcher. Pills: `New Quotation`, `New Task`, `New Visit`. Triggered via `data-bs-toggle` or `?create=1` deep-link. Class `.shf-fab-wrap` + `.shf-fab-main` + `.shf-fab-item`. Classes `shf-fab-backdrop` + body state `shf-fab-open` drive the expanded UI.
+- **Bottom nav** (`resources/views/newtheme/partials/bottom-nav.blade.php`) — 5 slots: `Dashboard · Loans · DVR · Tasks · More`. Class `.shf-bottom-nav` + `.shf-bottom-nav-item`. **More** opens a Bootstrap bottom `offcanvas` (`#shfMoreOffcanvas`) listing Quotations, Customers, Users, Settings, Activity Log, Reports, Notifications, Profile, Logout — all permission-gated.
+- **Mobile FAB** (`resources/views/newtheme/partials/fab.blade.php`) — expanding create-actions launcher. Pills: `New Quotation`, `New Task`, `New Visit`. Triggered via `data-bs-toggle` or `?create=1` deep-link. Class `.shf-fab-wrap` + `.shf-fab-main` + `.shf-fab-item`. Classes `shf-fab-backdrop` + body state `shf-fab-open` drive the expanded UI.
 
-Both are included in `layouts/app.blade.php` at `</body>` — guarded by `request()->routeIs(...)` against loan deep-workflow routes (`loans.stages`, `loans.documents`, `loans.valuation`, `loans.valuation-map`, `loans.transfers`, `loans.timeline`, `loans.disbursement`). When suppressed, the body lacks `has-bottom-nav`, so `--shf-bottom-nav-height` resolves to `0` and in-page sticky bars keep their natural bottom anchor.
+Both are included in `newtheme/layouts/app.blade.php` at `</body>` — guarded by `request()->routeIs(...)` against loan deep-workflow routes (`loans.stages`, `loans.documents`, `loans.valuation`, `loans.valuation-map`, `loans.transfers`, `loans.timeline`, `loans.disbursement`). When suppressed, the body lacks `has-bottom-nav`, so `--shf-bottom-nav-height` resolves to `0` and in-page sticky bars keep their natural bottom anchor.
 
 ### Height variable + sticky-bar contract
 
@@ -258,7 +264,7 @@ Any fixed/sticky bottom bar on a page that coexists with the bottom nav should r
 ## CSS rules of engagement
 
 - **All custom classes start with `shf-`** to avoid Bootstrap collisions
-- **No new files** — extend `public/css/shf.css`. Keep tokens in `:root`.
+- **No new files** — for legacy classes, extend `public/newtheme/css/shf.css`. For newtheme design-system additions, extend `public/newtheme/assets/shf.css` or the page-scoped file under `public/newtheme/pages/`. Keep tokens in `:root`.
 - **No build step** — don't add SCSS or PostCSS. Plain CSS with custom properties.
 - **Responsive breakpoints**: 1200px (desktop chrome), 768px (tablet), 480px (small phones). Match existing usage.
 - **Media queries** grouped at the end of the file (mobile first would require a rewrite — not planned)

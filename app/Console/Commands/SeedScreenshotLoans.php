@@ -782,9 +782,6 @@ class SeedScreenshotLoans extends Command
         $assignment->mergeNotesData([
             'sanction_phase' => '3',
             'sanction_date' => now()->format('d/m/Y'),
-            'sanctioned_amount' => (string) $loan->loan_amount,
-            'sanctioned_rate' => '8.50',
-            'emi_amount' => (string) round($loan->loan_amount * 0.01),
         ]);
 
         $this->stageService->updateStageStatus($loan, 'sanction', 'completed', $userId);
@@ -808,6 +805,10 @@ class SeedScreenshotLoans extends Command
         $assignment->mergeNotesData([
             'docket_phase' => '3',
             'login_date' => now()->format('d/m/Y'),
+            'sanctioned_amount' => (string) $loan->loan_amount,
+            'sanctioned_rate' => '8.50',
+            'tenure_months' => '240',
+            'emi_amount' => (string) round($loan->loan_amount * 0.01),
         ]);
 
         $this->stageService->updateStageStatus($loan, 'docket', 'completed', $userId);

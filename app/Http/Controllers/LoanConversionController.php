@@ -49,7 +49,9 @@ class LoanConversionController extends Controller
         // Auto-select current user as advisor (if they have a workflow role)
         $defaultAdvisorId = auth()->user()->hasWorkflowRole() ? auth()->id() : null;
 
-        return view('quotations.convert', compact('quotation', 'products', 'advisors', 'bankNameToId', 'defaultBranchId', 'defaultAdvisorId', 'lockedBranch'));
+        $template = 'newtheme.quotations.convert';
+
+        return view($template, compact('quotation', 'products', 'advisors', 'bankNameToId', 'defaultBranchId', 'defaultAdvisorId', 'lockedBranch') + ['pageKey' => 'quotations']);
     }
 
     public function convert(Request $request, Quotation $quotation)

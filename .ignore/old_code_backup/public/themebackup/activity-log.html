@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Activity log · SHF World</title><link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Admin <span class="sep">/</span> Activity log</div><h1>Activity log</h1><div class="sub">System-wide audit1,248 events this week</div></div><div class="head-actions"><button class="btn" data-action="toast" data-arg="Export CSV">Export CSV</button></div></header>
+<main class="content">
+<div class="card"><div class="card-hd" style="padding:12px 18px;"><div class="filter-row"><div class="search-wrap"><input class="input" placeholder="Search action, user, entity…"></div><button class="btn sm">Action ▾</button><button class="btn sm">User ▾</button><button class="btn sm">Date ▾</button></div></div><div class="card-bd" style="padding:0;">
+<table class="tbl"><thead><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th><th class="th-actions" style="width:48px;text-align:right;"></th></tr></thead><tbody>
+<tr><td class="font-mono">20 Apr10:22:14</td><td><div class="avatar xs">RJ</div> Rahul J.</td><td><span class="badge blue sq">quotation.update</span></td><td class="font-mono">QT-2026-00148</td><td>Added 2 banks; v2 → v3</td><td class="font-mono text-muted">10.2.14.66</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">20 Apr09:58:02</td><td><div class="avatar xs" style="background:#d9eed9;color:#107a4f;">SG</div> Saurabh G.</td><td><span class="badge red sq">query.raise</span></td><td class="font-mono">SHF-2026-0479</td><td>Valuation mismatch</td><td class="font-mono text-muted">bank-hdfc</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">20 Apr08:45:00</td><td><div class="avatar xs">RJ</div> Rahul J.</td><td><span class="badge sq">dvr.checkin</span></td><td class="font-mono">DVR-20 APR-RJ</td><td>Branch Maninagar</td><td class="font-mono text-muted">mobile</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">19 Apr18:22:09</td><td><div class="avatar xs" style="background:#d4e4f2;color:#1d4e89;">AP</div> Anita P.</td><td><span class="badge violet sq">loan.advance</span></td><td class="font-mono">SHF-2026-0471</td><td>Stage 8 → 9 · E-Sign triggered</td><td class="font-mono text-muted">10.2.14.91</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">19 Apr17:40:55</td><td><div class="avatar xs" style="background:#d9eed9;color:#107a4f;">NS</div> Neha S.</td><td><span class="badge sq">document.upload</span></td><td class="font-mono">SHF-2026-0482</td><td>Aadhaar + Electricity bill</td><td class="font-mono text-muted">10.2.14.77</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">19 Apr16:02:12</td><td><div class="avatar xs" style="background:#f4e6c7;color:#8a5a10;">BM</div> Bharat M.</td><td><span class="badge amber sq">user.impersonate</span></td><td>rahul.j@shfworld.in</td><td>View asDashboard</td><td class="font-mono text-muted">10.2.14.4</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">19 Apr12:18:44</td><td><div class="avatar xs">RJ</div> Rahul J.</td><td><span class="badge green sq">disbursement.create</span></td><td class="font-mono">SHF-2026-0462</td><td>₹ 18,00,000Axis cheque</td><td class="font-mono text-muted">10.2.14.66</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">18 Apr15:55:30</td><td>System</td><td><span class="badge sq">rate.sync</span></td><td>HDFC rate card</td><td>8.40 → 8.35% (salaried)</td><td class="font-mono text-muted">api</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">18 Apr09:01:11</td><td><div class="avatar xs">RJ</div> Rahul J.</td><td><span class="badge sq">auth.login</span></td><td>—</td><td>2 FAmobile app</td><td class="font-mono text-muted">10.2.14.66</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="font-mono">17 Apr20:15:00</td><td>System</td><td><span class="badge red sq">sla.breach</span></td><td class="font-mono">SHF-2026-0458</td><td>OTC &gt; 14d threshold</td><td class="font-mono text-muted">cron</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ 
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Activity">Delete</a>
+ </div>
+ </div></td></tr>
+</tbody></table>
+</div></div>
+</main>
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('activity');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/activity-log.js?v=1"></script>
+</body></html>

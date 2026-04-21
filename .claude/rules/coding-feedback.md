@@ -4,10 +4,14 @@ Consolidated rules from past sessions. Follow these in all future work.
 
 ## Frontend Stack
 - **Bootstrap 5.3 + jQuery 3.7** -- local vendor files, no build step
-- Vendor libraries loaded globally in `layouts/app.blade.php`: Bootstrap CSS/JS, Bootstrap Datepicker, SortableJS, SweetAlert2, `shf-app.js`, `offline-manager.js`, `pdf-renderer.js`
-- Vendor directory (`public/vendor/`): bootstrap, datatables, datepicker, jquery, leaflet, sortablejs, sweetalert2
-- Custom CSS in `public/css/shf.css`, core JS in `public/js/shf-app.js`, loan JS in `public/js/shf-loans.js`
-- `shf-` prefix for all custom CSS classes
+- Newtheme is the only theme. All views live under `resources/views/newtheme/`.
+- Vendor libraries loaded globally in `newtheme/layouts/app.blade.php`: jQuery, Bootstrap Datepicker, SortableJS, SweetAlert2, `shf-newtheme.js`, `push-notifications.js`
+- Vendor directory (`public/newtheme/vendor/`): bootstrap, datepicker, jquery, leaflet, sortablejs, sweetalert2
+- Newtheme design-system CSS: `public/newtheme/assets/shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css`
+- Legacy `shf-*` CSS preserved at `public/newtheme/css/shf.css` for screens that still render legacy markup (loan stages, documents, valuation, quotation show, settings)
+- Core JS in `public/newtheme/js/shf-app.js` (SHF.* namespace, quotation create form only)
+- `shf-` prefix for legacy custom CSS classes. Newtheme CSS uses page-scoped classnames (see `public/newtheme/pages/*.css`).
+- **Archived pre-newtheme source**: `.ignore/old_code_backup/` (tracked in git for restore)
 
 ## Responsive Design
 - **Navbar**: `navbar-expand-xl` (1200px breakpoint) -- all desktop nav visibility uses `d-xl-*` classes. Hamburger visible on tablet.
@@ -56,7 +60,7 @@ Consolidated rules from past sessions. Follow these in all future work.
 - Mobile responsive table: `shf-table-mobile` class transforms table rows into card layout via `data-label` attributes
 
 ### Dates
-- Bootstrap Datepicker (local vendor, path: `vendor/datepicker/`) -- loaded globally in `layouts/app.blade.php`
+- Bootstrap Datepicker (local vendor, path: `public/newtheme/vendor/datepicker/`) -- loaded globally in `newtheme/layouts/app.blade.php`
 - Do NOT load datepicker JS again in individual views
 - Do NOT use native `<input type="date">`
 
@@ -71,7 +75,7 @@ Consolidated rules from past sessions. Follow these in all future work.
 
 ## JS Patterns
 
-### SHF namespace (`public/js/shf-app.js`)
+### SHF namespace (`public/newtheme/js/shf-app.js`)
 - `SHF.validateForm($form, rules)` -- client-side validation with rule types: required, maxlength, minlength, min, max, email, numeric, pattern, patternMsg, dateFormat, custom
 - `SHF.validateBeforeAjax($container, rules, url, data)` -- validate then AJAX POST
 - `SHF.formatIndianNumber(num)` -- format number with Indian comma system (lakh/crore)
@@ -81,12 +85,10 @@ Consolidated rules from past sessions. Follow these in all future work.
 - `SHF.initAmountFields()` -- auto-init `.shf-amount-input` fields with formatting
 - Auto-behaviors: form novalidate, toast auto-dismiss, password toggle (`.shf-password-toggle`), saved message fade (`.shf-saved-msg`), modal auto-show (`data-bs-show-on-load`), SweetAlert confirm delete (`.shf-confirm-delete`), collapsible sections (`.shf-collapsible[data-target]`), filter collapse on mobile, auto-expand textareas (fallback for `field-sizing: content`)
 
-### SHFLoans namespace (`public/js/shf-loans.js`)
-- `SHFLoans.initProductDropdown()` -- bank-dependent product dropdown filtering (uses `#bankSelect` / `#productSelect` with `data-bank-id`)
-- `SHFLoans.showToast(message, type)` -- toast notification for loan pages
-- `SHFLoans.init()` -- called on document ready
+### SHFLoans namespace (archived — not currently loaded)
+- The `SHFLoans.*` helpers used to live in `public/js/shf-loans.js`. That file now sits in the archive at `.ignore/old_code_backup/public/js/shf-loans.js`. If loan-module JS needs to come back, copy it into `public/newtheme/js/` and load it explicitly from the relevant newtheme blade.
 
-### Global JS (in `layouts/app.blade.php`)
+### Global JS (in `newtheme/layouts/app.blade.php`)
 - Notification badge polling via `updateNotifBadge()` every 60 seconds
 - Impersonate user search with SweetAlert confirmation
 - Service Worker registration

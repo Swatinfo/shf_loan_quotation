@@ -11,11 +11,17 @@ class LoanDisbursementController extends Controller
     public function show(LoanDetail $loan)
     {
         $disbursement = $loan->disbursement;
+        // Sanctioned amount is captured at docket login; fall back to sanction notes for legacy loans.
+        $docketAssignment = $loan->stageAssignments()->where('stage_key', 'docket')->first();
+        $docketNotes = $docketAssignment ? $docketAssignment->getNotesData() : [];
         $sanctionAssignment = $loan->stageAssignments()->where('stage_key', 'sanction')->first();
-        $sanctionedAmount = $sanctionAssignment ? ($sanctionAssignment->getNotesData()['sanctioned_amount'] ?? null) : null;
+        $sanctionNotes = $sanctionAssignment ? $sanctionAssignment->getNotesData() : [];
+        $sanctionedAmount = $docketNotes['sanctioned_amount'] ?? $sanctionNotes['sanctioned_amount'] ?? null;
         $isLocked = ! in_array($loan->status, [LoanDetail::STATUS_ACTIVE, LoanDetail::STATUS_ON_HOLD]);
 
-        return view('loans.disbursement', compact('loan', 'disbursement', 'sanctionedAmount', 'isLocked'));
+        $template = 'newtheme.loans.disbursement';
+
+        return view($template, compact('loan', 'disbursement', 'sanctionedAmount', 'isLocked') + ['pageKey' => 'loans']);
     }
 
     public function store(Request $request, LoanDetail $loan)

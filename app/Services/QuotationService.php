@@ -134,11 +134,24 @@ class QuotationService
             ];
         }
 
-        // Generate PDF
-        $pdfResult = $this->pdfService->generate($templateData);
+        // Generate PDF — unless the SKIP_PDF_GENERATION dev flag is on, in
+        // which case we still save the quotation row but skip the costly
+        // Chrome/microservice call. Useful on Windows local where headless
+        // Chrome is flaky. The quotation's pdf_filename/pdf_path get
+        // placeholder values so downstream lookups don't break.
+        if (config('app.skip_pdf_generation')) {
+            $safe = preg_replace('/[^A-Za-z0-9]+/', '_', (string) $customerName);
+            $pdfResult = [
+                'success' => true,
+                'filename' => 'SKIPPED_'.$safe.'_'.now()->format('Ymd_His').'.pdf',
+                'path' => null,
+            ];
+        } else {
+            $pdfResult = $this->pdfService->generate($templateData);
 
-        if (isset($pdfResult['error'])) {
-            return $pdfResult;
+            if (isset($pdfResult['error'])) {
+                return $pdfResult;
+            }
         }
 
         // Save to database

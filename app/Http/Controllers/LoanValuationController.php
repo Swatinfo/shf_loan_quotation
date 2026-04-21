@@ -14,14 +14,18 @@ class LoanValuationController extends Controller
     {
         $valuations = $loan->valuationDetails;
 
-        return view('loans.valuation', compact('loan', 'valuations'));
+        $template = 'newtheme.loans.valuation';
+
+        return view($template, compact('loan', 'valuations') + ['pageKey' => 'loans']);
     }
 
     public function showMap(LoanDetail $loan)
     {
         $valuations = $loan->valuationDetails;
 
-        return view('loans.valuation-map', compact('loan', 'valuations'));
+        $template = 'newtheme.loans.valuation-map';
+
+        return view($template, compact('loan', 'valuations') + ['pageKey' => 'loans']);
     }
 
     public function searchLocation(Request $request): \Illuminate\Http\JsonResponse
@@ -47,7 +51,7 @@ class LoanValuationController extends Controller
             $retryResponse = Http::withHeaders([
                 'User-Agent' => 'SHF-LoanManagement/1.0',
             ])->get('https://nominatim.openstreetmap.org/search', [
-                'q' => $query . ', India',
+                'q' => $query.', India',
                 'format' => 'json',
                 'addressdetails' => 1,
                 'limit' => 5,
@@ -102,7 +106,7 @@ class LoanValuationController extends Controller
 
         $landmarkParts = [];
         if ($place) {
-            $landmarkParts[] = 'Near ' . $place;
+            $landmarkParts[] = 'Near '.$place;
         }
         if ($road) {
             $landmarkParts[] = $road;

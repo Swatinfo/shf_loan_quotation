@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edit customer · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="customers.html">Customers</a> <span class="sep">/</span> <a href="customer-show.html">Anil Patel</a> <span class="sep">/</span> Edit</div>
+<h1>Edit customer</h1><div class="sub">CUST-00118linked to 2 loan files</div></div>
+<div class="head-actions"><a class="btn" href="customer-show.html">Cancel</a><button class="btn primary" data-action="submit" data-arg="Customer saved" data-next="customer-show.html">Save changes</button></div></div>
+<div class="tabs" data-tab-panel-group="ce">
+<a class="tab active" id="ce-tab-profile" data-panel="profile">Profile</a>
+<a class="tab" id="ce-tab-addr" data-panel="addr">Address</a>
+<a class="tab" id="ce-tab-kyc" data-panel="kyc">KYC</a>
+<a class="tab" id="ce-tab-income" data-panel="income">Income</a>
+<a class="tab" id="ce-tab-prefs" data-panel="prefs">Preferences</a>
+</div>
+</header>
+<main class="content"><form data-form>
+<div data-tab-panel-group="ce">
+<div id="ce-panel-profile" data-panel-id="profile">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Personal</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Full name</label><input class="input" value="Anil Patel"></div>
+<div class="field"><label>Fatherspouse name</label><input class="input" value="Mohanbhai Patel"></div>
+<div class="field"><label>Date of birth</label><input class="input" type="date" value="1978-03-14"></div>
+<div class="field"><label>Gender</label><select class="select"><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
+<div class="field"><label>Marital status</label><select class="select" name="marital"><option value="married">Married</option><option value="single">Single</option><option value="other">Other</option></select></div>
+<div class="field cond-field hide" data-cond-when='{"field":"marital","equals":"married"}'><label>Spouse name</label><input class="input" value="Reshma Patel"></div>
+<div class="field"><label>Mobile</label><input class="input" value="+91 90331 55871"></div>
+<div class="field"><label>Email</label><input class="input" value="anil.patel@example.com"></div>
+<div class="field"><label>PAN</label><input class="input font-mono" value="ABHPP 1234 K"></div>
+<div class="field"><label>Aadhaar (masked)</label><input class="input font-mono" value="XXXX XXXX 4418" readonly></div>
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Employmentincome</div></div><div class="card-bd">
+<div class="segmented" data-seg="emp"><button class="active" data-value="self">Self-employed</button><button data-value="salaried">Salaried</button></div>
+<input type="hidden" name="emp" value="self">
+<div class="form-grid mt-4">
+<div class="field cond-field hide" data-cond-when='{"field":"emp","equals":"salaried"}'><label>Employer</label><input class="input"></div>
+<div class="field cond-field hide" data-cond-when='{"field":"emp","equals":"salaried"}'><label>Take-home</label><input class="input tnum"></div>
+<div class="field cond-field" data-cond-when='{"field":"emp","equals":"self"}'><label>Business name</label><input class="input" value="Patel Textiles"></div>
+<div class="field cond-field" data-cond-when='{"field":"emp","equals":"self"}'><label>Vintage</label><input class="input" value="14 yrs"></div>
+<div class="field cond-field" data-cond-when='{"field":"emp","equals":"self"}'><label>Annual turnover (₹)</label><input class="input tnum" value="8400000"></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Linked loans</div></div><div class="card-bd">
+<div class="kv-stack">
+<div class="kv"><span>SHF-2026-0479</span><strong>Stage 5</strong></div>
+<div class="kv"><span>SHF-2024-1023</span><strong>Closed</strong></div>
+</div></div></div></aside>
+</div>
+</div>
+
+<div id="ce-panel-addr" data-panel-id="addr" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Current address</div></div><div class="card-bd"><div class="form-grid">
+<div class="field span-2"><label>Line 1</label><input class="input" value="B-42, Samarth Bungalows"></div>
+<div class="field span-2"><label>Line 2</label><input class="input" value="Near Shilp Circle, Bodakdev"></div>
+<div class="field"><label>City</label><input class="input" value="Ahmedabad"></div>
+<div class="field"><label>State</label><input class="input" value="Gujarat"></div>
+<div class="field"><label>PIN</label><input class="input tnum" value="380054"></div>
+<div class="field"><label>Residence type</label><select class="select"><option>Owned</option><option>Rented</option><option>Family</option></select></div>
+<div class="field"><label>Years at address</label><input class="input tnum" value="9"></div>
+<div class="field"><label>Landmark</label><input class="input" value="Opposite Kalasagar Mall"></div>
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Permanent address</div><div class="actions"><label class="text-xs text-muted" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" checked> Same as current</label></div></div>
+<div class="card-bd"><div class="text-xs text-muted">Using current address as permanent.</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Office address</div></div><div class="card-bd"><div class="form-grid">
+<div class="field span-2"><label>Line 1</label><input class="input" value="Plot 14, GIDC Naroda"></div>
+<div class="field"><label>City</label><input class="input" value="Ahmedabad"></div>
+<div class="field"><label>PIN</label><input class="input tnum" value="382330"></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Verified</div></div><div class="card-bd"><div class="kv-stack">
+<div class="kv"><span>Current</span><strong style="color:var(--green);">✓ Verified</strong></div>
+<div class="kv"><span>Office</span><strong style="color:var(--amber);">Pending FI</strong></div>
+</div></div></div></aside>
+</div>
+</div>
+
+<div id="ce-panel-kyc" data-panel-id="kyc" style="display:none;">
+<div class="card"><div class="card-hd"><div class="t">KYC documents</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>PAN</label><input class="input font-mono" value="ABHPP 1234 K"></div>
+<div class="field"><label>Aadhaar (masked)</label><input class="input font-mono" value="XXXX XXXX 4418"></div>
+<div class="field"><label>Passport (optional)</label><input class="input font-mono"></div>
+<div class="field"><label>Voter ID (optional)</label><input class="input font-mono"></div>
+<div class="field"><label>Driving licence (optional)</label><input class="input font-mono"></div>
+<div class="field"><label>GSTIN (if applicable)</label><input class="input font-mono" value="24 ABHPP1234 K1 Z5"></div>
+</div>
+<hr style="border:none;border-top:1px dashed var(--line);margin:18px 0;">
+<table class="tbl">
+<thead><tr><th>Document</th><th>File</th><th>Uploaded</th><th></th></tr></thead>
+<tbody>
+<tr><td>PAN copy</td><td class="font-mono text-xs">pan-anil.pdf180 k · B</td><td>Apr 02</td><td><a class="btn xs">View</a></td></tr>
+<tr><td>Aadhaar front</td><td class="font-mono text-xs">aadhaar-f.jpg1.9 MB</td><td>Apr 02</td><td><a class="btn xs">View</a></td></tr>
+<tr><td>Aadhaar back</td><td class="font-mono text-xs">aadhaar-b.jpg1.7 MB</td><td>Apr 02</td><td><a class="btn xs">View</a></td></tr>
+<tr><td>Passport photo</td><td class="font-mono text-xs">photo.jpg290 k · B</td><td>Apr 02</td><td><a class="btn xs">View</a></td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+
+<div id="ce-panel-income" data-panel-id="income" style="display:none;">
+<div class="card"><div class="card-hd"><div class="t">Income details</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Business name</label><input class="input" value="Patel Textiles"></div>
+<div class="field"><label>Vintage</label><input class="input" value="14 yrs"></div>
+<div class="field"><label>Turnover (FY24-25)</label><input class="input tnum" value="84,00,000"></div>
+<div class="field"><label>Net profit (FY24-25)</label><input class="input tnum" value="18,40,000"></div>
+<div class="field"><label>Bankprimary</label><input class="input" value="HDFCCA 50200048291"></div>
+<div class="field"><label>Avg monthly balance</label><input class="input tnum" value="6,20,000"></div>
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Existing obligations</div><div class="actions"><button type="button" class="btn sm ghost">+ Add obligation</button></div></div>
+<div class="card-bd" style="padding:0;"><table class="tbl">
+<thead><tr><th>Lender</th><th>Type</th><th class="num">Outstanding</th><th class="num">EMI</th><th>Remaining</th></tr></thead>
+<tbody>
+<tr><td>HDFC</td><td>Auto loan</td><td class="num tnum">2,40,000</td><td class="num tnum">8,400</td><td>32 mo.</td></tr>
+<tr><td>Bajaj</td><td>Consumer durable</td><td class="num tnum">42,000</td><td class="num tnum">3,500</td><td>12 mo.</td></tr>
+</tbody></table></div></div>
+</div>
+
+<div id="ce-panel-prefs" data-panel-id="prefs" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Contact preferences</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Preferred channel</label><select class="select"><option>WhatsApp</option><option>Call</option><option>Email</option></select></div>
+<div class="field"><label>Best time to reach</label><select class="select"><option>10 AM – 1 PM</option><option>2 PM – 6 PM</option><option>After 7 PM</option></select></div>
+<div class="field"><label>Language</label><select class="select"><option>Gujarati</option><option>Hindi</option><option>English</option></select></div>
+<div class="field"><label>Receive rate updates</label><select class="select"><option>Weekly</option><option>Only when relevant</option><option>Never</option></select></div>
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Consent &amp; compliance</div></div><div class="card-bd"><div class="kv-stack">
+<div class="kv"><span>Credit pull consent</span><strong style="color:var(--green);">✓ GivenApr 02</strong></div>
+<div class="kv"><span>Data sharing with banks</span><strong style="color:var(--green);">✓ Given</strong></div>
+<div class="kv"><span>Marketing comms</span><strong>Opted inWhatsApp only</strong></div>
+<div class="kv"><span>Do-not-disturb window</span><strong>10 PM – 9 AM</strong></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Referral</div></div><div class="card-bd"><div class="kv-stack">
+<div class="kv"><span>Source</span><strong>Walk-in</strong></div>
+<div class="kv"><span>Advisor</span><strong>Rahul Jadeja</strong></div>
+<div class="kv"><span>Branch</span><strong>Navrangpura</strong></div>
+</div></div></div></aside>
+</div>
+</div>
+
+</div>
+</form></main>
+<script>document.querySelectorAll('.segmented[data-seg]').forEach(s=>{const n=s.dataset.seg,h=document.querySelector('input[name="'+n+'"]');s.addEventListener('change',e=>{h.value=e.detail.value;shfUpdateConditions(document);});});</script>
+<div id="__shell_tweaks"></div></div><script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('customers');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/tabs.js"></script>
+<script>wireTabs('ce', ["profile","addr","kyc","income","prefs"]);</script>
+<script src="assets/customer-edit.js?v=1"></script>
+</body></html>

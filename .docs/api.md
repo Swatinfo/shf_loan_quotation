@@ -6,7 +6,7 @@ Complete route list: `.claude/routes-reference.md`.
 
 ## Authentication model
 
-- **Web AJAX**: session-based. `<meta name="csrf-token">` in `layouts/app.blade.php`. Send `X-CSRF-TOKEN` header or include `_token` in form data.
+- **Web AJAX**: session-based. `<meta name="csrf-token">` in `newtheme/layouts/app.blade.php`. Send `X-CSRF-TOKEN` header or include `_token` in form data.
 - **Public JSON**: `GET /api/config/public` and `GET /api/notes` — no auth. Meant for the PWA to bootstrap offline.
 - **No Sanctum / no token-based auth** — there is no external API consumer yet.
 

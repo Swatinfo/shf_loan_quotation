@@ -15,7 +15,7 @@ Shreenathji Home Finance (SHF) -- a bilingual (English/Gujarati) loan management
 ## Brand
 - **Colors**: Dark gray `#3a3536`, Accent orange `#f15a29`, Warm accent `#f47929`, Light accent `#f99d3e`, Light gray `#f8f8f8`
 - **Fonts**: Jost (display/headings, 400-700 weights), Archivo (body text, 400-600 weights) -- local woff2 files in `public/fonts/`
-- **CSS prefix**: `shf-` for all custom classes in `public/css/shf.css`
+- **CSS prefix**: `shf-` for legacy custom classes in `public/newtheme/css/shf.css` (newtheme pages use page-scoped classes in `public/newtheme/pages/*.css`)
 
 ## Loan Task System
 - **Stages**: Inquiry -> Document Selection -> Document Collection -> Parallel Processing (parent):

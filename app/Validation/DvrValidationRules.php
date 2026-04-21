@@ -21,7 +21,11 @@ class DvrValidationRules
             'notes' => 'nullable|string|max:5000',
             'outcome' => 'nullable|string|max:5000',
             'follow_up_needed' => 'nullable|boolean',
-            'follow_up_date' => 'nullable|required_if:follow_up_needed,1|date_format:d/m/Y|after:today',
+            // The controller derives `follow_up_needed` from whether a date was
+            // entered — so the date is always optional. No `required_if` rule:
+            // a DVR with no follow-up date is saved as closed (not needed),
+            // avoiding stale "pending" visits that were never actually tracked.
+            'follow_up_date' => 'nullable|date_format:d/m/Y|after:today',
             'follow_up_notes' => 'nullable|string|max:5000',
             'quotation_id' => 'nullable|exists:quotations,id',
             'loan_id' => 'nullable|exists:loan_details,id',

@@ -38,7 +38,9 @@ class ReportController extends Controller
             $users = collect([$user]);
         }
 
-        return view('reports.turnaround', compact('banks', 'products', 'branches', 'stages', 'users', 'scope'));
+        $template = 'newtheme.reports.turnaround';
+
+        return view($template, compact('banks', 'products', 'branches', 'stages', 'users', 'scope'));
     }
 
     public function turnaroundData(Request $request): JsonResponse

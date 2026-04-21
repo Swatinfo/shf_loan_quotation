@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=3">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="app">
+<div id="__shell_topbar"></div>
+
+<header class="page-header">
+  <div class="head-row">
+    <div>
+      <div class="crumbs"><a href="dashboard.html">Dashboard</a></div>
+      <h1 id="greeting">Good morning</h1>
+      <div class="sub" id="dashSub">Loading summary…</div>
+    </div>
+    <div class="head-actions"></div>
+  </div>
+  <div class="kpi-strip" id="kpiStrip"></div>
+  <div class="tabs" data-tab-panel-group="dash">
+    <a class="tab active" id="dash-tab-personal-tasks" data-panel="personal-tasks">Personal Tasks <span class="count" id="cnt-ptasks">0</span></a>
+    <a class="tab" id="dash-tab-tasks" data-panel="tasks">My Tasks <span class="count" id="cnt-tasks">0</span></a>
+    <a class="tab" id="dash-tab-loans" data-panel="loans">Loans <span class="count" id="cnt-loans">0</span></a>
+    <a class="tab" id="dash-tab-dvr" data-panel="dvr">DVR <span class="count" id="cnt-dvr">0</span></a>
+    <a class="tab" id="dash-tab-quotations" data-panel="quotations">Quotations <span class="count" id="cnt-quot">0</span></a>
+  </div>
+</header>
+
+<main class="content">
+
+  <!-- Two-column layout: main panels + sidebar -->
+  <div class="grid c-main mt-4">
+
+    <!-- ===== MAIN AREA: tab panels ===== -->
+    <div data-tab-panel-group="dash">
+
+      <!-- Personal Tasks -->
+      <div class="card" id="dash-panel-personal-tasks" data-panel-id="personal-tasks">
+        <div class="card-hd">
+          <div class="t"><span class="num">1</span>Personal Tasks <span class="sub" id="ptasksSub">loading…</span></div>
+          <div class="actions">
+            <a class="btn sm ghost" href="general-tasks.html">View all →</a>
+          </div>
+        </div>
+        <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-ptasks"></div></div>
+      </div>
+
+      <!-- My Tasks (loan stages) -->
+      <div class="card" id="dash-panel-tasks" data-panel-id="tasks" style="display:none;">
+        <div class="card-hd">
+          <div class="t"><span class="num">2</span>My Loan Tasks <span class="sub">stages assigned to me</span></div>
+          <div class="actions">
+            <select class="select" id="dashTaskStageFilter" style="height:28px;font-size:11.5px;width:auto;"><option value="">All stages</option></select>
+            <a class="btn sm ghost" href="loans.html">View loans →</a>
+          </div>
+        </div>
+        <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-mytasks"></div></div>
+      </div>
+
+      <!-- Loans -->
+      <div class="card" id="dash-panel-loans" data-panel-id="loans" style="display:none;">
+        <div class="card-hd">
+          <div class="t"><span class="num">3</span>Loans <span class="sub">active + recently completed</span></div>
+          <div class="actions">
+            <a class="btn sm ghost" href="loans.html">View all →</a>
+          </div>
+        </div>
+        <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-loans"></div></div>
+      </div>
+
+      <!-- DVR -->
+      <div class="card" id="dash-panel-dvr" data-panel-id="dvr" style="display:none;">
+        <div class="card-hd">
+          <div class="t"><span class="num">4</span>Daily Visit Report <span class="sub" id="dvrSub"></span></div>
+          <div class="actions">
+            <a class="btn sm ghost" href="dvr.html">View all →</a>
+          </div>
+        </div>
+        <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-dvr"></div></div>
+      </div>
+
+      <!-- Quotations -->
+      <div class="card" id="dash-panel-quotations" data-panel-id="quotations" style="display:none;">
+        <div class="card-hd">
+          <div class="t"><span class="num">5</span>Quotations <span class="sub" id="quotSub"></span></div>
+          <div class="actions">
+            <select class="select" id="dashQuotStatusFilter" style="height:28px;font-size:11.5px;width:auto;">
+              <option value="">All status</option>
+              <option value="active">Active</option>
+              <option value="converted">Converted</option>
+              <option value="on_hold">On hold</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <a class="btn sm ghost" href="quotations.html">View all →</a>
+          </div>
+        </div>
+        <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-quot"></div></div>
+      </div>
+
+      <!-- Pipeline by stage (always visible below tabs) -->
+      <div class="card mt-4">
+        <div class="card-hd">
+          <div class="t"><span class="num">6</span>Pipeline by stage <span class="sub">branch-wide</span></div>
+          <div class="actions"><a class="btn sm ghost" href="loans.html">Open loans →</a></div>
+        </div>
+        <div class="card-bd">
+          <div id="pipelineGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== SIDEBAR — ordered most-actionable first ===== -->
+    <aside>
+      <!-- 1) Today's follow-ups (most actionable) -->
+      <div class="card">
+        <div class="card-hd"><div class="t"><span class="num">A</span>Today's follow-ups</div><a class="btn sm ghost" href="dvr.html">All</a></div>
+        <div class="card-bd" style="padding:0;"><ul class="timeline" id="timelineList" style="padding:12px 18px;"></ul></div>
+      </div>
+
+      <!-- 2) Open queries (blocking items) -->
+      <div class="card mt-4">
+        <div class="card-hd"><div class="t"><span class="num">B</span>Open queries</div><span class="badge red sq" id="openQueryCount">0</span></div>
+        <div class="card-bd" style="padding:0;" id="openQueriesList"></div>
+      </div>
+
+      <!-- 3) Field activity (today pulse) -->
+      <div class="card mt-4">
+        <div class="card-hd"><div class="t"><span class="num">C</span>Field activity <span class="sub">today</span></div></div>
+        <div class="card-bd">
+          <div class="strip" style="border:none;" id="fieldStrip"></div>
+        </div>
+      </div>
+
+      <!-- 4) Bank mix donut (analytical, least actionable) -->
+      <div class="card mt-4">
+        <div class="card-hd"><div class="t"><span class="num">D</span>Bank mix MTD</div></div>
+        <div class="card-bd" style="display:flex;gap:20px;align-items:center;">
+          <svg class="donut" viewBox="0 0 42 42" id="bankDonut"></svg>
+          <div style="flex:1;" id="bankLegend"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div id="__shell_tweaks"></div>
+</div>
+
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('dashboard');</script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/shf-interactive.js?v=3"></script>
+<script src="assets/tabs.js"></script>
+<script>wireTabs('dash', ["personal-tasks","tasks","loans","dvr","quotations"]);</script>
+
+<script>
+(function () {
+  var D = window.SHF_DATA;
+  function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function pick(arr){ return arr[rand(0,arr.length-1)]; }
+  function randName(){ return pick(D.names.first) + ' ' + pick(D.names.last); }
+  function emi(amt, rate, yrs){ var m = rate/12/100, n = yrs*12; return Math.round(amt*m*Math.pow(1+m,n)/(Math.pow(1+m,n)-1)); }
+  function fmtAmount(v) { return '₹ ' + (window.SHF && window.SHF.formatIndianNumber ? SHF.formatIndianNumber(v) : v.toLocaleString('en-IN')); }
+  function daysAgoStr(d) { return d === 0 ? 'today' : d === 1 ? '1d ago' : d + 'd ago'; }
+  function dateDMY(offsetDays) {
+    var d = new Date(Date.now() - offsetDays*86400000);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+  }
+
+  /* ==================== CURRENT USER (demo) ==================== */
+  // Mirrors App\Models\User with a single role. Branch Manager sees everything
+  // (same permissions set as in topbar role-pill).
+  window.CURRENT_USER = {
+    id: 1,
+    name: 'Rahul Patel',
+    short: 'Rahul P.',
+    role: D.roles.find(function (r) { return r.slug === 'branch_manager'; }),
+    branch: D.branches[0], // Rajkot (HQ)
+    // Permission map — branch_manager in config/permissions.php
+    can: {
+      view_quotations: true,  // view_own_quotations (branch_manager)
+      view_loans: true,
+      view_dvr: true,
+      create_task: true,      // tasks route has no perm gate
+      create_dvr: true,
+    }
+  };
+
+  /* ==================== Greeting + subheader ==================== */
+  var hr = new Date().getHours();
+  var greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = greet + ', ' + window.CURRENT_USER.short;
+
+  /* ==================== Demo data generators ==================== */
+
+  // LOANS (mirror of loans.html generator, lighter)
+  var LOAN_DIST = [
+    { stage: 3,  key: 'document_collection', count: 6,  statusKey: 'active',    bucket: 'active' },
+    { stage: 4,  key: 'parallel_processing', count: 4,  statusKey: 'active',    bucket: 'active' },
+    { stage: 5,  key: 'rate_pf',             count: 5,  statusKey: 'active',    bucket: 'active' },
+    { stage: 6,  key: 'sanction',            count: 4,  statusKey: 'active',    bucket: 'active' },
+    { stage: 7,  key: 'docket',              count: 3,  statusKey: 'active',    bucket: 'active' },
+    { stage: 8,  key: 'kfs',                 count: 2,  statusKey: 'active',    bucket: 'active' },
+    { stage: 9,  key: 'esign',               count: 3,  statusKey: 'active',    bucket: 'active' },
+    { stage: 10, key: 'disbursement',        count: 3,  statusKey: 'active',    bucket: 'disbursed' },
+    { stage: 11, key: 'otc_clearance',       count: 2,  statusKey: 'active',    bucket: 'otc' },
+    { stage: 12, key: 'completed',           count: 4,  statusKey: 'completed', bucket: 'closed' },
+  ];
+  var PROGRESS = { 3:25, 4:33, 5:42, 6:50, 7:58, 8:66, 9:75, 10:83, 11:91, 12:100 };
+  var BAR = { 3:'var(--blue)', 4:'var(--blue)', 5:'var(--amber)', 6:'var(--accent)', 7:'var(--accent)', 8:'var(--violet)', 9:'var(--violet)', 10:'var(--green)', 11:'var(--ink-3)', 12:'var(--green)' };
+  var STAGE_BADGE = { 3:'blue', 4:'blue', 5:'amber', 6:'orange', 7:'orange', 8:'violet', 9:'violet', 10:'green', 11:'dark', 12:'green' };
+  var seq = 496;
+  var LOANS = [];
+  LOAN_DIST.forEach(function (d) {
+    for (var i = 0; i < d.count; i++) {
+      var bank = pick(D.banks);
+      var ct = pick(D.customerTypes);
+      var bankProducts = D.productsForBank(bank.id);
+      var prod = pick(bankProducts);
+      var amt = rand(6, 110) * 100000;
+      var rate = 8 + Math.random()*2;
+      var yrs = pick(D.tenures);
+      var stageObj = D.stages.find(function (s) { return s.key === d.key; }) || { label_en: 'Completed' };
+      var daysAgo = rand(0, 30);
+      LOANS.push({
+        loanNo: 'SHF-2026-' + String(seq--).padStart(4,'0'),
+        customer: randName(),
+        customerType: ct,
+        bank: bank,
+        product: prod,
+        stageN: d.stage,
+        stageLabel: stageObj.label_en,
+        stageBadge: STAGE_BADGE[d.stage] || '',
+        progress: PROGRESS[d.stage] || 100,
+        bar: BAR[d.stage] || 'var(--green)',
+        amount: amt,
+        emi: emi(amt, rate, yrs),
+        owner: d.count > 2 && i === 0 ? window.CURRENT_USER.name : randName(),
+        ownerIsMe: d.count > 2 && i === 0,
+        ownerRole: pick(['loan_advisor','bank_employee','office_employee','branch_manager']),
+        status: d.statusKey,
+        branch: pick(D.branches),
+        daysAgo: daysAgo,
+        dateStr: dateDMY(daysAgo),
+        bucket: d.bucket,
+      });
+    }
+  });
+
+  // MY TASKS (loan stages assigned to current user)
+  var MY_TASKS = LOANS.filter(function (l) { return l.ownerIsMe; }).slice(0, 8);
+  if (MY_TASKS.length < 6) {
+    // Add a few more by reassigning
+    for (var i = 0; i < 6 - MY_TASKS.length; i++) {
+      var l = LOANS[i];
+      if (l && !MY_TASKS.includes(l)) { l.ownerIsMe = true; l.owner = window.CURRENT_USER.name; MY_TASKS.push(l); }
+    }
+  }
+
+  // PERSONAL TASKS (general_tasks table)
+  var P_TASK_TITLES = [
+    'Call customer to confirm doc submission',
+    'Schedule meeting with bank RM',
+    'Follow up on OSV pending with bank',
+    'Review quotation before sending',
+    'Collect cheque from disbursement desk',
+    'Coordinate property valuation site visit',
+    'Verify ITR documents',
+    'Send payment reminder to customer',
+    'Prepare weekly sales report',
+    'Branch manager 1:1',
+    'Update customer CRM notes',
+    'Check pending KYC documents',
+  ];
+  var PERSONAL_TASKS = [];
+  for (var i = 0; i < 9; i++) {
+    var priority = pick(D.taskPriorities);
+    var status = pick(D.taskStatuses.filter(function (s) { return s.key !== 'cancelled'; }));
+    var dueOffset = rand(-2, 7);
+    PERSONAL_TASKS.push({
+      id: 100 + i,
+      title: P_TASK_TITLES[i % P_TASK_TITLES.length],
+      priority: priority,
+      status: status,
+      dueDate: dateDMY(-dueOffset),
+      dueOffset: dueOffset,
+      overdue: dueOffset < 0 && status.key !== 'completed',
+      assignee: i < 5 ? window.CURRENT_USER.name : randName(),
+      assignedToMe: i < 5,
+      loanLink: i % 3 === 0 ? LOANS[i % LOANS.length] : null,
+      createdBy: randName(),
+    });
+  }
+
+  // DVR (daily_visit_reports table)
+  var DVR_VISITS = [];
+  for (var i = 0; i < 8; i++) {
+    var ct = pick(D.dvrContactTypes);
+    var pp = pick(D.dvrPurposes);
+    var daysAgo = rand(0, 7);
+    var followUp = Math.random() < 0.6;
+    DVR_VISITS.push({
+      id: 200 + i,
+      visitDate: dateDMY(daysAgo),
+      daysAgo: daysAgo,
+      contactName: randName(),
+      contactPhone: '98' + rand(10,99) + ' ' + rand(100000,999999),
+      contactType: ct,
+      purpose: pp,
+      outcome: pick(['Positive', 'Needs follow-up', 'Interested', 'Will callback', 'Converted']),
+      followUpNeeded: followUp,
+      followUpDate: followUp ? dateDMY(-rand(1, 7)) : null,
+      followUpOverdue: followUp && Math.random() < 0.3,
+      isFollowUpDone: !followUp ? true : Math.random() < 0.3,
+      user: i < 3 ? window.CURRENT_USER.name : randName(),
+    });
+  }
+
+  // QUOTATIONS
+  var QUOTATIONS = [];
+  var qseq = 1280;
+  for (var i = 0; i < 10; i++) {
+    var bank1 = pick(D.banks);
+    var bank2 = pick(D.banks.filter(function (b) { return b.id !== bank1.id; }));
+    var ct = pick(D.customerTypes);
+    var amt = rand(6, 110) * 100000;
+    var daysAgo = rand(0, 25);
+    var status = Math.random() < 0.55 ? D.quotationStatuses[0]
+               : Math.random() < 0.6 ? D.quotationStatuses[1]
+               : Math.random() < 0.5 ? D.quotationStatuses[2]
+               : D.quotationStatuses[3];
+    QUOTATIONS.push({
+      quotNo: 'Q-2026-' + String(qseq--).padStart(4,'0'),
+      customer: randName(),
+      customerType: ct,
+      amount: amt,
+      tenures: [pick(D.tenures), pick(D.tenures)].filter(function (v, j, arr) { return arr.indexOf(v) === j; }),
+      banks: [bank1, bank2],
+      status: status,
+      daysAgo: daysAgo,
+      dateStr: dateDMY(daysAgo),
+      creator: i < 4 ? window.CURRENT_USER.name : randName(),
+    });
+  }
+
+  /* ==================== Stats ==================== */
+  var STATS = {
+    quotTotal:  QUOTATIONS.length,
+    quotToday:  QUOTATIONS.filter(function (q) { return q.daysAgo === 0; }).length,
+    quotMonth:  QUOTATIONS.filter(function (q) { return q.daysAgo <= 30; }).length,
+    loanActive: LOANS.filter(function (l) { return l.bucket !== 'closed'; }).length,
+    myTasks:    MY_TASKS.length + PERSONAL_TASKS.filter(function (t) { return t.assignedToMe && t.status.key !== 'completed'; }).length,
+    loanCompleted: LOANS.filter(function (l) { return l.bucket === 'closed'; }).length,
+  };
+
+  /* ==================== Render KPI chip strip ==================== */
+  var kpiDefs = [];
+  if (window.CURRENT_USER.can.view_quotations) {
+    kpiDefs.push(
+      { val: STATS.quotTotal, lbl: 'Quotations',  tone: 'accent', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      { val: STATS.quotToday, lbl: 'Today',       tone: 'accent', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      { val: STATS.quotMonth, lbl: 'This Month',  tone: 'accent', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' }
+    );
+  }
+  if (window.CURRENT_USER.can.view_loans) {
+    kpiDefs.push(
+      { val: STATS.loanActive,    lbl: 'Active',    tone: 'blue',  icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+      { val: STATS.myTasks,       lbl: 'My Tasks',  tone: 'amber', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+      { val: STATS.loanCompleted, lbl: 'Completed', tone: 'green', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' }
+    );
+  }
+  document.getElementById('kpiStrip').innerHTML = kpiDefs.map(function (s, i) {
+    var sep = i > 0 ? '<span class="kpi-sep"></span>' : '';
+    return sep +
+      '<div class="kpi-chip kpi-tone-' + s.tone + '">' +
+        '<span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="' + s.icon + '"/></svg></span>' +
+        '<span class="kpi-val">' + s.val.toLocaleString('en-IN') + '</span>' +
+        '<span class="kpi-lbl">' + s.lbl + '</span>' +
+      '</div>';
+  }).join('');
+
+  /* ==================== Subheader ==================== */
+  var disbToday = LOANS.filter(function (l) { return l.bucket === 'disbursed' && l.daysAgo === 0; }).length;
+  document.getElementById('dashSub').innerHTML =
+    'Branch: <strong>' + window.CURRENT_USER.branch.name + '</strong> · ' +
+    STATS.loanActive + ' active files · ' + disbToday + ' disbursements scheduled today';
+
+  /* ==================== Tab counts ==================== */
+  document.getElementById('cnt-ptasks').textContent = PERSONAL_TASKS.filter(function (t) { return t.status.key !== 'completed'; }).length;
+  document.getElementById('cnt-tasks').textContent  = MY_TASKS.length;
+  document.getElementById('cnt-loans').textContent  = LOANS.filter(function (l) { return l.bucket !== 'closed'; }).length;
+  document.getElementById('cnt-dvr').textContent    = DVR_VISITS.filter(function (v) { return v.followUpNeeded && !v.isFollowUpDone; }).length;
+  document.getElementById('cnt-quot').textContent   = QUOTATIONS.filter(function (q) { return q.status.key === 'active'; }).length;
+
+  /* ==================== Helpers ==================== */
+  function priorityPill(p) {
+    var map = { red: ['var(--red-soft)','var(--red)'], amber: ['var(--amber-soft)','var(--amber)'], blue: ['var(--blue-soft)','var(--blue)'], gray: ['var(--paper-2)','var(--ink-3)'] };
+    var c = map[p.color] || map.gray;
+    return '<span class="pill" style="background:' + c[0] + ';color:' + c[1] + ';font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;">' + p.label_en + '</span>';
+  }
+  function statusPill(s, small) {
+    var map = { green: ['var(--green-soft)','var(--green)'], amber: ['var(--amber-soft)','var(--amber)'], red: ['var(--red-soft)','var(--red)'], gray: ['var(--paper-2)','var(--ink-3)'], blue: ['var(--blue-soft)','var(--blue)'] };
+    var c = map[s.color] || map.gray;
+    return '<span class="pill" style="background:' + c[0] + ';color:' + c[1] + ';font-weight:600;' + (small ? 'font-size:10.5px;' : '') + '">' + s.label_en + '</span>';
+  }
+  function bankChip(b) {
+    return '<span class="bank-chip" style="background:' + b.bg + ';color:' + b.fg + ';">' + b.name + '</span>';
+  }
+
+  /* ==================== Personal Tasks panel ==================== */
+  var ptasksActive = PERSONAL_TASKS.filter(function (t) { return t.status.key !== 'completed'; });
+  var ptasksOverdue = ptasksActive.filter(function (t) { return t.overdue; }).length;
+  document.getElementById('ptasksSub').textContent = ptasksActive.length + ' pending · ' + ptasksOverdue + ' overdue';
+  document.getElementById('rows-ptasks').innerHTML = ptasksActive.length ? (
+    '<table class="tbl"><thead><tr>' +
+      '<th>Task</th>' +
+      '<th>Priority</th>' +
+      '<th>Status</th>' +
+      '<th>Due</th>' +
+      '<th>Assignee</th>' +
+      '<th class="th-actions" style="width:48px;"></th>' +
+    '</tr></thead><tbody>' +
+    ptasksActive.map(function (t) {
+      var loanLinkHtml = t.loanLink
+        ? '<a class="font-mono text-xs" href="loan-show.html" onclick="event.stopPropagation();" style="color:var(--accent);">' + t.loanLink.loanNo + '</a> · '
+        : '';
+      return '<tr onclick="location=\'task-show.html\'" class="clickable">' +
+        '<td><strong>' + t.title + '</strong><div class="text-xs text-muted">' + loanLinkHtml + 'Created by ' + t.createdBy + '</div></td>' +
+        '<td>' + priorityPill(t.priority) + '</td>' +
+        '<td>' + statusPill(t.status, true) + '</td>' +
+        '<td><div class="text-xs' + (t.overdue ? '" style="color:var(--red);font-weight:600;"' : '"') + '>' + t.dueDate + '</div>' + (t.overdue ? '<div class="text-xs" style="color:var(--red);">Overdue</div>' : '') + '</td>' +
+        '<td><div>' + t.assignee + '</div>' + (t.assignedToMe ? '<div class="text-xs" style="color:var(--accent);">Me</div>' : '') + '</td>' +
+        '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">' +
+          '<button class="btn-ghost btn-sm" data-row-actions>⋯</button>' +
+          '<div class="row-actions-menu">' +
+            '<a href="task-show.html">View</a>' +
+            '<a href="#">Mark done</a>' +
+            '<a href="#">Edit</a>' +
+            '<hr>' +
+            '<a href="#" class="danger" data-confirm-delete="Task">Delete</a>' +
+          '</div>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);"><div style="font-size:30px;margin-bottom:8px;">✅</div><div style="font-weight:600;">All caught up!</div><div class="text-xs text-muted mt-1">No pending personal tasks.</div></div>';
+
+  /* ==================== My Loan Tasks panel ==================== */
+  function renderMyTasks() {
+    var stageFilter = document.getElementById('dashTaskStageFilter').value;
+    var rows = MY_TASKS.filter(function (l) { return !stageFilter || l.stageKey === stageFilter; });
+    document.getElementById('rows-mytasks').innerHTML = rows.length ? (
+      '<table class="tbl"><thead><tr>' +
+        '<th>Loan #</th>' +
+        '<th>Customer</th>' +
+        '<th>Stage</th>' +
+        '<th class="num">Amount</th>' +
+        '<th>Age</th>' +
+        '<th>Bank</th>' +
+        '<th class="th-actions" style="width:48px;"></th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (l) {
+        var ageStyle = l.daysAgo > 10 ? 'background:var(--red-soft);color:var(--red);' : '';
+        return '<tr onclick="location=\'loan-show.html\'" class="clickable">' +
+          '<td><span class="font-mono" style="font-weight:600;">' + l.loanNo + '</span></td>' +
+          '<td><strong>' + l.customer + '</strong><div class="text-xs text-muted">' + l.customerType.label_en + '</div></td>' +
+          '<td><span class="badge sq ' + l.stageBadge + '">' + l.stageLabel + '</span><div class="progress thin mt-1"><div class="fill" style="width:' + l.progress + '%;background:' + l.bar + ';"></div></div></td>' +
+          '<td class="num tnum"><strong>' + fmtAmount(l.amount) + '</strong></td>' +
+          '<td><span class="pill" style="' + ageStyle + '">' + daysAgoStr(l.daysAgo) + '</span></td>' +
+          '<td>' + bankChip(l.bank) + '<div class="text-xs text-muted mt-1">' + l.product.name + '</div></td>' +
+          '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">' +
+            '<button class="btn-ghost btn-sm" data-row-actions>⋯</button>' +
+            '<div class="row-actions-menu">' +
+              '<a href="loan-show.html">View</a>' +
+              '<a href="loan-stages.html">Stages</a>' +
+              '<a href="loan-documents.html">Documents</a>' +
+            '</div>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('') + '</tbody></table>'
+    ) : '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);"><div style="font-size:30px;margin-bottom:8px;">🎉</div><div style="font-weight:600;">No assigned stages</div></div>';
+  }
+  // Populate stage filter
+  var stageSel = document.getElementById('dashTaskStageFilter');
+  D.stages.filter(function (s) { return !s.parent; }).forEach(function (s) {
+    var o = document.createElement('option');
+    o.value = s.key; o.textContent = s.n + '. ' + s.label_en;
+    stageSel.appendChild(o);
+  });
+  stageSel.addEventListener('change', renderMyTasks);
+  renderMyTasks();
+
+  /* ==================== Loans panel (compact) ==================== */
+  var activeLoans = LOANS.filter(function (l) { return l.bucket !== 'closed'; }).slice(0, 10);
+  document.getElementById('rows-loans').innerHTML = (
+    '<table class="tbl"><thead><tr>' +
+      '<th>Loan #</th>' +
+      '<th>Customer</th>' +
+      '<th>Bank / Product</th>' +
+      '<th class="num">Amount</th>' +
+      '<th>Stage</th>' +
+      '<th>Owner</th>' +
+      '<th class="th-actions" style="width:48px;"></th>' +
+    '</tr></thead><tbody>' +
+    activeLoans.map(function (l) {
+      return '<tr onclick="location=\'loan-show.html\'" class="clickable">' +
+        '<td><span class="font-mono" style="font-weight:600;">' + l.loanNo + '</span></td>' +
+        '<td><strong>' + l.customer + '</strong><div class="text-xs text-muted">' + l.customerType.label_en + '</div></td>' +
+        '<td>' + bankChip(l.bank) + '<div class="text-xs text-muted mt-1">' + l.product.name + '</div></td>' +
+        '<td class="num tnum"><strong>' + fmtAmount(l.amount) + '</strong></td>' +
+        '<td><span class="badge sq ' + l.stageBadge + '">' + l.stageLabel + '</span></td>' +
+        '<td><div>' + l.owner + '</div></td>' +
+        '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">' +
+          '<button class="btn-ghost btn-sm" data-row-actions>⋯</button>' +
+          '<div class="row-actions-menu">' +
+            '<a href="loan-show.html">View</a>' +
+            '<a href="loan-stages.html">Stages</a>' +
+          '</div>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('') + '</tbody></table>'
+  );
+
+  /* ==================== DVR panel ==================== */
+  var pendingFollowups = DVR_VISITS.filter(function (v) { return v.followUpNeeded && !v.isFollowUpDone; }).length;
+  var overdueFollowups = DVR_VISITS.filter(function (v) { return v.followUpNeeded && !v.isFollowUpDone && v.followUpOverdue; }).length;
+  document.getElementById('dvrSub').textContent = DVR_VISITS.length + ' visits · ' + pendingFollowups + ' pending follow-ups · ' + overdueFollowups + ' overdue';
+  document.getElementById('rows-dvr').innerHTML = (
+    '<table class="tbl"><thead><tr>' +
+      '<th>Visit Date</th>' +
+      '<th>Contact</th>' +
+      '<th>Type</th>' +
+      '<th>Purpose</th>' +
+      '<th>Outcome</th>' +
+      '<th>Follow-up</th>' +
+      '<th class="th-actions" style="width:48px;"></th>' +
+    '</tr></thead><tbody>' +
+    DVR_VISITS.map(function (v) {
+      var fu = !v.followUpNeeded ? '<span class="text-xs text-muted">—</span>'
+             : v.isFollowUpDone  ? '<span class="badge green sq" style="font-size:10px;">Done</span>'
+             : v.followUpOverdue ? '<span class="badge red sq" style="font-size:10px;">Overdue · ' + v.followUpDate + '</span>'
+                                 : '<span class="badge amber sq" style="font-size:10px;">Pending · ' + v.followUpDate + '</span>';
+      return '<tr onclick="location=\'dvr-show.html\'" class="clickable">' +
+        '<td><div class="text-xs">' + v.visitDate + '</div><div class="text-xs text-muted">' + daysAgoStr(v.daysAgo) + '</div></td>' +
+        '<td><strong>' + v.contactName + '</strong><div class="text-xs text-muted font-mono">' + v.contactPhone + '</div></td>' +
+        '<td><span class="pill" style="font-size:10.5px;">' + v.contactType.label_en + '</span></td>' +
+        '<td>' + v.purpose.label_en + '</td>' +
+        '<td><div class="text-xs">' + v.outcome + '</div></td>' +
+        '<td>' + fu + '</td>' +
+        '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">' +
+          '<button class="btn-ghost btn-sm" data-row-actions>⋯</button>' +
+          '<div class="row-actions-menu">' +
+            '<a href="dvr-show.html">View</a>' +
+            '<a href="#">Mark follow-up done</a>' +
+          '</div>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('') + '</tbody></table>'
+  );
+
+  /* ==================== Quotations panel ==================== */
+  function renderQuotations() {
+    var statusFilter = document.getElementById('dashQuotStatusFilter').value;
+    var rows = QUOTATIONS.filter(function (q) { return !statusFilter || q.status.key === statusFilter; });
+    document.getElementById('quotSub').textContent = rows.length + ' quotations' + (statusFilter ? ' · filtered' : '');
+    document.getElementById('rows-quot').innerHTML = rows.length ? (
+      '<table class="tbl"><thead><tr>' +
+        '<th>Quotation #</th>' +
+        '<th>Customer</th>' +
+        '<th class="num">Amount</th>' +
+        '<th>Tenure</th>' +
+        '<th>Banks</th>' +
+        '<th>Status</th>' +
+        '<th>Date</th>' +
+        '<th class="th-actions" style="width:48px;"></th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (q) {
+        return '<tr onclick="location=\'quotation-show.html\'" class="clickable">' +
+          '<td><span class="font-mono" style="font-weight:600;">' + q.quotNo + '</span></td>' +
+          '<td><strong>' + q.customer + '</strong><div class="text-xs text-muted">' + q.customerType.label_en + '</div></td>' +
+          '<td class="num tnum"><strong>' + fmtAmount(q.amount) + '</strong></td>' +
+          '<td><div class="text-xs">' + q.tenures.map(function (t) { return t + 'y'; }).join(' · ') + '</div></td>' +
+          '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">' + q.banks.map(bankChip).join('') + '</div></td>' +
+          '<td>' + statusPill(q.status, true) + '</td>' +
+          '<td><div class="text-xs">' + q.dateStr + '</div><div class="text-xs text-muted">' + daysAgoStr(q.daysAgo) + '</div></td>' +
+          '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">' +
+            '<button class="btn-ghost btn-sm" data-row-actions>⋯</button>' +
+            '<div class="row-actions-menu">' +
+              '<a href="quotation-show.html">View</a>' +
+              '<a href="#">Download PDF</a>' +
+              (q.status.key === 'active' ? '<a href="#">Hold</a><a href="#">Cancel</a><a href="quotation-convert.html">Convert to Loan</a>' : '') +
+            '</div>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('') + '</tbody></table>'
+    ) : '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);"><div style="font-size:30px;margin-bottom:8px;">📄</div><div style="font-weight:600;">No quotations match filter</div></div>';
+  }
+  document.getElementById('dashQuotStatusFilter').addEventListener('change', renderQuotations);
+  renderQuotations();
+
+  /* ==================== Sidebar: Pipeline by stage ==================== */
+  var stageNums = [1,2,3,4,5,6,7,8,9,10,11,12];
+  var pipelineHtml = stageNums.map(function (n) {
+    var stageObj = n === 12 ? { label_en: 'Completed MTD' } : D.stages.find(function (s) { return s.n === n; });
+    var count = n === 12
+      ? LOANS.filter(function (l) { return l.bucket === 'closed'; }).length
+      : LOANS.filter(function (l) { return l.stageN === n; }).length;
+    var pct = Math.min(100, count * 10);
+    var color = BAR[n] || (n <= 2 ? 'var(--ink-3)' : 'var(--accent)');
+    return '<div><div class="text-xs text-muted">' + n + '. ' + stageObj.label_en + '</div>' +
+           '<div style="font-family:Jost;font-size:22px;font-weight:600;margin-top:3px;' + (n === 12 ? 'color:var(--green);' : '') + '">' + count + '</div>' +
+           '<div class="progress thin mt-1"><div class="fill" style="width:' + pct + '%;background:' + color + ';"></div></div></div>';
+  }).join('');
+  document.getElementById('pipelineGrid').innerHTML = pipelineHtml;
+
+  /* ==================== Sidebar: Bank mix donut (only 4 real banks) ==================== */
+  var bankTotals = {};
+  LOANS.forEach(function (l) { bankTotals[l.bank.code] = (bankTotals[l.bank.code] || 0) + 1; });
+  var total = LOANS.length;
+  var offset = 25;
+  var donutSegs = '<circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--paper-2)" stroke-width="6"/>';
+  var legendHtml = '';
+  D.banks.forEach(function (b) {
+    var count = bankTotals[b.code] || 0;
+    var pct = total ? Math.round((count / total) * 100) : 0;
+    var dash = total ? (count / total) * 100 : 0;
+    donutSegs += '<circle cx="21" cy="21" r="15.915" fill="none" stroke="' + b.bg + '" stroke-width="6" stroke-dasharray="' + dash + ' 100" stroke-dashoffset="' + offset + '" transform="rotate(-90 21 21)"/>';
+    offset -= dash;
+    legendHtml += '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;">' +
+      '<span style="display:inline-flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;background:' + b.bg + ';border-radius:2px;"></span>' + b.code + '</span>' +
+      '<strong>' + pct + '%</strong></div>';
+  });
+  donutSegs += '<text x="21" y="22" text-anchor="middle" font-family="Jost" font-weight="600" font-size="6" fill="#1c1a1b">' + total + '</text>';
+  donutSegs += '<text x="21" y="27" text-anchor="middle" font-family="Archivo" font-size="3" fill="#8a8285">loans</text>';
+  document.getElementById('bankDonut').innerHTML = donutSegs;
+  document.getElementById('bankLegend').innerHTML = legendHtml;
+
+  /* ==================== Sidebar: Today's follow-ups ==================== */
+  var todayItems = [
+    { t: '10:30', title: 'Call ' + PERSONAL_TASKS[0].loanLink?.customer || randName() + ' — missing PAN', meta: PERSONAL_TASKS[0].loanLink?.loanNo || 'Task', active: true },
+    { t: '1:00',  title: 'Site visit — ' + DVR_VISITS[0].contactName, meta: 'DVR scheduled', active: true },
+    { t: '3:00',  title: 'Collect cheque from ' + (activeLoans.find(function (l) { return l.bucket === 'disbursed'; })?.customer || 'customer'), meta: 'Disbursement', active: false },
+    { t: '5:30',  title: 'Branch manager 1:1', meta: 'Ops review', active: false },
+  ];
+  document.getElementById('timelineList').innerHTML = todayItems.map(function (i) {
+    return '<li' + (i.active ? ' class="active"' : '') + '><div class="tl-t">' + i.title + '</div><div class="tl-meta">' + i.t + ' · ' + i.meta + '</div></li>';
+  }).join('');
+
+  /* ==================== Sidebar: Open queries ==================== */
+  var queries = [
+    { title: 'Legal clarification needed', loan: LOANS[3].loanNo,  role: 'bank employee',   age: '6h ago' },
+    { title: 'Valuation report mismatch',  loan: LOANS[4].loanNo,  role: 'office employee', age: '1d ago' },
+    { title: 'Missing sale deed copy',     loan: LOANS[5].loanNo,  role: 'loan advisor',    age: '2d ago' },
+    { title: 'Rate sheet clarification',   loan: LOANS[2].loanNo,  role: 'loan advisor',    age: '3d ago' },
+  ];
+  document.getElementById('openQueryCount').textContent = queries.length;
+  document.getElementById('openQueriesList').innerHTML = queries.map(function (q, i) {
+    var last = i === queries.length - 1;
+    return '<div style="padding:12px 18px;' + (last ? '' : 'border-bottom:1px solid var(--line);') + '">' +
+      '<div style="font-size:12px;font-weight:500;">' + q.title + '</div>' +
+      '<div class="text-xs text-muted mt-1"><span class="font-mono">' + q.loan + '</span> · ' + q.role + ' · ' + q.age + '</div>' +
+    '</div>';
+  }).join('');
+
+  /* ==================== Sidebar: Field activity ==================== */
+  var todayDvr = DVR_VISITS.filter(function (v) { return v.daysAgo === 0; });
+  var fieldStats = [
+    { lbl: 'Visits',     val: todayDvr.length || DVR_VISITS.length },
+    { lbl: 'Leads',      val: todayDvr.filter(function (v) { return v.purpose.key === 'new_lead'; }).length || 2 },
+    { lbl: 'Follow-ups', val: todayDvr.filter(function (v) { return v.purpose.key === 'follow_up'; }).length || 4 },
+    { lbl: 'Distance',   val: '42', unit: 'km' },
+  ];
+  document.getElementById('fieldStrip').innerHTML = fieldStats.map(function (s) {
+    return '<div><div class="lbl">' + s.lbl + '</div><div class="val"' + (s.unit ? ' style="font-size:18px;"' : '') + '>' + s.val + (s.unit ? '<span style="font-size:11px;color:var(--ink-4);margin-left:2px;">' + s.unit + '</span>' : '') + '</div></div>';
+  }).join('');
+
+  /* Header create buttons replaced by the site-wide Create FAB (menu.js). */
+})();
+</script>
+<script src="assets/page-dashboard.js"></script>
+<script src="assets/dashboard.js?v=1"></script>
+</body>
+</html>

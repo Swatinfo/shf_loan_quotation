@@ -247,11 +247,11 @@ Validation, notes updates, and transfer target calculations are specific to each
 1. Validate `notes_data` array present
 2. Per-stage validation of required fields via `getFieldErrors($stageKey, $data)`. Examples:
     - `app_number`: requires `application_number`, `docket_days_offset` (with optional `custom_docket_date` if offset = 0)
-    - `sanction`: requires `sanction_date`, `sanctioned_amount`, `tenure_months`, `emi_amount` (Phase 3 only)
-    - `docket`: `login_date` (Phase 2 only)
+    - `sanction`: requires only `sanction_date` (Phase 3). Loan financials moved to docket.
+    - `docket`: requires `login_date`, `sanctioned_amount`, `sanctioned_rate`, `tenure_months`, `emi_amount` (Phase 2 only). Office employee captures the financials here after receiving the sanction letter.
     - `otc_clearance`: `handover_date`
 3. Domain-specific checks:
-    - Sanction: EMI ≤ sanctioned_amount sanity
+    - Docket: EMI ≤ sanctioned_amount sanity (checked at docket save, not sanction)
     - Application number: also write to `loan_details.application_number`
     - Sanction date with offset: recompute `expected_docket_date`
 4. If stage is pending/in_progress AND data now complete (`isStageDataComplete`), auto-advance to in_progress then completed

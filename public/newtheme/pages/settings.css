@@ -1,0 +1,869 @@
+/* =====================================================================
+ * Newtheme Settings — corporate layout + Bootstrap compatibility shim
+ *
+ * The settings tab panes still use Bootstrap grid/utility classes
+ * (row / col-* / d-flex / gap-* / mb-* / p-*) and legacy shf-* classes,
+ * neither of which are defined in the newtheme CSS. This file provides:
+ *   1. A compatibility shim for the subset of Bootstrap utilities used
+ *      inside the panes — scoped to `.settings-nt` so it doesn't leak.
+ *   2. Corporate-grade visual overrides for legacy shf-* components so
+ *      the page reads as a proper newtheme system, not a cozy mix.
+ *   3. Full mobile responsiveness: rail collapses into a top tab bar,
+ *      grid cells stack single-column, remove buttons stay icon-only.
+ * ===================================================================== */
+
+/* Reset text/link colors on this whole scope so legacy :root color drift
+   doesn't leak through. Pin everything to newtheme ink/line tokens. */
+.settings-nt {
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    /* NOTE: no overflow-x: clip here — that creates a containing block
+       chain that prevents `position: fixed` on the mobile Save footer
+       from anchoring to the viewport. Horizontal overflow is instead
+       contained at the .table-responsive level (bank charges table). */
+}
+.settings-nt a { color: var(--accent); text-decoration: none; }
+.settings-nt a:hover { text-decoration: underline; }
+
+/* ================================================================
+   Outer shell: left rail + content
+   ================================================================ */
+.settings-nt-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    min-width: 0;
+}
+@media (max-width: 1023px) {
+    .settings-nt-shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
+/* Every nested container needs min-width: 0 to prevent tables with
+   min-width: 720px from dragging the whole page wider than the viewport. */
+.settings-nt-main,
+.settings-nt-card,
+.settings-nt-card-bd,
+.settings-nt .settings-tab-pane {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ---------- Left rail (desktop only) ---------- */
+.settings-nt-rail {
+    position: sticky;
+    top: 80px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+@media (max-width: 1023px) { .settings-nt-rail { display: none; } }
+
+.settings-nt-rail-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-4);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 6px 10px 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+.settings-nt-rail-nav { display: flex; flex-direction: column; gap: 2px; }
+.settings-nt-rail-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px 9px 7px;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    color: var(--ink-2, var(--ink));
+    font-family: 'Jost', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.settings-nt-rail-item .num {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 10.5px; font-weight: 600;
+    color: var(--ink-4);
+    background: var(--paper-2);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.settings-nt-rail-item .lbl { flex: 1; }
+.settings-nt-rail-item:hover { background: var(--paper-2); color: var(--ink); text-decoration: none; }
+.settings-nt-rail-item.active {
+    background: rgba(241, 90, 41, 0.08);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+.settings-nt-rail-item.active .num { background: var(--accent); color: #fff; }
+
+/* ---------- Mobile tab strip (<1024px) ---------- */
+.settings-nt-tabs-wrap {
+    display: none;
+    position: relative;
+    margin: 0 0 -1px;
+    min-width: 0;
+    max-width: 100%;
+}
+@media (max-width: 1023px) { .settings-nt-tabs-wrap { display: block; } }
+
+.settings-nt-tabs {
+    display: none;
+    gap: 2px;
+    padding: 8px 48px 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+}
+.settings-nt-tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 1023px) { .settings-nt-tabs { display: flex; } }
+
+/* Scroll chevrons — visible on mobile when the strip overflows. */
+.settings-nt-tab-nav {
+    display: none;
+    position: absolute;
+    top: 0;
+    width: 40px;
+    height: 100%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink-2, var(--ink));
+    cursor: pointer;
+    z-index: 3;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 1023px) {
+    .settings-nt-tab-nav { display: inline-flex; }
+}
+.settings-nt-tab-nav.prev { left: 0; border-radius: 10px 0 0 0; }
+.settings-nt-tab-nav.next { right: 0; border-radius: 0 10px 0 0; }
+.settings-nt-tab-nav svg { width: 16px; height: 16px; }
+.settings-nt-tab-nav:hover { background: var(--paper-2); color: var(--ink); }
+.settings-nt-tab-nav:active { background: rgba(241, 90, 41, 0.08); color: var(--accent); }
+.settings-nt-tab-nav:disabled { opacity: 0.3; cursor: default; }
+.settings-nt-tab-nav:disabled:hover { background: #fff; }
+
+.settings-nt-tabs::-webkit-scrollbar { height: 3px; }
+.settings-nt-tabs::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+
+.settings-nt-tabs .tab {
+    flex: 0 0 auto;
+    padding: 9px 14px;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-3);
+    text-decoration: none;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    position: relative;
+    bottom: -1px;
+}
+.settings-nt-tabs .tab:hover { color: var(--ink); background: var(--paper-2); text-decoration: none; }
+.settings-nt-tabs .tab.active {
+    color: var(--accent);
+    background: #fff;
+    border-color: var(--line);
+    border-bottom: 1px solid #fff;
+    z-index: 2;
+}
+
+/* ---------- Main card ---------- */
+.settings-nt-card {
+    margin: 0 !important;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    /* overflow: visible — `overflow: hidden` from the base .card rule would
+       clip the fixed mobile Save footer AND break any sticky descendants.
+       Horizontal overflow on bank charges table is contained inside
+       `.table-responsive { overflow-x: auto }`, not here. */
+    overflow: visible !important;
+}
+@media (max-width: 1023px) {
+    .settings-nt-card { border-top-left-radius: 0; border-top-right-radius: 0; }
+}
+
+.settings-nt-card-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fcfbfa, #f7f5f3);
+}
+.settings-nt-card-hd .t {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.settings-nt-card-hd .t > * { line-height: 1; }
+.settings-nt-card-hd .t .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 28px;
+    padding: 0 6px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+.settings-nt-breadcrumb {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: 0.02em;
+    font-family: 'Jost', sans-serif;
+}
+@media (max-width: 640px) { .settings-nt-breadcrumb { display: none; } }
+
+.settings-nt-card-bd { padding: 0; }
+
+/* Neutralise legacy shf-card inside the pane shell */
+.settings-nt .shf-card,
+.settings-nt .shf-section-no-top-radius {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+
+.settings-nt .settings-tab-pane {
+    padding: 26px 28px !important;
+}
+@media (max-width: 640px) {
+    .settings-nt .settings-tab-pane { padding: 18px 16px !important; }
+}
+
+/* ================================================================
+   Bootstrap-grid / utility shim — scoped to .settings-nt
+   ================================================================ */
+
+/* Flex + display */
+.settings-nt .d-flex { display: flex !important; }
+.settings-nt .d-inline-flex { display: inline-flex !important; }
+.settings-nt .d-block { display: block !important; }
+.settings-nt .d-none { display: none !important; }
+.settings-nt .flex-wrap { flex-wrap: wrap !important; }
+.settings-nt .flex-column { flex-direction: column !important; }
+.settings-nt .flex-grow-1 { flex-grow: 1 !important; }
+.settings-nt .align-items-center { align-items: center !important; }
+.settings-nt .align-items-start { align-items: flex-start !important; }
+.settings-nt .align-items-end { align-items: flex-end !important; }
+.settings-nt .justify-content-center { justify-content: center !important; }
+.settings-nt .justify-content-end { justify-content: flex-end !important; }
+.settings-nt .justify-content-between { justify-content: space-between !important; }
+
+/* Grid row/col shim (replaces Bootstrap .row / .col-*) */
+.settings-nt .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -8px;
+}
+.settings-nt .row.g-1 { --gap: 4px; }
+.settings-nt .row.g-2 { --gap: 8px; }
+.settings-nt .row.g-3 { --gap: 12px; }
+.settings-nt .row.g-1, .settings-nt .row.g-2, .settings-nt .row.g-3 {
+    row-gap: calc(var(--gap) * 2);
+    margin: 0 calc(-1 * var(--gap));
+}
+.settings-nt .row.g-1 > [class*="col-"],
+.settings-nt .row.g-2 > [class*="col-"],
+.settings-nt .row.g-3 > [class*="col-"] {
+    padding: 0 var(--gap);
+}
+.settings-nt [class*="col-"] {
+    padding: 0 8px;
+    max-width: 100%;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+}
+.settings-nt .col { flex: 1 1 0; }
+.settings-nt .col-auto { flex: 0 0 auto; width: auto; }
+.settings-nt .col-12 { flex: 0 0 100%; width: 100%; }
+.settings-nt .col-6  { flex: 0 0 50%;  width: 50%; }
+
+@media (min-width: 768px) {
+    .settings-nt .col-md   { flex: 1 1 0; }
+    .settings-nt .col-md-auto { flex: 0 0 auto; width: auto; }
+    .settings-nt .col-md-12 { flex: 0 0 100%;  width: 100%; }
+    .settings-nt .col-md-6  { flex: 0 0 50%;    width: 50%; }
+    .settings-nt .col-md-4  { flex: 0 0 33.33%; width: 33.33%; }
+    .settings-nt .col-md-3  { flex: 0 0 25%;    width: 25%; }
+    .settings-nt .col-md-2  { flex: 0 0 16.66%; width: 16.66%; }
+}
+@media (min-width: 992px) {
+    .settings-nt .col-lg-auto { flex: 0 0 auto; width: auto; }
+    .settings-nt .col-lg-5 { flex: 0 0 41.66%; width: 41.66%; }
+    .settings-nt .col-lg-4 { flex: 0 0 33.33%; width: 33.33%; }
+    .settings-nt .col-lg-3 { flex: 0 0 25%;    width: 25%; }
+    .settings-nt .col-lg-2 { flex: 0 0 16.66%; width: 16.66%; }
+}
+
+/* Mobile: collapse every grid cell to a single column */
+@media (max-width: 767px) {
+    .settings-nt .row > [class*="col-"] { flex: 0 0 100% !important; width: 100% !important; }
+    .settings-nt .row { row-gap: 12px; }
+}
+
+/* Gap utilities */
+.settings-nt .gap-1 { gap: 4px !important; }
+.settings-nt .gap-2 { gap: 8px !important; }
+.settings-nt .gap-3 { gap: 12px !important; }
+
+/* Margin / padding utilities (subset actually used by the panes) */
+.settings-nt .mb-0 { margin-bottom: 0 !important; }
+.settings-nt .mb-1 { margin-bottom: 4px !important; }
+.settings-nt .mb-2 { margin-bottom: 8px !important; }
+.settings-nt .mb-3 { margin-bottom: 12px !important; }
+.settings-nt .mb-4 { margin-bottom: 20px !important; }
+.settings-nt .mt-1 { margin-top: 4px !important; }
+.settings-nt .mt-2 { margin-top: 8px !important; }
+.settings-nt .mt-3 { margin-top: 12px !important; }
+.settings-nt .mt-4 { margin-top: 20px !important; }
+.settings-nt .my-4 { margin-top: 20px !important; margin-bottom: 20px !important; }
+.settings-nt .ms-2 { margin-left: 8px !important; }
+.settings-nt .p-0 { padding: 0 !important; }
+.settings-nt .p-2 { padding: 8px !important; }
+.settings-nt .p-3 { padding: 12px !important; }
+.settings-nt .p-4 { padding: 18px !important; }
+
+/* Sizing */
+.settings-nt .w-100 { width: 100% !important; }
+
+/* Text utilities */
+.settings-nt .text-center { text-align: center !important; }
+.settings-nt .text-end { text-align: right !important; }
+.settings-nt .small { font-size: 12.5px; }
+.settings-nt .fw-bold { font-weight: 700; }
+.settings-nt .fw-semibold { font-weight: 600; }
+.settings-nt .fw-medium { font-weight: 500; }
+.settings-nt .rounded { border-radius: 6px; }
+
+/* ================================================================
+   Legacy color pins — no brown/red drift from legacy vars
+   ================================================================ */
+.settings-nt p { color: var(--ink); }
+.settings-nt .shf-text-gray,
+.settings-nt .text-muted,
+.settings-nt small { color: var(--ink-3) !important; }
+.settings-nt .shf-text-gray-light { color: var(--ink-4) !important; }
+.settings-nt .shf-text-xs { font-size: 11.5px; color: var(--ink-3); }
+.settings-nt .shf-text-accent { color: var(--accent) !important; }
+
+/* ================================================================
+   Corporate form fields
+   ================================================================ */
+.settings-nt .shf-form-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.settings-nt .shf-input,
+.settings-nt input.shf-input,
+.settings-nt select.shf-input,
+.settings-nt textarea.shf-input {
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 9px 12px;
+    border: 1px solid var(--line-strong, #d4d0ce);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+    box-shadow: none;
+}
+.settings-nt textarea.shf-input { min-height: 80px; line-height: 1.55; resize: vertical; }
+.settings-nt .shf-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.12);
+}
+.settings-nt .shf-input.small { font-size: 12.5px; padding: 7px 10px; }
+
+/* ================================================================
+   Buttons — overhaul
+   ================================================================ */
+/* Primary Save button (orange filled) */
+.settings-nt .btn-accent {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 13px !important; font-weight: 600 !important;
+    padding: 8px 16px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(241,90,41,0.2);
+}
+.settings-nt .btn-accent:hover {
+    background: var(--accent-deep, #d94d1f) !important;
+    border-color: var(--accent-deep, #d94d1f) !important;
+    text-decoration: none;
+}
+.settings-nt .btn-accent svg { width: 14px; height: 14px; }
+
+/* Compact Add button — secondary outline, much lighter than Save */
+.settings-nt .btn-accent-sm {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 12px !important; font-weight: 600 !important;
+    padding: 7px 12px !important;
+    background: #fff !important;
+    color: var(--accent) !important;
+    border: 1px solid rgba(241, 90, 41, 0.4) !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.settings-nt .btn-accent-sm:hover {
+    background: rgba(241, 90, 41, 0.08) !important;
+    border-color: var(--accent) !important;
+    text-decoration: none;
+}
+.settings-nt .btn-accent-sm svg { width: 12px; height: 12px; }
+
+/* Remove (trash) button — icon-only, compact, muted red */
+.settings-nt .shf-btn-danger,
+.settings-nt button.shf-btn-danger,
+.settings-nt .removeDocBtn,
+.settings-nt .removeDvrBtn,
+.settings-nt .removeReasonBtn {
+    font-size: 0 !important;
+    width: 32px; height: 32px;
+    padding: 0 !important;
+    background: transparent !important;
+    color: var(--red) !important;
+    border: 1px solid rgba(192, 57, 43, 0.25) !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.settings-nt .shf-btn-danger:hover {
+    background: var(--red) !important;
+    border-color: var(--red) !important;
+    color: #fff !important;
+}
+.settings-nt .shf-btn-danger svg {
+    width: 14px !important; height: 14px !important;
+    margin: 0;
+}
+
+/* ================================================================
+   Section sub-headers + rules
+   ================================================================ */
+.settings-nt .font-display { font-family: 'Jost', sans-serif; }
+.settings-nt h6.font-display {
+    font-size: 12px !important;
+    font-weight: 700;
+    color: var(--ink-2, var(--ink));
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    margin: 0 0 16px 0 !important;
+}
+.settings-nt hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
+
+/* Bottom action row (Save buttons). Match regardless of whether the wrapper
+   is inside a form (Documents, Quotation Reasons) or a sibling of the forms
+   (DVR uses `form=""` attrs on the submit buttons and puts the row outside). */
+.settings-nt .settings-tab-pane .shf-form-actions,
+.settings-nt .settings-tab-pane .mt-4.d-flex.justify-content-end,
+.settings-nt .settings-tab-pane .mt-3.d-flex.justify-content-end {
+    padding-top: 18px;
+    margin-top: 24px !important;
+    border-top: 1px solid var(--line);
+}
+
+/* ================================================================
+   Bank-charges table — must scroll INSIDE the card on mobile, not
+   widen the whole page. Paired with `min-width: 0` on ancestors
+   (see top of file) so the page viewport stays clean.
+   ================================================================ */
+.settings-nt .table-responsive {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+}
+.settings-nt table.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+    min-width: 720px;
+}
+.settings-nt table.table thead th {
+    background: var(--paper-2);
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    white-space: nowrap;
+}
+.settings-nt table.table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+    color: var(--ink);
+}
+.settings-nt table.table tbody tr:last-child td { border-bottom: none; }
+.settings-nt table.table tbody tr:hover td { background: var(--paper-2); }
+
+/* Inputs inside bank-charges table — smaller, crisp */
+.settings-nt table.table input.shf-input {
+    padding: 6px 9px;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+}
+.settings-nt table.table input.shf-input:focus { border-color: var(--accent); }
+
+/* ================================================================
+   Tenures tag chips
+   ================================================================ */
+.settings-nt .shf-tag {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 12px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.10) !important;
+    color: var(--blue) !important;
+    border: 1px solid rgba(37, 99, 235, 0.30) !important;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px; font-weight: 600;
+    line-height: 1.4;
+}
+.settings-nt .shf-tag-remove {
+    background: none !important;
+    border: none !important;
+    color: var(--blue) !important;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 !important;
+    width: auto !important; height: auto !important;
+}
+.settings-nt .shf-tag-remove:hover { color: var(--red) !important; }
+
+/* ================================================================
+   Bank badges (read-only list in Banks tab)
+   ================================================================ */
+.settings-nt .shf-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.settings-nt .shf-badge.shf-badge-blue {
+    background: rgba(37,99,235,0.10);
+    color: var(--blue);
+}
+.settings-nt .shf-badge.shf-badge-green {
+    background: rgba(16,122,79,0.10);
+    color: var(--green);
+}
+
+/* ================================================================
+   Documents tab — sub-tabs + sortable rows
+   ================================================================ */
+.settings-nt .doc-sub-tab {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 12px !important; font-weight: 600 !important;
+    padding: 8px 14px !important;
+    color: var(--ink-3) !important;
+    border-bottom: 2px solid transparent !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    letter-spacing: 0.02em;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    cursor: pointer;
+}
+.settings-nt .doc-sub-tab:hover { color: var(--ink) !important; }
+.settings-nt .doc-sub-tab.active {
+    color: var(--accent) !important;
+    border-bottom-color: var(--accent) !important;
+}
+
+.settings-nt .doc-sortable-item,
+.settings-nt .shf-reason-row {
+    background: #fafaf8 !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+    margin: 0 0 8px 0 !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.settings-nt .doc-sortable-item > .col-auto,
+.settings-nt .shf-reason-row > .col-auto { padding: 0; }
+.settings-nt .doc-sortable-ghost { opacity: 0.4; background: var(--paper-2) !important; }
+.settings-nt .doc-drag-handle {
+    color: var(--ink-4) !important;
+    font-size: 14px;
+    cursor: grab;
+    padding: 0 4px;
+}
+.settings-nt .doc-drag-handle:active { cursor: grabbing; }
+
+.settings-nt .shf-reason-add-row {
+    padding: 12px !important;
+    background: #fdfbf9;
+    border: 1px dashed var(--line-strong, #d4d0ce);
+    border-radius: 8px;
+    margin-top: 6px;
+}
+
+/* ================================================================
+   Key badges (DVR contact-type key pill)
+   ================================================================ */
+.settings-nt .shf-reason-row code,
+.settings-nt .shf-reason-row .shf-badge {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--paper-2);
+    color: var(--ink-2, var(--ink));
+    font-weight: 600;
+    border: none;
+}
+
+.settings-nt code {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+    background: var(--paper-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--ink-2, var(--ink));
+}
+
+/* ================================================================
+   Checkboxes + inputs cosmetic
+   ================================================================ */
+.settings-nt input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+/* ================================================================
+   Quotation hold-reason group labels (AMOUNT / TENURE etc.)
+   ================================================================ */
+.settings-nt [data-reason-group-label],
+.settings-nt strong[style*="accent"] {
+    display: block;
+    font-family: 'Jost', sans-serif !important;
+    font-size: 10.5px !important;
+    font-weight: 700;
+    color: var(--accent) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 16px 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(241, 90, 41, 0.25);
+}
+
+/* ================================================================
+   Tablet/mobile tweaks (<=1023px)
+   ================================================================ */
+@media (max-width: 1023px) {
+    /* Stop the page shell from adding its own side padding when the rail
+       is hidden — the card already has its own chrome.
+       160px bottom = 70px fixed nav + ~65px FAB + 25px breathing. */
+    .settings-nt {
+        padding: 0 0 160px;
+    }
+    .settings-nt-card { border-top-left-radius: 0; border-top-right-radius: 0; }
+    .settings-nt-card-hd { padding: 12px 16px; }
+    .settings-nt-card-hd .t { font-size: 14px; }
+    .settings-nt .settings-tab-pane { padding: 18px 16px !important; }
+    .settings-nt hr { margin: 18px 0; }
+
+    /* FIXED Save button footer — anchored flush on top of the 64 px mobile
+       bottom-nav so there's no visible gap between the two bars. Only the
+       currently-active `.settings-tab-pane` is `display: block`, so even
+       though every pane has its own action row, only one footer renders at
+       a time. Quotation Reasons has TWO forms (Hold + Cancel) — we dock both
+       of them side-by-side in the footer; see the split rule below. */
+    .settings-nt .settings-tab-pane > form > .shf-form-actions,
+    .settings-nt .settings-tab-pane > form > .mt-4.d-flex.justify-content-end,
+    .settings-nt .settings-tab-pane > .shf-form-actions {
+        position: fixed !important;
+        left: 0;
+        right: 0;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        margin: 0 !important;
+        padding: 10px 12px !important;
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+        z-index: 120;            /* above card (10), below bottom nav (180) */
+    }
+
+    /* ===== Quotation Reasons — BOTH Save buttons share the footer ======
+       Each Save button lives in its own `<form>` (so submits only its own
+       list). Position the two form-actions rows as a 50/50 split fixed to
+       the bottom, with Hold Reasons on the left, Cancel Reasons on the
+       right. They visually read as ONE footer with two buttons inline. */
+    .settings-nt #tab-quotation-reasons > div > form > .mt-3.d-flex.justify-content-end,
+    .settings-nt #tab-quotation-reasons > div > form > .mt-4.d-flex.justify-content-end {
+        position: fixed !important;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        margin: 0 !important;
+        padding: 10px 6px !important;
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+        z-index: 120;
+        display: flex !important;
+        justify-content: stretch !important;
+    }
+    .settings-nt #tab-quotation-reasons > div:first-of-type > form > .mt-3.d-flex.justify-content-end,
+    .settings-nt #tab-quotation-reasons > div:first-of-type > form > .mt-4.d-flex.justify-content-end {
+        left: 0 !important;
+        right: 50% !important;
+        border-right: 1px solid var(--line);
+    }
+    .settings-nt #tab-quotation-reasons > div:last-of-type > form > .mt-3.d-flex.justify-content-end,
+    .settings-nt #tab-quotation-reasons > div:last-of-type > form > .mt-4.d-flex.justify-content-end {
+        left: 50% !important;
+        right: 0 !important;
+    }
+    .settings-nt #tab-quotation-reasons > div > form > .mt-3.d-flex.justify-content-end .btn-accent,
+    .settings-nt #tab-quotation-reasons > div > form > .mt-4.d-flex.justify-content-end .btn-accent {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        justify-content: center;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        font-size: 12.5px !important;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    /* Hide the global FAB on settings/mobile. The create-action shortcuts
+       it offers (New Quotation / New Task / New Visit) aren't relevant
+       here and they'd overlap the sticky Save band. Users still reach
+       them via the bottom nav on other pages. */
+    .shf-fab-wrap { display: none !important; }
+}
+
+@media (max-width: 640px) {
+    /* Extra clearance on phones so Save never ends up under the nav. */
+    .settings-nt { padding-bottom: 170px; }
+}
+
+/* Phone (<=640px) */
+@media (max-width: 640px) {
+    .settings-nt .settings-tab-pane { padding: 14px 12px !important; }
+    .settings-nt-card-hd .t { font-size: 13px; }
+    .settings-nt-card-hd .t .num { height: 20px; min-width: 26px; font-size: 10px; }
+
+    /* Save buttons on phone — keep multiple actions on ONE row (equal share),
+       don't let them stack vertically. DVR tab has Save Contact Types + Save
+       Purposes; Quotation Reasons has Save Hold + Save Cancel; both should sit
+       side-by-side. Descendant selector also catches DVR's pane-level
+       `.shf-form-actions` (outside any form). */
+    .settings-nt .settings-tab-pane .shf-form-actions,
+    .settings-nt .settings-tab-pane .mt-4.d-flex.justify-content-end,
+    .settings-nt .settings-tab-pane .mt-3.d-flex.justify-content-end {
+        flex-wrap: nowrap;
+        gap: 8px;
+        justify-content: stretch !important;
+    }
+    .settings-nt .settings-tab-pane .shf-form-actions .btn-accent,
+    .settings-nt .settings-tab-pane .mt-4.d-flex .btn-accent,
+    .settings-nt .settings-tab-pane .mt-3.d-flex .btn-accent {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        font-size: 12.5px !important;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .settings-nt .doc-sortable-item,
+    .settings-nt .shf-reason-row {
+        padding: 10px !important;
+        gap: 8px;
+    }
+    /* Let the tag input + add row stack rather than squeeze */
+    .settings-nt .shf-reason-add-row { padding: 10px !important; }
+    .settings-nt h6.font-display { font-size: 11.5px !important; }
+
+    /* Tenures input row (number + Add) — don't wrap the button below */
+    .settings-nt #tenuresForm .shf-max-w-20 { max-width: 100%; }
+}
+
+/* ================================================================
+   Per-tab max-width hints
+   ================================================================ */
+.settings-nt .shf-max-w-20 { max-width: 22rem; }

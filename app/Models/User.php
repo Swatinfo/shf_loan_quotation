@@ -198,7 +198,14 @@ class User extends Authenticatable
             return true;
         }
 
-        return $this->isSuperAdmin();
+        // super_admin and admin always retain impersonation rights regardless of
+        // the role_permission row. Other roles must hold the `impersonate_users`
+        // permission (catalogued in config/permissions.php → System group).
+        if ($this->isSuperAdmin() || $this->isAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission('impersonate_users');
     }
 
     public function canBeImpersonated(): bool

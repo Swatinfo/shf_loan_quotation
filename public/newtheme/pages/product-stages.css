@@ -1,0 +1,373 @@
+/* =====================================================================
+ * Newtheme Product Stage Configuration
+ *   Scoped styling for resources/views/newtheme/loan-settings/product-stages.blade.php
+ *   The page body is the legacy _workflow-product-stages-body partial, which
+ *   uses `.shf-*` classes. This file reuses the same compatibility-shim
+ *   approach as loan-settings.css — Bootstrap utilities + corporate
+ *   restyling of legacy shf-* components, all scoped to `.product-stages-nt`.
+ * ===================================================================== */
+
+.product-stages-nt {
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.product-stages-nt a { color: var(--accent); text-decoration: none; }
+.product-stages-nt a:hover { text-decoration: underline; }
+
+/* ---------- Card chrome ---------- */
+.product-stages-nt-card {
+    margin: 0 !important;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    overflow: visible !important;
+}
+.product-stages-nt-card-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fcfbfa, #f7f5f3);
+}
+.product-stages-nt-card-hd .t {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.product-stages-nt-card-hd .t > * { line-height: 1; }
+.product-stages-nt-card-hd .t .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 32px;
+    padding: 0 8px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+.product-stages-nt-breadcrumb {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: 0.02em;
+    font-family: 'Jost', sans-serif;
+}
+@media (max-width: 640px) { .product-stages-nt-breadcrumb { display: none; } }
+
+.product-stages-nt-card-bd { padding: 22px 24px; }
+@media (max-width: 640px) { .product-stages-nt-card-bd { padding: 16px 14px; } }
+
+/* ---------- Neutralise legacy .shf-card / .shf-section wrappers ---------- */
+.product-stages-nt .shf-card,
+.product-stages-nt .shf-section-no-top-radius,
+.product-stages-nt .shf-section {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+.product-stages-nt .shf-card > .p-4 { padding: 0 !important; }
+
+/* ================================================================
+   Bootstrap utility shim — scoped to .product-stages-nt
+   ================================================================ */
+.product-stages-nt .d-flex { display: flex !important; }
+.product-stages-nt .d-inline-flex { display: inline-flex !important; }
+.product-stages-nt .d-block { display: block !important; }
+.product-stages-nt .d-none { display: none !important; }
+.product-stages-nt .flex-wrap { flex-wrap: wrap !important; }
+.product-stages-nt .flex-column { flex-direction: column !important; }
+.product-stages-nt .flex-shrink-0 { flex-shrink: 0 !important; }
+.product-stages-nt .align-items-center { align-items: center !important; }
+.product-stages-nt .align-items-start { align-items: flex-start !important; }
+.product-stages-nt .align-items-end { align-items: flex-end !important; }
+.product-stages-nt .justify-content-center { justify-content: center !important; }
+.product-stages-nt .justify-content-end { justify-content: flex-end !important; }
+.product-stages-nt .justify-content-between { justify-content: space-between !important; }
+
+.product-stages-nt .d-none.d-md-flex { display: none !important; }
+@media (min-width: 768px) {
+    .product-stages-nt .d-none.d-md-flex { display: flex !important; }
+}
+
+.product-stages-nt .gap-1 { gap: 4px !important; }
+.product-stages-nt .gap-2 { gap: 8px !important; }
+.product-stages-nt .gap-3 { gap: 12px !important; }
+
+.product-stages-nt .mb-0 { margin-bottom: 0 !important; }
+.product-stages-nt .mb-1 { margin-bottom: 4px !important; }
+.product-stages-nt .mb-2 { margin-bottom: 8px !important; }
+.product-stages-nt .mb-3 { margin-bottom: 12px !important; }
+.product-stages-nt .mb-4 { margin-bottom: 20px !important; }
+.product-stages-nt .mt-1 { margin-top: 4px !important; }
+.product-stages-nt .mt-2 { margin-top: 8px !important; }
+.product-stages-nt .mt-3 { margin-top: 12px !important; }
+.product-stages-nt .mt-4 { margin-top: 20px !important; }
+.product-stages-nt .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
+.product-stages-nt .py-2 { padding-top: 8px !important; padding-bottom: 8px !important; }
+.product-stages-nt .py-3 { padding-top: 12px !important; padding-bottom: 12px !important; }
+.product-stages-nt .pb-1 { padding-bottom: 4px !important; }
+.product-stages-nt .pb-2 { padding-bottom: 8px !important; }
+.product-stages-nt .pb-4 { padding-bottom: 16px !important; }
+.product-stages-nt .ps-4 { padding-left: 20px !important; }
+.product-stages-nt .ps-5 { padding-left: 28px !important; }
+.product-stages-nt .p-2 { padding: 8px !important; }
+.product-stages-nt .p-3 { padding: 12px !important; }
+.product-stages-nt .p-4 { padding: 18px !important; }
+.product-stages-nt .border-bottom { border-bottom: 1px solid var(--line) !important; }
+
+.product-stages-nt .small { font-size: 12.5px; }
+.product-stages-nt .fw-bold { font-weight: 700; }
+.product-stages-nt .fw-semibold { font-weight: 600; }
+.product-stages-nt .text-center { text-align: center; }
+.product-stages-nt .text-end { text-align: right; }
+
+/* Pin legacy grays to newtheme ink tokens */
+.product-stages-nt .text-muted,
+.product-stages-nt .shf-text-gray { color: var(--ink-3) !important; }
+.product-stages-nt .shf-text-gray-light { color: var(--ink-4) !important; }
+.product-stages-nt .shf-text-xs { font-size: 11.5px; }
+.product-stages-nt .shf-text-2xs { font-size: 10.5px; }
+.product-stages-nt .text-danger { color: var(--red) !important; }
+
+/* ================================================================
+   Corporate overrides for shf-* components
+   ================================================================ */
+.product-stages-nt .shf-input,
+.product-stages-nt input.shf-input,
+.product-stages-nt select.shf-input,
+.product-stages-nt textarea.shf-input {
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong, #d4d0ce);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.product-stages-nt .shf-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.12);
+}
+.product-stages-nt select.shf-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    cursor: pointer;
+}
+
+/* Custom pill switch — kept untouched (legacy .shf-toggle renders properly) */
+.product-stages-nt input[type="checkbox"]:not(.shf-toggle) {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+}
+
+/* ---------- Primary / secondary buttons ---------- */
+.product-stages-nt .btn-accent {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 8px 16px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(241,90,41,0.2);
+}
+.product-stages-nt .btn-accent:hover {
+    background: var(--accent-deep, #d94d1f) !important;
+    border-color: var(--accent-deep, #d94d1f) !important;
+    text-decoration: none;
+}
+.product-stages-nt .btn-accent svg { width: 14px; height: 14px; }
+
+.product-stages-nt .btn-accent-outline {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 8px 16px !important;
+    background: #fff !important;
+    color: var(--accent) !important;
+    border: 1px solid rgba(241, 90, 41, 0.45) !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.product-stages-nt .btn-accent-outline:hover {
+    background: rgba(241, 90, 41, 0.08) !important;
+    border-color: var(--accent) !important;
+    text-decoration: none;
+}
+.product-stages-nt .btn-accent-outline svg { width: 14px; height: 14px; }
+
+/* ---------- Badges (role chips) ---------- */
+.product-stages-nt .shf-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+}
+.product-stages-nt .shf-badge.shf-badge-blue   { background: rgba(37, 99, 235, 0.10);  color: var(--blue); }
+.product-stages-nt .shf-badge.shf-badge-orange { background: rgba(241, 90, 41, 0.10);  color: var(--accent); }
+.product-stages-nt .shf-badge.shf-badge-purple { background: rgba(124, 58, 237, 0.10); color: var(--violet, #7c3aed); }
+.product-stages-nt .shf-badge.shf-badge-green  { background: rgba(16, 122, 79, 0.10);  color: var(--green); }
+.product-stages-nt .shf-badge.shf-badge-gray   { background: var(--paper-2);           color: var(--ink-3); }
+
+/* ---------- Stage blocks (each stage row) ---------- */
+.product-stages-nt .shf-stage-block,
+.product-stages-nt .shf-substage-block {
+    padding: 12px 14px !important;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff !important;
+    margin-bottom: 8px !important;
+}
+.product-stages-nt .shf-substage-block {
+    background: var(--paper-2, #f7f5f3) !important;
+    margin-left: 24px;
+    border-left: 2px solid var(--accent);
+}
+
+/* Location row inside stage/sub-stage configuration */
+.product-stages-nt .shf-loc-row {
+    padding: 8px 10px;
+    background: #fafaf8;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+.product-stages-nt .shf-loc-row:last-child { margin-bottom: 0; }
+
+/* Phase number bullet */
+.product-stages-nt .shf-phase-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 700;
+    border-radius: 50%;
+    color: #fff;
+    flex-shrink: 0;
+}
+.product-stages-nt .shf-role-bg-task-owner { background: var(--blue); }
+.product-stages-nt .shf-role-bg-bank-employee { background: var(--accent); }
+.product-stages-nt .shf-role-bg-office-employee { background: var(--violet, #7c3aed); }
+
+.product-stages-nt .shf-inline-error {
+    font-size: 10.5px;
+    color: var(--red);
+}
+
+/* ---------- Column header row (hidden on mobile) ---------- */
+.product-stages-nt .d-none.d-md-flex.align-items-center {
+    margin-bottom: 8px;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid var(--line) !important;
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink-3) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+/* ---------- Save button row ---------- */
+.product-stages-nt .shf-form-actions {
+    padding: 16px 0 0 !important;
+    margin-top: 20px !important;
+    border-top: 1px solid var(--line);
+}
+
+/* ================================================================
+   Mobile (<=1023px)
+   ================================================================ */
+@media (max-width: 1023px) {
+    .product-stages-nt { padding: 0 0 160px; }
+
+    .product-stages-nt-card { border-radius: 10px; border-left: none; border-right: none; }
+    .product-stages-nt-card-hd { padding: 12px 16px; }
+    .product-stages-nt-card-hd .t { font-size: 14px; }
+    .product-stages-nt-card-bd { padding: 14px 12px; }
+
+    .product-stages-nt .shf-stage-block,
+    .product-stages-nt .shf-substage-block { padding: 10px 12px !important; }
+    .product-stages-nt .shf-substage-block { margin-left: 12px; }
+
+    /* Fixed Save footer above the mobile bottom nav. */
+    .product-stages-nt .shf-form-actions {
+        position: fixed !important;
+        left: 0;
+        right: 0;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        margin: 0 !important;
+        padding: 12px 16px !important;
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+        z-index: 120;
+        display: flex !important;
+        flex-direction: row;
+        gap: 8px;
+    }
+    .product-stages-nt .shf-form-actions .btn-accent,
+    .product-stages-nt .shf-form-actions .btn-accent-outline {
+        flex: 1 1 0;
+        justify-content: center;
+    }
+
+    /* Hide the FAB — not useful on this config page, would clip Save. */
+    .shf-fab-wrap { display: none !important; }
+}
+
+/* Phone (<=640px) */
+@media (max-width: 640px) {
+    .product-stages-nt .shf-form-actions {
+        flex-direction: column-reverse;
+    }
+    .product-stages-nt .shf-form-actions .btn-accent,
+    .product-stages-nt .shf-form-actions .btn-accent-outline {
+        width: 100%;
+    }
+}

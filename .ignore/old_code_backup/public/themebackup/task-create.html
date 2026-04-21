@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New task SHF</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="general-tasks.html">Tasks</a> <span class="sep">/</span> New</div>
+<h1>New task</h1><div class="sub">Capture a follow-up, internal todo or a customer-facing action</div></div>
+<div class="head-actions"><a class="btn" href="general-tasks.html">Cancel</a>
+<button class="btn primary" data-action="submit" data-arg="Task createdassigned to Rahul J." data-next="general-tasks.html">Create task</button></div></div></header>
+<main class="content"><form data-form><div class="grid c-main">
+<div>
+ <div class="card"><div class="card-hd"><div class="t">Task details</div></div><div class="card-bd"><div class="form-grid">
+ <div class="field full"><label>Title<span class="req">*</span></label><input class="input" placeholder="e.g. Follow up with Anil Patel for missing salary slip" required></div>
+ <div class="field full"><label>Description</label><textarea class="input" rows="4" placeholder="Add any context, links, attachments…"></textarea></div>
+ <div class="field"><label>Type</label><select class="input"><option>Customer follow-up</option><option>Document chase</option><option>Internal review</option><option>Bank coordination</option><option>Site visit</option><option>Other</option></select></div>
+ <div class="field"><label>Priority</label><select class="input"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
+ <div class="field"><label>Due date<span class="req">*</span></label><input class="input shf-date" type="date" required></div>
+ <div class="field"><label>Due time</label><input class="input" type="time" value="17:00"></div>
+ <div class="field"><label>Assigned to</label><select class="input"><option>MeRahul Jadeja</option><option>Anita Patel</option><option>Neha Soni</option><option>Vipul Mehta</option><option>Bharat Mehta</option></select></div>
+ <div class="field"><label>Watchers</label><input class="input" placeholder="Add team members…"></div>
+ </div></div></div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Link to entity</div></div><div class="card-bd"><div class="form-grid">
+ <div class="field"><label>Entity type</label><select class="input" data-cond-source="entity"><option value="">— None —</option><option value="loan">Loan file</option><option value="customer">Customer</option><option value="quotation">Quotation</option></select></div>
+ <div class="field" data-cond-when='{"entity":"loan"}'><label>Loan #</label><select class="input"><option>SHF-2026-0479Anil Patel</option><option>SHF-2026-0482Priya Mehta</option><option>SHF-2026-0488Kiran Desai</option></select></div>
+ <div class="field" data-cond-when='{"entity":"customer"}'><label>Customer</label><select class="input"><option>Anil Patel</option><option>Priya Mehta</option><option>Kiran Desai</option></select></div>
+ <div class="field" data-cond-when='{"entity":"quotation"}'><label>Quotation</label><select class="input"><option>QT-2026-00148</option><option>QT-2026-00152</option></select></div>
+ </div></div></div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Reminders</div></div><div class="card-bd"><div class="form-grid">
+ <div class="field"><label>Notify me</label><select class="input"><option>1 hour before</option><option selected>1 day before</option><option>2 days before</option><option>1 week before</option><option>Never</option></select></div>
+ <div class="field"><label>Channel</label><div style="display:flex;gap:14px;align-items:center;padding-top:8px;"><label class="check"><input type="checkbox" checked> In-app</label><label class="check"><input type="checkbox" checked> Email</label><label class="check"><input type="checkbox"> WhatsApp</label></div></div>
+ </div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Tips</div></div><div class="card-bd">
+<div class="text-sm" style="line-height:1.6;color:var(--ink-2);">
+<strong>Be specific.</strong> "Call Anil to confirm document" beats "Follow up Anil".<br><br>
+<strong>Link to a loan or customer</strong> so it shows up on their timeline.<br><br>
+<strong>Use due time</strong> when the customer has agreed to a callback window.
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Recent tasks for context</div></div><div class="card-bd" style="padding:0;">
+<div class="v-row" style="padding:10px 14px;border-bottom:1px solid var(--line);"><div class="text-sm">Reminder: Anil missing form 16</div><div class="text-xs text-muted">Due tomorrowYou</div></div>
+<div class="v-row" style="padding:10px 14px;border-bottom:1px solid var(--line);"><div class="text-sm">FI visitPriya Mehta</div><div class="text-xs text-muted">Today 4pmSaurabh</div></div>
+<div class="v-row" style="padding:10px 14px;"><div class="text-sm">Bank rate negotiation HDFC</div><div class="text-xs text-muted">WedVipul</div></div>
+</div></div>
+</aside>
+</div></form></main>
+
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('tasks');</script><script src="assets/shf-interactive.js"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/task-create.js?v=1"></script>
+</body></html>

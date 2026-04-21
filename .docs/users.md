@@ -86,7 +86,7 @@ There's no hard scope filter on the users list — anyone with `view_users` sees
 
 ### UI
 
-- Layout (`layouts/app.blade.php`) renders an **impersonation banner** (`.shf-impersonation-banner`) when impersonation is active, with a "Leave impersonation" link.
+- Layout (`newtheme/layouts/app.blade.php`) renders an **impersonation banner** (`.shf-impersonation-banner`) when impersonation is active, with a "Leave impersonation" link.
 - Navbar/header has a search modal gated by `canImpersonate()` (uses SweetAlert2 confirmation).
 
 ## User–branch / bank / location relationships

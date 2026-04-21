@@ -21,7 +21,9 @@ class WorkflowConfigController extends Controller
         $branches = Branch::orderBy('name')->get();
         $stages = Stage::where('is_enabled', true)->orderBy('sequence_order')->get();
 
-        return view('settings.workflow', compact('banks', 'branches', 'stages'));
+        $template = 'newtheme.settings.workflow';
+
+        return view($template, compact('banks', 'branches', 'stages') + ['pageKey' => 'settings']);
     }
 
     public function storeBank(Request $request)
@@ -141,7 +143,7 @@ class WorkflowConfigController extends Controller
             }
         }
 
-        return view('settings.workflow-product-stages', compact('product', 'stages', 'productStages', 'branches', 'allActiveUsers', 'resolvedRoles'));
+        return view('newtheme.loan-settings.product-stages', compact('product', 'stages', 'productStages', 'branches', 'allActiveUsers', 'resolvedRoles'));
     }
 
     public function saveProductStages(Request $request, Product $product)

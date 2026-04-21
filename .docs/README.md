@@ -47,8 +47,10 @@ Under `.claude/`:
 
 ## Source-of-truth files (edit these, not docs)
 
-- `public/css/shf.css` — every `shf-*` class
-- `public/js/shf-app.js` — `SHF.*` helpers
-- `public/js/shf-loans.js` — `SHFLoans.*` helpers
+- `public/newtheme/css/shf.css` — legacy `shf-*` classes
+- `public/newtheme/assets/*.css` — newtheme design-system CSS
+- `public/newtheme/pages/*.css` + `*.js` — per-page styles & scripts
+- `public/newtheme/js/shf-app.js` — `SHF.*` helpers
 - `config/app-defaults.php` — default config values
 - `config/permissions.php` — permission catalogue
+- `.ignore/old_code_backup/` — pre-newtheme source preserved in git for restore (`SHFLoans.*` helpers, old blade files, old vendor dirs)

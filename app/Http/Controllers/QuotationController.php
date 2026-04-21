@@ -52,9 +52,12 @@ class QuotationController extends Controller
             'create_quotation' => $user->hasPermission('create_quotation'),
         ];
 
-        return view('quotations.index', [
+        $template = 'newtheme.quotations.index';
+
+        return view($template, [
             'users' => $users,
             'permissions' => $permissions,
+            'pageKey' => 'quotations',
         ]);
     }
 
@@ -92,7 +95,16 @@ class QuotationController extends Controller
             : $user->branches()->where('is_active', true)->with('location.parent')->orderBy('name')->get();
         $defaultBranchId = $user->default_branch_id;
 
-        return view('quotations.create', [
+        // Admin / super_admin / bdh can attribute a quotation to another user
+        // at creation time. Everyone else creates under their own id only.
+        $canAssignCreator = $user->hasAnyRole(['super_admin', 'admin', 'bdh']);
+        $assignableUsers = $canAssignCreator
+            ? \App\Models\User::where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        $template = 'newtheme.quotations.create';
+
+        return view($template, [
             'config' => $config,
             'user' => $user,
             'userLocations' => $userLocations,
@@ -101,6 +113,9 @@ class QuotationController extends Controller
             'locStates' => $locStates,
             'userBranches' => $userBranches,
             'defaultBranchId' => $defaultBranchId,
+            'canAssignCreator' => $canAssignCreator,
+            'assignableUsers' => $assignableUsers,
+            'pageKey' => 'quotations',
         ]);
     }
 
@@ -120,7 +135,17 @@ class QuotationController extends Controller
             $input['preparedByMobile'] = $user->phone ?? '';
         }
 
-        $result = $this->quotationService->generate($input, $user->id);
+        // Admin / super_admin / bdh can attribute a quotation to another user.
+        // Anyone else is locked to their own id regardless of what's posted.
+        $targetUserId = $user->id;
+        if (! empty($input['createdByUserId']) && $user->hasAnyRole(['super_admin', 'admin', 'bdh'])) {
+            $requested = (int) $input['createdByUserId'];
+            if (\App\Models\User::where('id', $requested)->where('is_active', true)->exists()) {
+                $targetUserId = $requested;
+            }
+        }
+
+        $result = $this->quotationService->generate($input, $targetUserId);
 
         if (isset($result['error']) && empty($result['filename'])) {
             return response()->json(['error' => $result['error']], 422);
@@ -161,10 +186,13 @@ class QuotationController extends Controller
 
         $config = $this->configService->load();
 
-        return view('quotations.show', [
+        $template = 'newtheme.quotations.show';
+
+        return view($template, [
             'quotation' => $quotation,
             'holdReasons' => $config['quotationHoldReasons'] ?? [],
             'cancelReasons' => $config['quotationCancelReasons'] ?? [],
+            'pageKey' => 'quotations',
         ]);
     }
 

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="auth-shell">
+ <aside class="auth-panel">
+ <div class="logo" style="margin-bottom: 40px;">
+ <span class="logo-mark" style="width:36px;height:36px;font-size:15px;">S</span>
+ <div class="logo-text">
+ <div class="line-1" style="font-size:15px;">SHF WORLD</div>
+ <div class="line-2">SHREENATHJI HOME FINANCE</div>
+ </div>
+ </div>
+ <div style="margin-top:auto; max-width: 440px;">
+ <div style="font-family:'Jost',sans-serif;font-size:34px;line-height:1.15;font-weight:600;letter-spacing:-0.02em;">The loan back-office, organised.</div>
+ <div class="guj" style="font-family:'Noto Sans Gujarati';font-size:20px;color:rgba(255,255,255,0.65);margin-top:10px;line-height:1.4;">-</div>
+ <p style="color:rgba(255,255,255,0.6);margin-top:22px;font-size:13.5px;line-height:1.55;max-width:420px;">
+ Bilingual quotations, 12-stage loan workflow, document collection,
+ daily field reports, multi-bank EMI comparisons — all in one place.
+ </p>
+ <div class="placeholder-img" style="margin-top:28px;height:200px;">
+ <div style="text-align:center;">
+ <div>product shot</div>
+ <div style="opacity:0.5;font-size:10px;margin-top:4px;">screenshot of dashboard goes here</div>
+ </div>
+ </div>
+ </div>
+ <div style="margin-top: 24px; font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing:0.06em;">
+ © 2026 SHREENATHJI HOME FINANCEv4.2.1
+ </div>
+ </aside>
+
+ <main class="auth-form-wrap">
+ <div class="auth-form">
+ <div style="font-family:'Jost';font-size:26px;font-weight:600;letter-spacing:-0.01em;">Sign in to your branch</div>
+ <div style="color:var(--ink-4);font-size:13px;margin-top:4px;">Enter the credentials provided by your branch manager.</div>
+
+ <form style="margin-top: 28px;">
+ <div class="field">
+ <label>Email address </label>
+ <div class="input-wrap">
+ <svg class="i i-lead" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0 L21 8 M5 19h14a2 2 0 002-2 V7a2 2 0 00-2-2 H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+ <input class="input lg" type="email" value="rahul.p@shreenathjihf.in" placeholder="you@shreenathjihf.in">
+ </div>
+ </div>
+
+ <div class="field">
+ <label>Password </label>
+ <div class="input-wrap">
+ <svg class="i i-lead" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2 H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10 V7a4 4 0 10-8 0v4h8z"/></svg>
+ <input class="input lg" type="password" value="••••••••••">
+ </div>
+ </div>
+
+ <div class="flex items-center justify-between" style="margin-top:18px;">
+ <label class="switch on" onclick="this.classList.toggle('on')">
+ <span class="track"></span>
+ <span class="lbl">Stay signed in for 30 days</span>
+ </label>
+ <a href="forgot-password.html" style="color:var(--accent);font-size:12px;font-weight:500;">Forgot password?</a>
+ </div>
+
+ <button type="button" class="btn primary xl" style="width:100%; margin-top: 22px;">
+ Sign in
+ <svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7 H3"/></svg>
+ </button>
+
+ <div style="margin-top:20px;padding:12px 14px;background:var(--paper);border-radius:8px;font-size:11.5px;color:var(--ink-3);display:flex;gap:8px;align-items:flex-start;">
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex-shrink:0;margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01 M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+ <div>Staff accounts are created by your branch admin. <br>Self-registration is disabled.</div>
+ </div>
+ </form>
+ </div>
+ </main>
+</div>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/login.js?v=1"></script>
+</body>
+</html>

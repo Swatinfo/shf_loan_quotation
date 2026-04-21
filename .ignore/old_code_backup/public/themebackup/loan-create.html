@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New loan · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header">
+ <div class="head-row"><div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="loans.html">Loans</a> <span class="sep">/</span> New</div>
+ <h1>New loan file</h1>
+ <div class="sub">Create a blank filestarts at Stage 1Inquiry</div>
+ </div>
+ <div class="head-actions">
+ <a class="btn" href="loans.html">Cancel</a>
+ <button class="btn" data-action="save" data-arg="Draft saved">Save draft</button>
+ <button class="btn primary" data-action="submit" data-arg="Loan SHF-2026-0485 created" data-next="loan-show.html">Create loan →</button>
+ </div></div>
+</header>
+<main class="content"><form data-form class="grid c-main">
+<div>
+
+ <div class="card"><div class="card-hd"><div class="t">Customer</div></div><div class="card-bd">
+ <div class="segmented" data-seg="cust_mode"><button class="active" data-value="existing">Existing customer</button><button data-value="new">New customer</button></div>
+ <div class="cond-field mt-4" data-cond-when='{"field":"cust_mode","equals":"existing"}'>
+ <div class="field"><label>Search customer</label>
+ <div class="search-wrap"><input class="input" placeholder="Name, mobile, PAN, or customer ID" value="Priya Mehta91 98240 11122"></div>
+ </div>
+ </div>
+ <div class="cond-field hide mt-4" data-cond-when='{"field":"cust_mode","equals":"new"}'>
+ <div class="form-grid">
+ <div class="field"><label>Full name</label><input class="input" placeholder="As per Aadhaar"></div>
+ <div class="field"><label>Mobile</label><input class="input" placeholder="+91"></div>
+ <div class="field"><label>PAN</label><input class="input font-mono" placeholder="ABCDE1234 · F"></div>
+ <div class="field"><label>Date of birth</label><input class="input" type="date"></div>
+ </div>
+ </div>
+ <input type="hidden" name="cust_mode" value="existing" id="cust_mode_h">
+ </div></div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Loan basics</div></div><div class="card-bd">
+ <div class="form-grid">
+ <div class="field"><label>Loan type</label>
+ <select class="select" name="loan_type">
+ <option value="home">Home loan</option>
+ <option value="lap">Loan against property (LAP)</option>
+ <option value="bt">Balance transfer</option>
+ <option value="top-up">Top-up</option>
+ <option value="construction">Self-construction</option>
+ </select>
+ </div>
+ <div class="field"><label>Loan amount (₹)</label>
+ <div class="input-affix"><input class="input tnum" name="amount" value="5500000"><span class="affix">INR</span></div>
+ </div>
+ <div class="field"><label>Tenure (years)</label><input class="input tnum" type="number" value="20" min="1" max="30"></div>
+ <div class="field"><label>Property purpose</label>
+ <select class="select" name="purpose">
+ <option value="resale">Resale</option>
+ <option value="under-construction">Under-construction</option>
+ <option value="ready">Ready-to-move</option>
+ <option value="plot">Plot purchase</option>
+ </select>
+ </div>
+
+ <!-- Conditional: BT shows existing loan info -->
+ <div class="field wide cond-field hide" data-cond-when='{"field":"loan_type","equals":"bt"}'>
+ <div class="callout info"><strong>Balance transfer.</strong> Provide the outstanding bank + foreclosure letter.</div>
+ </div>
+ <div class="field cond-field hide" data-cond-when='{"field":"loan_type","equals":"bt"}'>
+ <label>Existing lender</label>
+ <select class="select"><option>HDFC</option><option>SBI</option><option>Axis</option><option>ICICI</option><option>Kotak</option><option>LIC HFL</option></select>
+ </div>
+ <div class="field cond-field hide" data-cond-when='{"field":"loan_type","equals":"bt"}'>
+ <label>Outstanding principal (₹)</label><input class="input tnum" placeholder="e.g. 48,00,000">
+ </div>
+
+ <!-- Conditional: Construction shows construction plan link -->
+ <div class="field wide cond-field hide" data-cond-when='{"field":"loan_type","equals":"construction"}'>
+ <label class="checkbox"><input type="checkbox"> Disburse in tranches tied to construction milestones</label>
+ </div>
+ </div></div></div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Applicant profile</div></div><div class="card-bd">
+ <div class="segmented" data-seg="profile"><button class="active" data-value="salaried">Salaried</button><button data-value="self">Self-employed</button><button data-value="nri">NRI</button></div>
+ <input type="hidden" name="profile" value="salaried">
+ <div class="form-grid mt-4">
+ <!-- Salaried -->
+ <div class="field cond-field" data-cond-when='{"field":"profile","equals":"salaried"}'>
+ <label>Employer</label><input class="input" placeholder="Company name"></div>
+ <div class="field cond-field" data-cond-when='{"field":"profile","equals":"salaried"}'>
+ <label>Monthly take-home (₹)</label><input class="input tnum" value="124000"></div>
+ <div class="field cond-field" data-cond-when='{"field":"profile","equals":"salaried"}'>
+ <label>Years at job</label><input class="input" value="4"></div>
+ <div class="field cond-field" data-cond-when='{"field":"profile","equals":"salaried"}'>
+ <label>Form 16 available?</label><select class="select"><option>Yeslast 2 years</option><option>Yes1 year</option><option>No</option></select></div>
+
+ <!-- Self-employed -->
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"self"}'>
+ <label>Business name</label><input class="input"></div>
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"self"}'>
+ <label>Vintage (years)</label><input class="input tnum"></div>
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"self"}'>
+ <label>Annual turnover (₹)</label><input class="input tnum"></div>
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"self"}'>
+ <label>ITR years filed</label><select class="select"><option>Last 3 years</option><option>Last 2 years</option><option>1 year only</option></select></div>
+
+ <!-- NRI -->
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"nri"}'>
+ <label>Country of residence</label><select class="select"><option>UAE</option><option>USA</option><option>UK</option><option>Singapore</option><option>Other</option></select></div>
+ <div class="field cond-field hide" data-cond-when='{"field":"profile","equals":"nri"}'>
+ <label>POA holder in India</label><input class="input"></div>
+ <div class="field wide cond-field hide" data-cond-when='{"field":"profile","equals":"nri"}'>
+ <div class="callout info"><strong>NRI loan.</strong> PIOOCI proof required, plus NRE/NRO bank statements (12 mo).</div>
+ </div>
+ </div></div></div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Co-applicant (optional)</div><label class="checkbox"><input type="checkbox" name="coapp"> Add co-applicant</label></div>
+ <div class="card-bd cond-field hide" data-cond-when='{"field":"coapp","truthy":true}'>
+ <div class="form-grid">
+ <div class="field"><label>Name</label><input class="input"></div>
+ <div class="field"><label>Relationship</label><select class="select"><option>Spouse</option><option>Father</option><option>Mother</option><option>Son</option><option>Daughter</option><option>Business partner</option></select></div>
+ <div class="field"><label>Income type</label><select class="select"><option>Salaried</option><option>Self-employed</option><option>No income</option></select></div>
+ <div class="field"><label>Monthly income (₹)</label><input class="input tnum"></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Assignment</div></div><div class="card-bd">
+ <div class="form-grid">
+ <div class="field"><label>Primary advisor</label><select class="select"><option>Rahul JadejaManinagar</option><option>Anita PandyaSatellite</option><option>Neha ShuklaAdajan</option></select></div>
+ <div class="field"><label>Branch</label><select class="select"><option>Ahmedabad — Maninagar</option><option>Surat — Adajan</option><option>Rajkot — Yagnik Rd</option></select></div>
+ <div class="field"><label>Target bank(s)</label>
+ <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+ <label class="checkbox"><input type="checkbox" checked> HDFC</label>
+ <label class="checkbox"><input type="checkbox" checked> SBI</label>
+ <label class="checkbox"><input type="checkbox"> Axis</label>
+ <label class="checkbox"><input type="checkbox"> ICICI</label>
+ <label class="checkbox"><input type="checkbox"> Kotak</label>
+ <label class="checkbox"><input type="checkbox"> LIC HFL</label>
+ </div>
+ </div>
+ <div class="field"><label>Priority</label><select class="select"><option>Normal</option><option>High</option><option>Urgent (escalate)</option></select></div>
+ </div>
+ </div></div>
+
+</div>
+
+<aside>
+ <div class="card"><div class="card-hd"><div class="t">EMI preview</div></div><div class="card-bd">
+ <div class="summary-card"><div class="lbl">Estimated EMI</div><div class="val tnum" id="emiBox">₹ 47,289</div>
+ <div class="text-xs" style="color:rgba(255,255,255,0.6);">at 8.45%20 yr₹55 · L</div>
+ </div>
+ <div class="kv-stack mt-4">
+ <div class="kv"><span>PF (1%)</span><strong class="tnum">₹ 55,000</strong></div>
+ <div class="kv"><span>Stamp duty</span><strong class="tnum">₹ 3,30,000</strong></div>
+ <div class="kv"><span>Valuation</span><strong class="tnum">₹ 3,500</strong></div>
+ <div class="kv"><span>Legal</span><strong class="tnum">₹ 5,000</strong></div>
+ </div>
+ </div></div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Tips</div></div><div class="card-bd">
+ <div class="text-xs text-muted" style="line-height:1.6;">
+ • Target 2–3 banks for first-round sanctionmore slows turnaround<br>
+ • If BT, keep foreclosure letter &lt; 30 days old<br>
+ • CIBIL &gt; 750 qualifies for best rates
+ </div>
+ </div></div>
+</aside>
+
+</form></main>
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('loans');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script>Wire segmented -> hidden field
+document.querySelectorAll('.segmented[data-seg]').forEach(seg => {
+ const name = seg.dataset.seg;
+ const hidden = document.querySelector('input[type=hidden][name="'+name+'"]') || document.createElement('input');
+ seg.addEventListener('change', e => {
+ hidden.value = e.detail.value;
+ shfUpdateConditions(document);
+ });
+});
+</script>
+<script src="assets/loan-create.js?v=1"></script>
+</body></html>

@@ -1,0 +1,445 @@
+/* =====================================================================
+ * Newtheme Loan Documents — scoped styling for
+ *   resources/views/newtheme/loans/documents.blade.php
+ *
+ * Reuses the compatibility-shim approach from settings / loan-settings:
+ *   - Bootstrap utility shim scoped to `.loan-documents-nt`
+ *   - Corporate restyling of legacy `.shf-*` components
+ *   - Fixed mobile footer on the Add-document form
+ * ===================================================================== */
+
+.loan-documents-nt {
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.loan-documents-nt a { color: var(--accent); text-decoration: none; }
+.loan-documents-nt a:hover { text-decoration: underline; }
+
+/* ---------- Outer card chrome ---------- */
+.loan-documents-nt-card {
+    margin: 0 !important;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    overflow: visible !important;
+    min-width: 0;
+    max-width: 100%;
+}
+.loan-documents-nt-card-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fcfbfa, #f7f5f3);
+}
+.loan-documents-nt-card-hd .t {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.loan-documents-nt-card-hd .t > * { line-height: 1; }
+.loan-documents-nt-card-hd .t .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 28px;
+    padding: 0 8px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.loan-documents-nt-breadcrumb {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: 0.02em;
+    font-family: 'Jost', sans-serif;
+}
+@media (max-width: 640px) { .loan-documents-nt-breadcrumb { display: none; } }
+
+.loan-documents-nt-card-bd { padding: 22px 24px; }
+@media (max-width: 640px) { .loan-documents-nt-card-bd { padding: 16px 14px; } }
+
+/* Neutralise the inner legacy .shf-card / .card / .alert wrappers */
+.loan-documents-nt .shf-card,
+.loan-documents-nt .card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.loan-documents-nt .card-body { padding: 0 !important; }
+
+/* ================================================================
+   Bootstrap utility shim — scoped
+   ================================================================ */
+.loan-documents-nt .d-flex { display: flex !important; }
+.loan-documents-nt .d-inline-flex { display: inline-flex !important; }
+.loan-documents-nt .d-none { display: none !important; }
+.loan-documents-nt .d-block { display: block !important; }
+.loan-documents-nt .flex-shrink-0 { flex-shrink: 0 !important; }
+.loan-documents-nt .flex-grow-1 { flex-grow: 1 !important; }
+.loan-documents-nt .flex-wrap { flex-wrap: wrap !important; }
+.loan-documents-nt .align-items-center { align-items: center !important; }
+.loan-documents-nt .justify-content-between { justify-content: space-between !important; }
+.loan-documents-nt .justify-content-end { justify-content: flex-end !important; }
+.loan-documents-nt .text-center { text-align: center !important; }
+.loan-documents-nt .text-muted { color: var(--ink-3) !important; }
+.loan-documents-nt .text-danger { color: var(--red) !important; }
+.loan-documents-nt .text-success { color: var(--green) !important; }
+.loan-documents-nt .text-primary { color: var(--accent) !important; }
+.loan-documents-nt .text-decoration-line-through { text-decoration: line-through; }
+.loan-documents-nt .fw-bold { font-weight: 700; }
+
+.loan-documents-nt .gap-1 { gap: 4px !important; }
+.loan-documents-nt .gap-2 { gap: 8px !important; }
+.loan-documents-nt .gap-3 { gap: 12px !important; }
+.loan-documents-nt .mb-0 { margin-bottom: 0 !important; }
+.loan-documents-nt .mb-1 { margin-bottom: 4px !important; }
+.loan-documents-nt .mb-2 { margin-bottom: 8px !important; }
+.loan-documents-nt .mb-3 { margin-bottom: 12px !important; }
+.loan-documents-nt .mb-4 { margin-bottom: 20px !important; }
+.loan-documents-nt .mt-1 { margin-top: 4px !important; }
+.loan-documents-nt .mt-2 { margin-top: 8px !important; }
+.loan-documents-nt .mt-3 { margin-top: 12px !important; }
+.loan-documents-nt .mt-4 { margin-top: 20px !important; }
+.loan-documents-nt .ms-2 { margin-left: 8px !important; }
+.loan-documents-nt .p-2 { padding: 8px !important; }
+.loan-documents-nt .p-3 { padding: 12px !important; }
+.loan-documents-nt .p-4 { padding: 18px !important; }
+.loan-documents-nt .py-2 { padding-top: 8px !important; padding-bottom: 8px !important; }
+.loan-documents-nt .py-4 { padding-top: 20px !important; padding-bottom: 20px !important; }
+
+/* Row/col shim */
+.loan-documents-nt .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -6px;
+}
+.loan-documents-nt .row.g-2 > [class*="col-"],
+.loan-documents-nt .row.g-3 > [class*="col-"] { padding: 6px; }
+.loan-documents-nt [class*="col-"] {
+    padding: 0 6px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.loan-documents-nt .col-12 { flex: 0 0 100%; width: 100%; }
+@media (min-width: 576px) {
+    .loan-documents-nt .col-sm-3 { flex: 0 0 25%; width: 25%; }
+    .loan-documents-nt .col-sm-4 { flex: 0 0 33.33%; width: 33.33%; }
+    .loan-documents-nt .col-sm-5 { flex: 0 0 41.66%; width: 41.66%; }
+}
+@media (min-width: 1200px) {
+    .loan-documents-nt .col-xl-6 { flex: 0 0 50%; width: 50%; }
+}
+@media (max-width: 767px) {
+    .loan-documents-nt .row > [class*="col-"] { flex: 0 0 100% !important; width: 100% !important; }
+    .loan-documents-nt .row.g-3 { row-gap: 10px; }
+}
+
+.loan-documents-nt .shf-text-gray,
+.loan-documents-nt .shf-text-sm { color: var(--ink-3); font-size: 12.5px; }
+.loan-documents-nt .shf-text-2xs { font-size: 10.5px; }
+.loan-documents-nt .shf-text-xs { font-size: 11.5px; }
+
+/* ================================================================
+   Progress strip (docks below card header)
+   ================================================================ */
+.loan-documents-nt .card[style*="sticky"] {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fff !important;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0 14px !important;
+    margin-bottom: 16px !important;
+}
+.loan-documents-nt .progress {
+    height: 8px;
+    background: var(--paper-2);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.loan-documents-nt .progress .progress-bar {
+    background: var(--green) !important;
+    transition: width 0.25s ease;
+}
+.loan-documents-nt .shf-progress-md { height: 8px; }
+.loan-documents-nt .shf-doc-progress-text {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 12px;
+    color: var(--ink-2, var(--ink));
+    font-weight: 600;
+}
+
+/* ================================================================
+   Locked banner (Bootstrap .alert.alert-warning)
+   ================================================================ */
+.loan-documents-nt .alert.alert-warning {
+    background: rgba(217, 119, 6, 0.08) !important;
+    color: var(--amber, #d97706);
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+}
+.loan-documents-nt .alert.alert-warning strong { color: var(--amber, #d97706); }
+
+/* ================================================================
+   Document row — full reset for .shf-doc-item
+   ================================================================ */
+.loan-documents-nt .shf-doc-item {
+    background: #fff !important;
+    border: 1px solid var(--line) !important;
+    border-left: 3px solid var(--line-strong, #d4d0ce) !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+    transition: border-color 0.12s, background 0.12s;
+    gap: 10px !important;
+}
+.loan-documents-nt .shf-doc-item.shf-doc-row { cursor: pointer; }
+.loan-documents-nt .shf-doc-item.shf-doc-row:hover {
+    background: var(--paper-2) !important;
+}
+.loan-documents-nt .shf-doc-item.shf-doc-received {
+    border-left-color: var(--green) !important;
+    background: rgba(16, 122, 79, 0.04) !important;
+}
+.loan-documents-nt .shf-doc-item.shf-doc-rejected {
+    border-left-color: var(--red) !important;
+    background: rgba(192, 57, 43, 0.04) !important;
+}
+.loan-documents-nt .shf-doc-item.shf-doc-pending {
+    border-left-color: var(--amber, #d97706) !important;
+}
+
+/* Checkbox accent */
+.loan-documents-nt .shf-checkbox,
+.loan-documents-nt .shf-doc-toggle {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Doc name (line-through when received) */
+.loan-documents-nt .shf-doc-item > .flex-grow-1 > span:first-child {
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+}
+.loan-documents-nt .shf-doc-item.shf-doc-received > .flex-grow-1 > span:first-child,
+.loan-documents-nt .text-decoration-line-through.text-muted {
+    color: var(--ink-3) !important;
+}
+
+/* Badges inside doc rows */
+.loan-documents-nt .shf-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+}
+.loan-documents-nt .shf-badge.shf-badge-green  { background: rgba(16, 122, 79, 0.12);  color: var(--green); }
+.loan-documents-nt .shf-badge.shf-badge-red    { background: rgba(192, 57, 43, 0.10);  color: var(--red); }
+.loan-documents-nt .shf-badge.shf-badge-orange { background: rgba(217, 119, 6, 0.12);  color: var(--amber, #d97706); }
+
+/* ================================================================
+   Document action buttons — compact outline styling
+   ================================================================ */
+.loan-documents-nt .shf-doc-actions {
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+/* Base compact outline style */
+.loan-documents-nt .shf-doc-actions .btn-accent-sm,
+.loan-documents-nt .shf-doc-actions .shf-upload-label {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 5px 9px !important;
+    background: #fff !important;
+    color: var(--accent) !important;
+    border: 1px solid rgba(241, 90, 41, 0.35) !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    width: auto !important;
+    height: auto !important;
+}
+.loan-documents-nt .shf-doc-actions .btn-accent-sm:hover,
+.loan-documents-nt .shf-doc-actions .shf-upload-label:hover {
+    background: rgba(241, 90, 41, 0.08) !important;
+    border-color: var(--accent) !important;
+}
+.loan-documents-nt .shf-doc-actions svg { width: 12px; height: 12px; }
+
+/* Waive — amber outline */
+.loan-documents-nt .shf-doc-actions .btn-accent-sm.shf-btn-warning {
+    color: var(--amber, #d97706) !important;
+    border-color: rgba(217, 119, 6, 0.35) !important;
+}
+.loan-documents-nt .shf-doc-actions .btn-accent-sm.shf-btn-warning:hover {
+    background: rgba(217, 119, 6, 0.08) !important;
+    border-color: var(--amber, #d97706) !important;
+}
+
+/* Remove — red outline. Higher specificity than the GLOBAL .shf-btn-danger
+   icon-only rule defined in loan-settings.css for DVR/Reason rows — though
+   that file isn't loaded here, the same pattern (font-size: 0 somewhere)
+   could accidentally apply, so we explicitly set the correct values. */
+.loan-documents-nt .shf-doc-actions .btn-accent-sm.shf-btn-danger {
+    color: var(--red) !important;
+    border-color: rgba(192, 57, 43, 0.35) !important;
+    font-size: 11px !important;
+    padding: 5px 9px !important;
+    width: auto !important;
+    height: auto !important;
+}
+.loan-documents-nt .shf-doc-actions .btn-accent-sm.shf-btn-danger:hover {
+    background: var(--red) !important;
+    color: #fff !important;
+    border-color: var(--red) !important;
+}
+
+/* ================================================================
+   Add Document form
+   ================================================================ */
+.loan-documents-nt form#addDocForm {
+    padding: 14px;
+    background: #fdfbf9;
+    border: 1px dashed var(--line-strong, #d4d0ce);
+    border-radius: 8px;
+    margin-top: 6px;
+}
+.loan-documents-nt form#addDocForm h6,
+.loan-documents-nt .card-body h6 {
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-2, var(--ink));
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    margin: 0 0 14px 0;
+}
+
+.loan-documents-nt .shf-input,
+.loan-documents-nt .shf-input-sm {
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong, #d4d0ce);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.loan-documents-nt .shf-input-sm { font-size: 12.5px; padding: 7px 10px; }
+.loan-documents-nt .shf-input:focus,
+.loan-documents-nt .shf-input-sm:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.12);
+}
+
+/* Add button inside Add Document form — primary filled */
+.loan-documents-nt form#addDocForm .btn-accent-sm {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 8px 14px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+}
+.loan-documents-nt form#addDocForm .btn-accent-sm:hover {
+    background: var(--accent-deep, #d94d1f) !important;
+    border-color: var(--accent-deep, #d94d1f) !important;
+}
+.loan-documents-nt form#addDocForm .btn-accent-sm svg { width: 12px; height: 12px; }
+
+/* Empty state */
+.loan-documents-nt .col-12.text-center.text-muted {
+    padding: 32px 16px !important;
+    color: var(--ink-3) !important;
+    font-size: 13px;
+}
+
+/* ================================================================
+   Mobile (<=1023px)
+   ================================================================ */
+@media (max-width: 1023px) {
+    .loan-documents-nt { padding: 0 0 140px; }
+    .loan-documents-nt-card { border-top-left-radius: 0; border-top-right-radius: 0; }
+    .loan-documents-nt-card-hd { padding: 12px 16px; }
+    .loan-documents-nt-card-hd .t { font-size: 14px; }
+    .loan-documents-nt-card-bd { padding: 14px 12px; }
+
+    .loan-documents-nt .shf-doc-item {
+        padding: 10px !important;
+        flex-wrap: wrap;
+    }
+    .loan-documents-nt .shf-doc-actions {
+        width: 100%;
+        justify-content: flex-start;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        margin-top: 6px;
+    }
+
+    .loan-documents-nt form#addDocForm .row { row-gap: 8px; }
+    .loan-documents-nt form#addDocForm .col-sm-3,
+    .loan-documents-nt form#addDocForm .col-sm-4,
+    .loan-documents-nt form#addDocForm .col-sm-5 {
+        flex: 0 0 100%;
+        width: 100%;
+    }
+
+    /* Hide the FAB — the page already has its own Add Document form. */
+    .shf-fab-wrap { display: none !important; }
+}
+
+@media (max-width: 640px) {
+    .loan-documents-nt .shf-badge { margin-left: 4px; }
+    .loan-documents-nt .shf-doc-item { gap: 8px !important; }
+}

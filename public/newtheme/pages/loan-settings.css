@@ -1,0 +1,1061 @@
+/* =====================================================================
+ * Newtheme Settings — corporate layout + Bootstrap compatibility shim
+ *
+ * The settings tab panes still use Bootstrap grid/utility classes
+ * (row / col-* / d-flex / gap-* / mb-* / p-*) and legacy shf-* classes,
+ * neither of which are defined in the newtheme CSS. This file provides:
+ *   1. A compatibility shim for the subset of Bootstrap utilities used
+ *      inside the panes — scoped to `.loan-settings-nt` so it doesn't leak.
+ *   2. Corporate-grade visual overrides for legacy shf-* components so
+ *      the page reads as a proper newtheme system, not a cozy mix.
+ *   3. Full mobile responsiveness: rail collapses into a top tab bar,
+ *      grid cells stack single-column, remove buttons stay icon-only.
+ * ===================================================================== */
+
+/* Reset text/link colors on this whole scope so legacy :root color drift
+   doesn't leak through. Pin everything to newtheme ink/line tokens. */
+.loan-settings-nt {
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    /* NOTE: no overflow-x: clip here — that creates a containing block
+       chain that prevents `position: fixed` on the mobile Save footer
+       from anchoring to the viewport. Horizontal overflow is instead
+       contained at the .table-responsive level (bank charges table). */
+}
+.loan-settings-nt a { color: var(--accent); text-decoration: none; }
+.loan-settings-nt a:hover { text-decoration: underline; }
+
+/* ================================================================
+   Outer shell: left rail + content
+   ================================================================ */
+.loan-settings-nt-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    min-width: 0;
+}
+@media (max-width: 1023px) {
+    .loan-settings-nt-shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
+/* Every nested container needs min-width: 0 to prevent tables with
+   min-width: 720px from dragging the whole page wider than the viewport. */
+.loan-settings-nt-main,
+.loan-settings-nt-card,
+.loan-settings-nt-card-bd,
+.loan-settings-nt .settings-tab-pane {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ---------- Left rail (desktop only) ---------- */
+.loan-settings-nt-rail {
+    position: sticky;
+    top: 80px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+@media (max-width: 1023px) { .loan-settings-nt-rail { display: none; } }
+
+.loan-settings-nt-rail-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-4);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 6px 10px 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+.loan-settings-nt-rail-nav { display: flex; flex-direction: column; gap: 2px; }
+.loan-settings-nt-rail-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px 9px 7px;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    color: var(--ink-2, var(--ink));
+    font-family: 'Jost', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.loan-settings-nt-rail-item .num {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 10.5px; font-weight: 600;
+    color: var(--ink-4);
+    background: var(--paper-2);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.loan-settings-nt-rail-item .lbl { flex: 1; }
+.loan-settings-nt-rail-item:hover { background: var(--paper-2); color: var(--ink); text-decoration: none; }
+.loan-settings-nt-rail-item.active {
+    background: rgba(241, 90, 41, 0.08);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+.loan-settings-nt-rail-item.active .num { background: var(--accent); color: #fff; }
+
+/* ---------- Mobile tab strip (<1024px) ---------- */
+.loan-settings-nt-tabs-wrap {
+    display: none;
+    position: relative;
+    margin: 0 0 -1px;
+    min-width: 0;
+    max-width: 100%;
+}
+@media (max-width: 1023px) { .loan-settings-nt-tabs-wrap { display: block; } }
+
+.loan-settings-nt-tabs {
+    display: none;
+    gap: 2px;
+    padding: 8px 48px 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+}
+.loan-settings-nt-tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 1023px) { .loan-settings-nt-tabs { display: flex; } }
+
+/* Scroll chevrons — visible on mobile when the strip overflows. */
+.loan-settings-nt-tab-nav {
+    display: none;
+    position: absolute;
+    top: 0;
+    width: 40px;
+    height: 100%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink-2, var(--ink));
+    cursor: pointer;
+    z-index: 3;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 1023px) {
+    .loan-settings-nt-tab-nav { display: inline-flex; }
+}
+.loan-settings-nt-tab-nav.prev { left: 0; border-radius: 10px 0 0 0; }
+.loan-settings-nt-tab-nav.next { right: 0; border-radius: 0 10px 0 0; }
+.loan-settings-nt-tab-nav svg { width: 16px; height: 16px; }
+.loan-settings-nt-tab-nav:hover { background: var(--paper-2); color: var(--ink); }
+.loan-settings-nt-tab-nav:active { background: rgba(241, 90, 41, 0.08); color: var(--accent); }
+.loan-settings-nt-tab-nav:disabled { opacity: 0.3; cursor: default; }
+.loan-settings-nt-tab-nav:disabled:hover { background: #fff; }
+
+.loan-settings-nt-tabs::-webkit-scrollbar { height: 3px; }
+.loan-settings-nt-tabs::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+
+.loan-settings-nt-tabs .tab {
+    flex: 0 0 auto;
+    padding: 9px 14px;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-3);
+    text-decoration: none;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    position: relative;
+    bottom: -1px;
+}
+.loan-settings-nt-tabs .tab:hover { color: var(--ink); background: var(--paper-2); text-decoration: none; }
+.loan-settings-nt-tabs .tab.active {
+    color: var(--accent);
+    background: #fff;
+    border-color: var(--line);
+    border-bottom: 1px solid #fff;
+    z-index: 2;
+}
+
+/* ---------- Main card ---------- */
+.loan-settings-nt-card {
+    margin: 0 !important;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    /* overflow: visible — `overflow: hidden` from the base .card rule would
+       clip the fixed mobile Save footer AND break any sticky descendants.
+       Horizontal overflow on bank charges table is contained inside
+       `.table-responsive { overflow-x: auto }`, not here. */
+    overflow: visible !important;
+}
+@media (max-width: 1023px) {
+    .loan-settings-nt-card { border-top-left-radius: 0; border-top-right-radius: 0; }
+}
+
+.loan-settings-nt-card-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fcfbfa, #f7f5f3);
+}
+.loan-settings-nt-card-hd .t {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1;
+    font-family: 'Jost', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.loan-settings-nt-card-hd .t > * { line-height: 1; }
+.loan-settings-nt-card-hd .t .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    min-width: 28px;
+    padding: 0 6px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+.loan-settings-nt-breadcrumb {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: 0.02em;
+    font-family: 'Jost', sans-serif;
+}
+@media (max-width: 640px) { .loan-settings-nt-breadcrumb { display: none; } }
+
+.loan-settings-nt-card-bd { padding: 0; }
+
+/* Neutralise legacy shf-card / shf-section inside the pane shell.
+   `.shf-section` + `.shf-section-header` wrap the Role Permissions matrix;
+   without this the dark legacy gradient header leaks in. */
+.loan-settings-nt .shf-section {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+.loan-settings-nt .shf-section-header {
+    background: transparent !important;
+    padding: 0 0 12px 0 !important;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.loan-settings-nt .shf-section-number {
+    width: 24px; height: 24px;
+    background: var(--accent);
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+.loan-settings-nt .shf-section-title {
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.loan-settings-nt .shf-section-body { padding: 0 !important; }
+
+/* Neutralise legacy shf-card inside the pane shell */
+.loan-settings-nt .shf-card,
+.loan-settings-nt .shf-section-no-top-radius {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+
+.loan-settings-nt .settings-tab-pane {
+    padding: 26px 28px !important;
+}
+@media (max-width: 640px) {
+    .loan-settings-nt .settings-tab-pane { padding: 18px 16px !important; }
+}
+
+/* ================================================================
+   Bootstrap-grid / utility shim — scoped to .loan-settings-nt
+   ================================================================ */
+
+/* Flex + display */
+.loan-settings-nt .d-flex { display: flex !important; }
+.loan-settings-nt .d-inline-flex { display: inline-flex !important; }
+.loan-settings-nt .d-block { display: block !important; }
+.loan-settings-nt .d-none { display: none !important; }
+.loan-settings-nt .flex-wrap { flex-wrap: wrap !important; }
+.loan-settings-nt .flex-column { flex-direction: column !important; }
+.loan-settings-nt .flex-grow-1 { flex-grow: 1 !important; }
+.loan-settings-nt .align-items-center { align-items: center !important; }
+.loan-settings-nt .align-items-start { align-items: flex-start !important; }
+.loan-settings-nt .align-items-end { align-items: flex-end !important; }
+.loan-settings-nt .justify-content-center { justify-content: center !important; }
+.loan-settings-nt .justify-content-end { justify-content: flex-end !important; }
+.loan-settings-nt .justify-content-between { justify-content: space-between !important; }
+
+/* Grid row/col shim (replaces Bootstrap .row / .col-*) */
+.loan-settings-nt .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -8px;
+}
+.loan-settings-nt .row.g-1 { --gap: 4px; }
+.loan-settings-nt .row.g-2 { --gap: 8px; }
+.loan-settings-nt .row.g-3 { --gap: 12px; }
+.loan-settings-nt .row.g-1, .loan-settings-nt .row.g-2, .loan-settings-nt .row.g-3 {
+    row-gap: calc(var(--gap) * 2);
+    margin: 0 calc(-1 * var(--gap));
+}
+.loan-settings-nt .row.g-1 > [class*="col-"],
+.loan-settings-nt .row.g-2 > [class*="col-"],
+.loan-settings-nt .row.g-3 > [class*="col-"] {
+    padding: 0 var(--gap);
+}
+.loan-settings-nt [class*="col-"] {
+    padding: 0 8px;
+    max-width: 100%;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+}
+.loan-settings-nt .col { flex: 1 1 0; }
+.loan-settings-nt .col-auto { flex: 0 0 auto; width: auto; }
+.loan-settings-nt .col-12 { flex: 0 0 100%; width: 100%; }
+.loan-settings-nt .col-6  { flex: 0 0 50%;  width: 50%; }
+
+@media (min-width: 768px) {
+    .loan-settings-nt .col-md   { flex: 1 1 0; }
+    .loan-settings-nt .col-md-auto { flex: 0 0 auto; width: auto; }
+    .loan-settings-nt .col-md-12 { flex: 0 0 100%;  width: 100%; }
+    .loan-settings-nt .col-md-6  { flex: 0 0 50%;    width: 50%; }
+    .loan-settings-nt .col-md-4  { flex: 0 0 33.33%; width: 33.33%; }
+    .loan-settings-nt .col-md-3  { flex: 0 0 25%;    width: 25%; }
+    .loan-settings-nt .col-md-2  { flex: 0 0 16.66%; width: 16.66%; }
+}
+@media (min-width: 992px) {
+    .loan-settings-nt .col-lg-auto { flex: 0 0 auto; width: auto; }
+    .loan-settings-nt .col-lg-5 { flex: 0 0 41.66%; width: 41.66%; }
+    .loan-settings-nt .col-lg-4 { flex: 0 0 33.33%; width: 33.33%; }
+    .loan-settings-nt .col-lg-3 { flex: 0 0 25%;    width: 25%; }
+    .loan-settings-nt .col-lg-2 { flex: 0 0 16.66%; width: 16.66%; }
+}
+
+/* Mobile: collapse every grid cell to a single column */
+@media (max-width: 767px) {
+    .loan-settings-nt .row > [class*="col-"] { flex: 0 0 100% !important; width: 100% !important; }
+    .loan-settings-nt .row { row-gap: 12px; }
+}
+
+/* Gap utilities */
+.loan-settings-nt .gap-1 { gap: 4px !important; }
+.loan-settings-nt .gap-2 { gap: 8px !important; }
+.loan-settings-nt .gap-3 { gap: 12px !important; }
+
+/* Margin / padding utilities (subset actually used by the panes) */
+.loan-settings-nt .mb-0 { margin-bottom: 0 !important; }
+.loan-settings-nt .mb-1 { margin-bottom: 4px !important; }
+.loan-settings-nt .mb-2 { margin-bottom: 8px !important; }
+.loan-settings-nt .mb-3 { margin-bottom: 12px !important; }
+.loan-settings-nt .mb-4 { margin-bottom: 20px !important; }
+.loan-settings-nt .mt-1 { margin-top: 4px !important; }
+.loan-settings-nt .mt-2 { margin-top: 8px !important; }
+.loan-settings-nt .mt-3 { margin-top: 12px !important; }
+.loan-settings-nt .mt-4 { margin-top: 20px !important; }
+.loan-settings-nt .my-4 { margin-top: 20px !important; margin-bottom: 20px !important; }
+.loan-settings-nt .ms-2 { margin-left: 8px !important; }
+.loan-settings-nt .p-0 { padding: 0 !important; }
+.loan-settings-nt .p-2 { padding: 8px !important; }
+.loan-settings-nt .p-3 { padding: 12px !important; }
+.loan-settings-nt .p-4 { padding: 18px !important; }
+
+/* Sizing */
+.loan-settings-nt .w-100 { width: 100% !important; }
+
+/* Text utilities */
+.loan-settings-nt .text-center { text-align: center !important; }
+.loan-settings-nt .text-end { text-align: right !important; }
+.loan-settings-nt .small { font-size: 12.5px; }
+.loan-settings-nt .fw-bold { font-weight: 700; }
+.loan-settings-nt .fw-semibold { font-weight: 600; }
+.loan-settings-nt .fw-medium { font-weight: 500; }
+.loan-settings-nt .rounded { border-radius: 6px; }
+
+/* ================================================================
+   Legacy color pins — no brown/red drift from legacy vars
+   ================================================================ */
+.loan-settings-nt p { color: var(--ink); }
+.loan-settings-nt .shf-text-gray,
+.loan-settings-nt .text-muted,
+.loan-settings-nt small { color: var(--ink-3) !important; }
+.loan-settings-nt .shf-text-gray-light { color: var(--ink-4) !important; }
+.loan-settings-nt .shf-text-xs { font-size: 11.5px; color: var(--ink-3); }
+.loan-settings-nt .shf-text-accent { color: var(--accent) !important; }
+
+/* ================================================================
+   Corporate form fields
+   ================================================================ */
+.loan-settings-nt .shf-form-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.loan-settings-nt .shf-input,
+.loan-settings-nt input.shf-input,
+.loan-settings-nt select.shf-input,
+.loan-settings-nt textarea.shf-input {
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 9px 12px;
+    border: 1px solid var(--line-strong, #d4d0ce);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.12s, box-shadow 0.12s;
+    box-shadow: none;
+}
+.loan-settings-nt textarea.shf-input { min-height: 80px; line-height: 1.55; resize: vertical; }
+.loan-settings-nt .shf-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.12);
+}
+.loan-settings-nt .shf-input.small { font-size: 12.5px; padding: 7px 10px; }
+
+/* Select chevron — my generic .shf-input rule above sets `background: #fff`
+   which wipes the legacy chevron background-image from `select.shf-input`.
+   Re-declare it here with `appearance: none` + a right-side SVG arrow so
+   every `<select class="shf-input">` reads as a proper dropdown. */
+.loan-settings-nt select.shf-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+}
+.loan-settings-nt select.shf-input:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f15a29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* ================================================================
+   Buttons — overhaul
+   ================================================================ */
+/* Primary Save button (orange filled) */
+.loan-settings-nt .btn-accent {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 13px !important; font-weight: 600 !important;
+    padding: 8px 16px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(241,90,41,0.2);
+}
+.loan-settings-nt .btn-accent:hover {
+    background: var(--accent-deep, #d94d1f) !important;
+    border-color: var(--accent-deep, #d94d1f) !important;
+    text-decoration: none;
+}
+.loan-settings-nt .btn-accent svg { width: 14px; height: 14px; }
+
+/* Compact Add button — secondary outline, much lighter than Save */
+.loan-settings-nt .btn-accent-sm {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 12px !important; font-weight: 600 !important;
+    padding: 7px 12px !important;
+    background: #fff !important;
+    color: var(--accent) !important;
+    border: 1px solid rgba(241, 90, 41, 0.4) !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.loan-settings-nt .btn-accent-sm:hover {
+    background: rgba(241, 90, 41, 0.08) !important;
+    border-color: var(--accent) !important;
+    text-decoration: none;
+}
+.loan-settings-nt .btn-accent-sm svg { width: 12px; height: 12px; }
+
+/* Remove (trash) button — icon-only, compact, muted red */
+.loan-settings-nt .shf-btn-danger,
+.loan-settings-nt button.shf-btn-danger,
+.loan-settings-nt .removeDocBtn,
+.loan-settings-nt .removeDvrBtn,
+.loan-settings-nt .removeReasonBtn {
+    font-size: 0 !important;
+    width: 32px; height: 32px;
+    padding: 0 !important;
+    background: transparent !important;
+    color: var(--red) !important;
+    border: 1px solid rgba(192, 57, 43, 0.25) !important;
+    border-radius: 5px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.loan-settings-nt .shf-btn-danger:hover {
+    background: var(--red) !important;
+    border-color: var(--red) !important;
+    color: #fff !important;
+}
+.loan-settings-nt .shf-btn-danger svg {
+    width: 14px !important; height: 14px !important;
+    margin: 0;
+}
+
+/* ================================================================
+   Section sub-headers + rules
+   ================================================================ */
+.loan-settings-nt .font-display { font-family: 'Jost', sans-serif; }
+.loan-settings-nt h6.font-display {
+    font-size: 12px !important;
+    font-weight: 700;
+    color: var(--ink-2, var(--ink));
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    margin: 0 0 16px 0 !important;
+}
+.loan-settings-nt hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
+
+/* Bottom action row (Save buttons). Match regardless of whether the wrapper
+   is inside a form (Documents, Quotation Reasons) or a sibling of the forms
+   (DVR uses `form=""` attrs on the submit buttons and puts the row outside). */
+.loan-settings-nt .settings-tab-pane .shf-form-actions,
+.loan-settings-nt .settings-tab-pane .mt-4.d-flex.justify-content-end,
+.loan-settings-nt .settings-tab-pane .mt-3.d-flex.justify-content-end {
+    padding-top: 18px;
+    margin-top: 24px !important;
+    border-top: 1px solid var(--line);
+}
+
+/* ================================================================
+   Bank-charges table — must scroll INSIDE the card on mobile, not
+   widen the whole page. Paired with `min-width: 0` on ancestors
+   (see top of file) so the page viewport stays clean.
+   ================================================================ */
+.loan-settings-nt .table-responsive {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 4px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+}
+.loan-settings-nt table.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+    min-width: 720px;
+}
+.loan-settings-nt table.table thead th {
+    background: var(--paper-2);
+    font-family: 'Jost', sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    white-space: nowrap;
+}
+.loan-settings-nt table.table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+    color: var(--ink);
+}
+.loan-settings-nt table.table tbody tr:last-child td { border-bottom: none; }
+.loan-settings-nt table.table tbody tr:hover td { background: var(--paper-2); }
+
+/* Inputs inside bank-charges table — smaller, crisp */
+.loan-settings-nt table.table input.shf-input {
+    padding: 6px 9px;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+}
+.loan-settings-nt table.table input.shf-input:focus { border-color: var(--accent); }
+
+/* ================================================================
+   Tenures tag chips
+   ================================================================ */
+.loan-settings-nt .shf-tag {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 12px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.10) !important;
+    color: var(--blue) !important;
+    border: 1px solid rgba(37, 99, 235, 0.30) !important;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px; font-weight: 600;
+    line-height: 1.4;
+}
+.loan-settings-nt .shf-tag-remove {
+    background: none !important;
+    border: none !important;
+    color: var(--blue) !important;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 !important;
+    width: auto !important; height: auto !important;
+}
+.loan-settings-nt .shf-tag-remove:hover { color: var(--red) !important; }
+
+/* ================================================================
+   Bank badges (read-only list in Banks tab)
+   ================================================================ */
+.loan-settings-nt .shf-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.loan-settings-nt .shf-badge.shf-badge-blue {
+    background: rgba(37,99,235,0.10);
+    color: var(--blue);
+}
+.loan-settings-nt .shf-badge.shf-badge-green {
+    background: rgba(16,122,79,0.10);
+    color: var(--green);
+}
+
+/* ================================================================
+   Documents tab — sub-tabs + sortable rows
+   ================================================================ */
+.loan-settings-nt .doc-sub-tab {
+    font-family: 'Jost', sans-serif !important;
+    font-size: 12px !important; font-weight: 600 !important;
+    padding: 8px 14px !important;
+    color: var(--ink-3) !important;
+    border-bottom: 2px solid transparent !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    letter-spacing: 0.02em;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    cursor: pointer;
+}
+.loan-settings-nt .doc-sub-tab:hover { color: var(--ink) !important; }
+.loan-settings-nt .doc-sub-tab.active {
+    color: var(--accent) !important;
+    border-bottom-color: var(--accent) !important;
+}
+
+.loan-settings-nt .doc-sortable-item,
+.loan-settings-nt .shf-reason-row {
+    background: #fafaf8 !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+    margin: 0 0 8px 0 !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.loan-settings-nt .doc-sortable-item > .col-auto,
+.loan-settings-nt .shf-reason-row > .col-auto { padding: 0; }
+.loan-settings-nt .doc-sortable-ghost { opacity: 0.4; background: var(--paper-2) !important; }
+.loan-settings-nt .doc-drag-handle {
+    color: var(--ink-4) !important;
+    font-size: 14px;
+    cursor: grab;
+    padding: 0 4px;
+}
+.loan-settings-nt .doc-drag-handle:active { cursor: grabbing; }
+
+.loan-settings-nt .shf-reason-add-row {
+    padding: 12px !important;
+    background: #fdfbf9;
+    border: 1px dashed var(--line-strong, #d4d0ce);
+    border-radius: 8px;
+    margin-top: 6px;
+}
+
+/* ================================================================
+   Key badges (DVR contact-type key pill)
+   ================================================================ */
+.loan-settings-nt .shf-reason-row code,
+.loan-settings-nt .shf-reason-row .shf-badge {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--paper-2);
+    color: var(--ink-2, var(--ink));
+    font-weight: 600;
+    border: none;
+}
+
+.loan-settings-nt code {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+    background: var(--paper-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--ink-2, var(--ink));
+}
+
+/* ================================================================
+   Checkboxes + inputs cosmetic
+   ================================================================ */
+/* Generic checkbox — skip .shf-toggle (36x20 px custom switch) so its
+   appearance-none + ::before knob keeps rendering as a proper switch. */
+.loan-settings-nt input[type="checkbox"]:not(.shf-toggle) {
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+}
+
+/* ================================================================
+   Products & Stages — bank cards + product rows
+   Legacy .shf-stage-card uses a dark slate 2 px border (#94a3b8)
+   which reads as a harsh dark-blue frame on the newtheme background.
+   Re-style with newtheme line tokens.
+   ================================================================ */
+.loan-settings-nt .shf-stage-card {
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    background: #fff !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+    margin-bottom: 12px;
+    /* No `overflow: hidden` — it was clipping the rightmost action button
+       (Delete) inside the Products list product rows. The header/body
+       children don't actually overflow past the corners, so rounded-corner
+       clipping isn't needed. */
+}
+.loan-settings-nt .shf-stage-card:hover {
+    border-color: var(--line-strong, #d4d0ce) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+}
+.loan-settings-nt .shf-stage-card--child {
+    margin-left: 20px;
+    border-left: 3px solid var(--accent) !important;
+}
+.loan-settings-nt .shf-stage-card .shf-stage-header {
+    padding: 10px 14px !important;
+    background: var(--paper-2) !important;
+    border-bottom: 1px solid var(--line);
+}
+.loan-settings-nt .shf-stage-card .shf-stage-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Jost', sans-serif;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+}
+.loan-settings-nt .shf-stage-card .shf-stage-header-title strong { font-weight: 600; }
+.loan-settings-nt .shf-stage-card .shf-stage-body { padding: 0; background: #fff; }
+.loan-settings-nt .shf-stage-card .shf-stage-body .border-bottom {
+    border-bottom: 1px solid var(--line) !important;
+}
+
+/* Product row inside a bank card — breathing room + hover tint */
+.loan-settings-nt .shf-stage-card .shf-stage-body > div {
+    padding: 12px 14px !important;
+}
+.loan-settings-nt .shf-stage-card .shf-stage-body > div:hover {
+    background: var(--paper-2);
+}
+
+/* Stages / Locations / Delete action buttons — compact outline style.
+   Order matters: the orange outline rule comes first (Stages default),
+   then gray (Locations) and red (Delete) override with equal specificity. */
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-text-xs {
+    padding: 5px 10px !important;
+    font-size: 11.5px !important;
+    background: #fff !important;
+    color: var(--accent) !important;
+    border: 1px solid rgba(241, 90, 41, 0.35) !important;
+}
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-gray {
+    background: #fff !important;
+    color: var(--ink-3) !important;
+    border: 1px solid var(--line) !important;
+}
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-gray:hover {
+    background: var(--paper-2) !important;
+    color: var(--ink) !important;
+    border-color: var(--line-strong, #d4d0ce) !important;
+}
+/* Red outline Delete inside Products & Stages rows. Must explicitly reset
+   width/height/font-size/padding because the GLOBAL `.shf-btn-danger`
+   rule earlier in this file turns every `.shf-btn-danger` into a 32×32
+   icon-only button (font-size: 0) — which was hiding the "Delete" label
+   here and clipping the button. */
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-danger {
+    background: #fff !important;
+    color: var(--red) !important;
+    border: 1px solid rgba(192, 57, 43, 0.35) !important;
+    font-size: 11.5px !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 5px 10px !important;
+    gap: 4px;
+}
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-danger svg {
+    width: 12px !important;
+    height: 12px !important;
+}
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-danger:hover {
+    background: var(--red) !important;
+    color: #fff !important;
+    border-color: var(--red) !important;
+}
+
+/* Flex-wrap the product action group so Delete never clips when a product
+   row is tight. On narrow widths actions wrap under the product name. */
+.loan-settings-nt .shf-stage-card .shf-stage-body .d-flex.gap-1 {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* ================================================================
+   Quotation hold-reason group labels (AMOUNT / TENURE etc.)
+   ================================================================ */
+.loan-settings-nt [data-reason-group-label],
+.loan-settings-nt strong[style*="accent"] {
+    display: block;
+    font-family: 'Jost', sans-serif !important;
+    font-size: 10.5px !important;
+    font-weight: 700;
+    color: var(--accent) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 16px 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(241, 90, 41, 0.25);
+}
+
+/* ================================================================
+   Tablet/mobile tweaks (<=1023px)
+   ================================================================ */
+@media (max-width: 1023px) {
+    /* Stop the page shell from adding its own side padding when the rail
+       is hidden — the card already has its own chrome.
+       160px bottom = 70px fixed nav + ~65px FAB + 25px breathing. */
+    .loan-settings-nt {
+        padding: 0 0 160px;
+    }
+    .loan-settings-nt-card { border-top-left-radius: 0; border-top-right-radius: 0; }
+    .loan-settings-nt-card-hd { padding: 12px 16px; }
+    .loan-settings-nt-card-hd .t { font-size: 14px; }
+    .loan-settings-nt .settings-tab-pane { padding: 18px 16px !important; }
+    .loan-settings-nt hr { margin: 18px 0; }
+
+    /* FIXED Save button footer — anchored above the 70 px mobile bottom
+       nav. Targets the two pane-level Save rows in loan-settings:
+         - Stage Master    — `<form id="masterStagesForm"> > .d-flex.justify-content-end.mt-3`
+         - Role Permissions — `<form> .d-flex.justify-content-end.mt-4` (nested under .shf-section-body)
+       Only the currently-active pane is `display: block`, so only one
+       footer paints at a time. */
+    .loan-settings-nt #tab-master-stages form#masterStagesForm > .d-flex.justify-content-end,
+    .loan-settings-nt #tab-role-permissions form .d-flex.justify-content-end.mt-4 {
+        position: fixed !important;
+        left: 0;
+        right: 0;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        margin: 0 !important;
+        padding: 12px 16px !important;
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+        z-index: 120;            /* above card (10), below bottom nav (180) */
+    }
+    /* The Save button inside the fixed footer goes full-width on mobile. */
+    .loan-settings-nt #tab-master-stages form#masterStagesForm > .d-flex.justify-content-end > .btn-accent,
+    .loan-settings-nt #tab-role-permissions form .d-flex.justify-content-end.mt-4 > .btn-accent {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* ===== Quotation Reasons — BOTH Save buttons share the footer ======
+       Each Save button lives in its own `<form>` (so submits only its own
+       list). Position the two form-actions rows as a 50/50 split fixed to
+       the bottom, with Hold Reasons on the left, Cancel Reasons on the
+       right. They visually read as ONE footer with two buttons inline. */
+    .loan-settings-nt #tab-quotation-reasons > div > form > .mt-3.d-flex.justify-content-end,
+    .loan-settings-nt #tab-quotation-reasons > div > form > .mt-4.d-flex.justify-content-end {
+        position: fixed !important;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        margin: 0 !important;
+        padding: 10px 6px !important;
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+        z-index: 120;
+        display: flex !important;
+        justify-content: stretch !important;
+    }
+    .loan-settings-nt #tab-quotation-reasons > div:first-of-type > form > .mt-3.d-flex.justify-content-end,
+    .loan-settings-nt #tab-quotation-reasons > div:first-of-type > form > .mt-4.d-flex.justify-content-end {
+        left: 0 !important;
+        right: 50% !important;
+        border-right: 1px solid var(--line);
+    }
+    .loan-settings-nt #tab-quotation-reasons > div:last-of-type > form > .mt-3.d-flex.justify-content-end,
+    .loan-settings-nt #tab-quotation-reasons > div:last-of-type > form > .mt-4.d-flex.justify-content-end {
+        left: 50% !important;
+        right: 0 !important;
+    }
+    .loan-settings-nt #tab-quotation-reasons > div > form > .mt-3.d-flex.justify-content-end .btn-accent,
+    .loan-settings-nt #tab-quotation-reasons > div > form > .mt-4.d-flex.justify-content-end .btn-accent {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        justify-content: center;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        font-size: 12.5px !important;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    /* Hide the global FAB on settings/mobile. The create-action shortcuts
+       it offers (New Quotation / New Task / New Visit) aren't relevant
+       here and they'd overlap the sticky Save band. Users still reach
+       them via the bottom nav on other pages. */
+    .shf-fab-wrap { display: none !important; }
+}
+
+@media (max-width: 640px) {
+    /* Extra clearance on phones so Save never ends up under the nav. */
+    .loan-settings-nt { padding-bottom: 170px; }
+}
+
+/* Phone (<=640px) */
+@media (max-width: 640px) {
+    .loan-settings-nt .settings-tab-pane { padding: 14px 12px !important; }
+    .loan-settings-nt-card-hd .t { font-size: 13px; }
+    .loan-settings-nt-card-hd .t .num { height: 20px; min-width: 26px; font-size: 10px; }
+
+    /* Save buttons on phone — keep multiple actions on ONE row (equal share),
+       don't let them stack vertically. DVR tab has Save Contact Types + Save
+       Purposes; Quotation Reasons has Save Hold + Save Cancel; both should sit
+       side-by-side. Descendant selector also catches DVR's pane-level
+       `.shf-form-actions` (outside any form). */
+    .loan-settings-nt .settings-tab-pane .shf-form-actions,
+    .loan-settings-nt .settings-tab-pane .mt-4.d-flex.justify-content-end,
+    .loan-settings-nt .settings-tab-pane .mt-3.d-flex.justify-content-end {
+        flex-wrap: nowrap;
+        gap: 8px;
+        justify-content: stretch !important;
+    }
+    .loan-settings-nt .settings-tab-pane .shf-form-actions .btn-accent,
+    .loan-settings-nt .settings-tab-pane .mt-4.d-flex .btn-accent,
+    .loan-settings-nt .settings-tab-pane .mt-3.d-flex .btn-accent {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        font-size: 12.5px !important;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .loan-settings-nt .doc-sortable-item,
+    .loan-settings-nt .shf-reason-row {
+        padding: 10px !important;
+        gap: 8px;
+    }
+    /* Let the tag input + add row stack rather than squeeze */
+    .loan-settings-nt .shf-reason-add-row { padding: 10px !important; }
+    .loan-settings-nt h6.font-display { font-size: 11.5px !important; }
+
+    /* Tenures input row (number + Add) — don't wrap the button below */
+    .loan-settings-nt #tenuresForm .shf-max-w-20 { max-width: 100%; }
+}
+
+/* ================================================================
+   Per-tab max-width hints
+   ================================================================ */
+.loan-settings-nt .shf-max-w-20 { max-width: 22rem; }
+
+/* ================================================================
+   Bootstrap collapse shim — required because we load Bootstrap JS
+   (for `data-bs-toggle="collapse"` clicks on Add-form toggles)
+   without Bootstrap CSS. These are the minimum rules Bootstrap's
+   collapse component expects to find.
+   ================================================================ */
+.loan-settings-nt .collapse:not(.show) { display: none; }
+.loan-settings-nt .collapsing {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.35s ease;
+}
+.loan-settings-nt .collapse.show {
+    display: block;
+}

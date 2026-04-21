@@ -22,7 +22,9 @@ class PermissionController extends Controller
             $rolePermissions[$role->slug] = $role->permissions()->pluck('permissions.id')->toArray();
         }
 
-        return view('permissions.index', compact('permissions', 'roles', 'rolePermissions'));
+        $template = 'newtheme.permissions.index';
+
+        return view($template, compact('permissions', 'roles', 'rolePermissions') + ['pageKey' => 'settings']);
     }
 
     public function update(Request $request)

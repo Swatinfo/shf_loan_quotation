@@ -19,7 +19,9 @@ class SettingsController extends Controller
         $bankCharges = BankCharge::orderBy('bank_name')->get();
         $loanBanks = \App\Models\Bank::active()->orderBy('name')->pluck('name')->toArray();
 
-        return view('settings.index', compact('config', 'bankCharges', 'loanBanks'));
+        $template = 'newtheme.settings.index';
+
+        return view($template, compact('config', 'bankCharges', 'loanBanks'));
     }
 
     public function updateCompany(Request $request)

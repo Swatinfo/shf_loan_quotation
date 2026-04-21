@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edit loan · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="loans.html">Loans</a> <span class="sep">/</span> <a href="loan-show.html">SHF-2026-0479</a> <span class="sep">/</span> Edit</div>
+<h1>Edit loan file</h1><div class="sub">Anil Patel HDFC₹ 55,00,000Stage 5</div></div>
+<div class="head-actions"><a class="btn" href="loan-show.html">Cancel</a><button class="btn primary" data-action="submit" data-arg="Changes saved" data-next="loan-show.html">Save changes</button></div></div>
+<div class="tabs"><a class="tab active">Basics</a><a class="tab" href="loan-documents.html">Documents</a><a class="tab" href="loan-valuation.html">Valuation</a><a class="tab" href="loan-stages.html">Stages</a></div>
+</header>
+<main class="content"><form data-form>
+<div class="card"><div class="card-hd"><div class="t">Customer &amp; loan</div></div><div class="card-bd">
+<div class="form-grid">
+ <div class="field"><label>Customer</label><input class="input" value="Anil Patel" readonly></div>
+ <div class="field"><label>Primary mobile</label><input class="input" value="+91 90331 55871"></div>
+ <div class="field"><label>Loan type</label><select class="select" name="loan_type"><option value="home" selected>Home loan</option><option value="lap">LAP</option><option value="bt">Balance transfer</option></select></div>
+ <div class="field"><label>Amount (₹)</label><input class="input tnum" value="5500000"></div>
+ <div class="field"><label>Tenure (years)</label><input class="input tnum" value="20"></div>
+ <div class="field"><label>Rate locked (%)</label><input class="input tnum" value="8.45"></div>
+ <div class="field wide cond-field hide" data-cond-when='{"field":"loan_type","equals":"bt"}'>
+ <div class="callout warn"><strong>BT note.</strong> Changing to BT requires re-upload of foreclosure letter + statement of account from current lender.</div>
+ </div>
+</div></div><div class="card-ft"><div class="text-xs text-muted">Auto-saved 2 min ago</div><div style="margin-left:auto;display:flex;gap:8px;"><button type="button" class="btn" data-action="save" data-arg="Saved">Save</button><button type="button" class="btn primary" data-action="submit" data-arg="Saved" data-next="loan-show.html">Save &amp; return</button></div></div></div>
+</form></main><div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('loans');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/loan-edit.js?v=1"></script>
+</body></html>

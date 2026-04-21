@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotations · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Quotations</div>
+ <h1>Quotations</h1>
+ <div class="sub">126 this month48 converted38% conversion</div>
+ </div>
+ <div class="head-actions">
+ <button class="btn" data-action="toast" data-arg="Imported">Import</button>
+ <button class="btn" data-action="toast" data-arg="CSV queued">Export CSV</button>
+ <a class="btn primary" href="quotation-new.html">+ New quotation</a>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="quot">
+ <a class="tab active" id="qts-tab-all" data-panel="all">All <span class="count">126</span></a>
+ <a class="tab" id="qts-tab-draft" data-panel="draft">Draft <span class="count">14</span></a>
+ <a class="tab" id="qts-tab-sent" data-panel="sent">Sent <span class="count">52</span></a>
+ <a class="tab" id="qts-tab-converted" data-panel="converted">Converted <span class="count">48</span></a>
+ <a class="tab" id="qts-tab-expired" data-panel="expired">Expired <span class="count">12</span></a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="quot">
+ <div class="card">
+ <div class="card-hd" style="padding:12px 18px;">
+ <div class="filter-row">
+ <div class="search-wrap"><input class="input" placeholder="Search quotation #, customer, bank…"></div>
+ <button class="btn sm">Bank ▾</button>
+ <button class="btn sm">Loan type ▾</button>
+ <button class="btn sm">Advisor ▾</button>
+ <button class="btn sm">Date range ▾</button>
+ <div style="margin-left:auto;display:flex;gap:6px;">
+ <button class="btn sm active">Rows</button><button class="btn sm">Cards</button>
+ </div>
+ </div>
+ </div>
+ <div class="card-bd" style="padding:0;">
+ <div id="qts-panel-all" data-panel-id="all"><div id="rows-all"></div></div>
+ <div id="qts-panel-draft" data-panel-id="draft" style="display:none;"><div id="rows-draft"></div></div>
+ <div id="qts-panel-sent" data-panel-id="sent" style="display:none;"><div id="rows-sent"></div></div>
+ <div id="qts-panel-converted" data-panel-id="converted" style="display:none;"><div id="rows-converted"></div></div>
+ <div id="qts-panel-expired" data-panel-id="expired" style="display:none;"><div id="rows-expired"></div></div>
+ <div class="tbl-footbar"><div>Showing 10</div><div class="pager"><span class="pg">‹</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">…</span><span class="pg">13</span><span class="pg">›</span></div></div>
+ </div>
+ </div>
+</div>
+</main>
+<div id="__shell_tweaks"></div></div>
+
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('quotations');</script>
+<script>
+(function(){
+ const BANKS = { H:'#f15a29', S:'#1d4e89', B:'#b7791f', I:'#107a4f', A:'#3a3536', K:'#9c1f2e', P:'#053870' };[no, v, cust, ltype, amt, banks[], emi, status{label,cls,sty}, advisor, created, action]
+ const Q = [
+ ['QT-2026-00148',3,'Priya Mehta','Home — Purchase','₹ 28,00,000',['H','S','B','I','A'],'₹ 24,098',{l:'Draft',c:'sq',s:'background:var(--paper-2);color:var(--ink-3);'},'Rahul J.','Today 10:22','edit','draft'],
+ ['QT-2026-00147',1,'Anil Patel','Home — Construction','₹ 55,00,000',['H','S','B'],'₹ 47,289',{l:'Sent',c:'blue sq'},'Rahul J.','Yesterday','view','sent'],
+ ['QT-2026-00146',2,'Rashmika Shah','Home — Purchase','₹ 42,50,000',['S','I'],'₹ 36,581',{l:'Converted → SHF-2026-0471',c:'green sq'},'Anita P.','2d ago','view','converted'],
+ ['QT-2026-00145',1,'Kiran Desai','LAP','₹ 1,12,00,000',['H','I','A','K'],'₹ 96,428',{l:'Sent',c:'blue sq'},'Vipul M.','3d ago','view','sent'],
+ ['QT-2026-00144',4,'Jayesh Trivedi','Home — Purchase','₹ 18,00,000',['A','H'],'₹ 15,490',{l:'Converted → SHF-2026-0462',c:'green sq'},'Rahul J.','4d ago','view','converted'],
+ ['QT-2026-00143',1,'Dhaval Joshi','Home — Purchase','₹ 34,75,000',['K','S'],'₹ 29,912',{l:'Expired',c:'sq',s:'background:var(--red-soft);color:var(--red);'},'Anita P.','14d ago','renew','expired'],
+ ['QT-2026-00142',2,'Shilpa Rao','Balance transfer','₹ 22,00,000',['P','H','B'],'₹ 18,934',{l:'Sent',c:'blue sq'},'Rahul J.','5d ago','view','sent'],
+ ['QT-2026-00141',1,'Meera Oza','Top-up','₹ 6,50,000',['H'],'₹ 5,620',{l:'Draft',c:'sq',s:'background:var(--paper-2);color:var(--ink-3);'},'Anita P.','6d ago','edit','draft'],
+ ['QT-2026-00140',1,'Nirav Bhatt','Home — Purchase','₹ 48,00,000',['S','A','I'],'₹ 41,322',{l:'Sent',c:'blue sq'},'Vipul M.','7d ago','view','sent'],
+ ['QT-2026-00139',3,'Kavya Iyer','Home — Purchase','₹ 62,00,000',['H','B'],'₹ 53,375',{l:'Converted',c:'green sq'},'Rahul J.','9d ago','view','converted'],
+ ['QT-2026-00138',1,'Suresh Mistry','Home — Construction','₹ 45,00,000',['H','I'],'₹ 38,720',{l:'Sent',c:'blue sq'},'Anita P.','10d ago','view','sent'],
+ ['QT-2026-00137',2,'Ritesh Parekh','LAP','₹ 38,00,000',['S','A'],'₹ 32,695',{l:'Expired',c:'sq',s:'background:var(--red-soft);color:var(--red);'},'Anita P.','18d ago','renew','expired'],
+ ['QT-2026-00136',1,'Pooja Mehta','Home — Purchase','₹ 75,00,000',['I','H'],'₹ 64,500',{l:'Converted',c:'green sq'},'Vipul M.','12d ago','view','converted'],
+ ['QT-2026-00135',1,'Aditi Bhatt','Top-up','₹ 9,00,000',['H'],'₹ 7,740',{l:'Draft',c:'sq',s:'background:var(--paper-2);color:var(--ink-3);'},'Rahul J.','13d ago','edit','draft']
+ ];
+
+ function banksHtml(bs){
+ return `<div class="bank-stack">${bs.map(b=>`<span class="bl" style="background:${BANKS[b]};">${b}</span>`).join('')}</div>`;
+ }
+ function rowHtml(q){
+ const [no,v,cust,lt,amt,bs,emi,st,adv,created,action] = q;
+ const vtxt = st.l.toLowerCase().includes('convert') ? 'converted' : st.l.toLowerCase().includes('expired') ? 'expired' : st.l.toLowerCase().includes('sent') ? 'sent' : 'draft';
+ const sty = st.s ? `style="${st.s}"` : '';
+ const actionBtn = action === 'edit' ? `<a class="btn sm ghost" href="quotation-new.html">Edit</a>` : action === 'renew' ? `<a class="btn sm ghost" data-action="toast" data-arg="Renewed">Renew</a>` : `<a class="btn sm ghost" href="quotation-show.html">View</a>`;
+ return `<tr><td><input type="checkbox"></td>
+ <td><span class="font-mono" style="font-weight:600;">${no}</span><div class="text-xs text-muted">v${v}${vtxt}</div></td>
+ <td>${cust}</td><td>${lt}</td><td class="num tnum">${amt}</td>
+ <td>${banksHtml(bs)}</td><td class="tnum">${emi}</td>
+ <td><span class="badge ${st.c}" ${sty}>${st.l}</span></td>
+ <td>${adv}</td><td>${created}</td><td>${actionBtn}</td>
+ <td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="quotation-show.html">View details</a><a href="quotation-new.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a><hr>
+ <a href="#" class="danger" data-confirm-delete="Quotation">Delete</a>
+ </div>
+ </div></td></tr>`;
+ }
+ function tableHtml(rows){
+ if (!rows.length) return `<div class="empty-state" style="padding:48px 24px;text-align:center;color:var(--ink-2);"><div style="font-size:36px;margin-bottom:8px;">📭</div><div style="font-weight:600;">No quotations in this view</div></div>`;
+ return `<table class="tbl"><thead><tr>
+ <th style="width:28px;"><input type="checkbox"></th>
+ <th>Quotation #</th><th>Customer</th><th>Loan type</th><th class="num">Amount</th><th>Banks</th><th>Best EMI</th><th>Status</th><th>Advisor</th><th>Created</th><th></th><th style="width:48px;text-align:right;"></th>
+ </tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+ }
+ document.getElementById('rows-all').innerHTML = tableHtml(Q);
+ document.getElementById('rows-draft').innerHTML = tableHtml(Q.filter(q=>q[11]==='draft'));
+ document.getElementById('rows-sent').innerHTML = tableHtml(Q.filter(q=>q[11]==='sent'));
+ document.getElementById('rows-converted').innerHTML = tableHtml(Q.filter(q=>q[11]==='converted'));
+ document.getElementById('rows-expired').innerHTML = tableHtml(Q.filter(q=>q[11]==='expired'));
+})();
+</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('qts', ["all","draft","sent","converted","expired"]);</script>
+<script src="assets/quotations.js?v=1"></script>
+</body></html>

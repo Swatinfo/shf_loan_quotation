@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Convert quotation · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header">
+ <div class="head-row"><div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="quotations.html">Quotations</a> <span class="sep">/</span> <a href="quotation-show.html">QT-2026-00147</a> <span class="sep">/</span> Convert</div>
+ <h1>Convert to live loan</h1>
+ <div class="sub">Opens a new loan file and starts Stage 1Inquiry</div>
+ </div></div>
+</header>
+<main class="content">
+<div class="grid c-main" data-form>
+<div>
+ <div class="card"><div class="card-hd"><div class="t">Confirm details</div></div><div class="card-bd">
+ <div class="callout warn"><strong>Heads up.</strong> Once converted, quotation fields are locked. To change the customer or loan amount, edit the loan from stage 2 onwards.</div>
+ <div class="form-grid mt-4">
+ <div class="field"><label>Loan file ID (auto)</label><input class="input font-mono" value="SHF-2026-0485" readonly></div>
+ <div class="field"><label>Primary advisor</label><select class="select"><option>Rahul JadejaManinagar</option><option>Neha Shukla</option><option>Anita Pandya</option></select></div>
+ <div class="field"><label>Branch</label><select class="select"><option>Ahmedabad — Maninagar</option><option>Surat — Adajan</option></select></div>
+ <div class="field"><label>Selected bank</label><select class="select" name="bank_id"><option value="hdfc">HDFC8.45%₹47,289</option><option value="sbi">SBI8.50%₹47,561</option><option value="axis">Axis8.60%₹48,100</option></select></div>
+ <div class="field wide"><label class="checkbox"><input type="checkbox" name="kfs" checked> Send Key Facts Statement (KFS) to customer on WhatsApp + Email</label></div>
+ <div class="field wide"><label class="checkbox"><input type="checkbox" name="dvr_now"> Create a scheduled site visit (DVR) for today</label></div>
+ <div class="field wide cond-field hide" data-cond-when='{"field":"dvr_now","truthy":true}'>
+ <label>DVR slot</label><select class="select"><option>Today 11:30–12:30</option><option>Today 15:00–16:00</option><option>Tomorrow 10:00–11:00</option></select>
+ </div>
+ </div>
+ </div><div class="card-ft">
+ <a class="btn" href="quotation-show.html">Cancel</a>
+ <div style="margin-left:auto;display:flex;gap:8px;">
+ <button class="btn" data-action="save" data-arg="Draft saved">Save &amp; close</button>
+ <button class="btn primary" data-action="submit" data-arg="Converted — loan SHF-2026-0485 created" data-next="loan-show.html">Convert &amp; open loan →</button>
+ </div>
+ </div></div>
+</div>
+<aside>
+ <div class="card"><div class="card-hd"><div class="t">Quote snapshot</div></div><div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Customer</span><strong>Priya Mehta</strong></div>
+ <div class="kv"><span>Loan type</span><strong>Home loanResale</strong></div>
+ <div class="kv"><span>Amount</span><strong class="tnum">₹ 55,00,000</strong></div>
+ <div class="kv"><span>Tenure</span><strong>20 years</strong></div>
+ <div class="kv"><span>ROI</span><strong>8.45%</strong></div>
+ <div class="kv"><span>EMI</span><strong class="tnum">₹ 47,289</strong></div>
+ </div>
+ </div></div>
+</aside>
+</div>
+</main><div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('quotations');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/quotation-convert.js?v=1"></script>
+</body></html>

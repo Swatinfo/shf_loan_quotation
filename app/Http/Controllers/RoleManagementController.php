@@ -17,14 +17,18 @@ class RoleManagementController extends Controller
     {
         $roles = Role::withCount('users')->orderBy('id')->get();
 
-        return view('roles.index', compact('roles'));
+        $template = 'newtheme.roles.index';
+
+        return view($template, compact('roles'));
     }
 
     public function create()
     {
         $existingRoles = Role::where('is_system', false)->orderBy('name')->get();
 
-        return view('roles.create', compact('existingRoles'));
+        $template = 'newtheme.roles.create';
+
+        return view($template, compact('existingRoles'));
     }
 
     public function store(Request $request)
@@ -119,7 +123,9 @@ class RoleManagementController extends Controller
             $stageEligibility[$stage->stage_key] = in_array($role->slug, $roles);
         }
 
-        return view('roles.edit', compact('role', 'permissions', 'rolePermissionIds', 'stages', 'stageEligibility'));
+        $template = 'newtheme.roles.edit';
+
+        return view($template, compact('role', 'permissions', 'rolePermissionIds', 'stages', 'stageEligibility'));
     }
 
     public function update(Request $request, Role $role)

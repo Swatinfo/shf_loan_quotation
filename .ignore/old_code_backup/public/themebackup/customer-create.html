@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New customer SHF</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="customers.html">Customers</a> <span class="sep">/</span> New</div>
+<h1>New customer</h1><div class="sub">Capture a lead, walk-in or referral</div></div>
+<div class="head-actions"><a class="btn" href="customers.html">Cancel</a><button class="btn" data-action="toast" data-arg="Saved as draft">Save draft</button>
+<button class="btn primary" data-action="submit" data-arg="Customer created" data-next="customers.html">Create customer</button></div></div></header>
+<main class="content"><form data-form><div class="grid c-main">
+<div>
+<div class="card"><div class="card-hd"><div class="t">Personal</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>First name<span class="req">*</span></label><input class="input" required></div>
+<div class="field"><label>Last name<span class="req">*</span></label><input class="input" required></div>
+<div class="field"><label>Date of birth</label><input class="input shf-date" type="date"></div>
+<div class="field"><label>Gender</label><select class="input"><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
+<div class="field"><label>Marital status</label><select class="input" data-cond-source="marital"><option value="single">Single</option><option value="married">Married</option><option value="divorced">Divorced</option><option value="widowed">Widowed</option></select></div>
+<div class="field" data-cond-when='{"marital":"married"}'><label>Spouse name</label><input class="input"></div>
+<div class="field"><label>PAN<span class="req">*</span></label><input class="input font-mono" placeholder="ABCDE1234 · F" required></div>
+<div class="field"><label>Aadhaar (last 4)</label><input class="input font-mono" placeholder="••••" maxlength="4"></div>
+</div></div></div>
+
+<div class="card mt-4"><div class="card-hd"><div class="t">Contact</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Mobile<span class="req">*</span></label><input class="input" placeholder="+91 …" required></div>
+<div class="field"><label>Alt mobile</label><input class="input"></div>
+<div class="field full"><label>Email</label><input class="input" type="email"></div>
+<div class="field full"><label>Address</label><textarea class="input" rows="3"></textarea></div>
+<div class="field"><label>City</label><input class="input" value="Ahmedabad"></div>
+<div class="field"><label>Pincode</label><input class="input" maxlength="6"></div>
+</div></div></div>
+
+<div class="card mt-4"><div class="card-hd"><div class="t">Employment &amp; income</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Employment type<span class="req">*</span></label><select class="input" data-cond-source="emp" required><option value="salaried">Salaried</option><option value="self_pro">Self-employed (Professional)</option><option value="self_biz">Self-employed (Business)</option><option value="prop">Proprietor</option><option value="ltd">Pvt Ltd Director</option><option value="nri">NRI</option><option value="pen">Pensioner</option></select></div>
+<div class="field"><label>Net monthly income<span class="req">*</span></label><input class="input tnum" placeholder="₹" required></div>
+<div class="field" data-cond-when='{"emp":"salaried"}'><label>Employer</label><input class="input"></div>
+<div class="field" data-cond-when='{"emp":"salaried"}'><label>Years of experience</label><input class="input" type="number" min="0"></div>
+<div class="field" data-cond-when='{"emp":["self_pro","self_biz","prop"]}'><label>Business name</label><input class="input"></div>
+<div class="field" data-cond-when='{"emp":["self_pro","self_biz","prop"]}'><label>Years in business</label><input class="input" type="number" min="0"></div>
+<div class="field" data-cond-when='{"emp":"nri"}'><label>Country</label><input class="input"></div>
+</div></div></div>
+
+<div class="card mt-4"><div class="card-hd"><div class="t">Source &amp; advisor</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Source<span class="req">*</span></label><select class="input" data-cond-source="src" required><option value="walkin">Walk-in</option><option value="ref">Referral</option><option value="dsa">DSA</option><option value="ad">Advertisement</option><option value="alumni">Alumni</option><option value="web">Website</option></select></div>
+<div class="field" data-cond-when='{"src":"ref"}'><label>Referrer</label><input class="input" placeholder="Customer or partner name"></div>
+<div class="field" data-cond-when='{"src":"dsa"}'><label>DSA partner</label><input class="input"></div>
+<div class="field" data-cond-when='{"src":"ad"}'><label>Campaign</label><select class="input"><option>Facebook</option><option>Google</option><option>Newspaper</option><option>Other</option></select></div>
+<div class="field"><label>Assigned advisor</label><select class="input"><option>Rahul Jadeja</option><option>Anita Patel</option><option>Vipul Mehta</option></select></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Quick add</div></div><div class="card-bd">
+<div class="text-sm" style="line-height:1.6;color:var(--ink-2);">For a fast walk-in capture, only <strong>name + mobile + PAN + employment</strong> are required. You can complete the rest later from the customer profile.</div>
+</div></div></aside>
+</div></form></main>
+
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('customers');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/customer-create.js?v=1"></script>
+</body></html>

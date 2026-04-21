@@ -24,7 +24,9 @@ class LoanDocumentController extends Controller
         $documents = $loan->documents()->orderBy('sort_order')->get();
         $progress = $this->documentService->getProgress($loan);
 
-        return view('loans.documents', compact('loan', 'documents', 'progress'));
+        $template = 'newtheme.loans.documents';
+
+        return view($template, compact('loan', 'documents', 'progress'));
     }
 
     public function updateStatus(Request $request, LoanDetail $loan, LoanDocument $document): JsonResponse

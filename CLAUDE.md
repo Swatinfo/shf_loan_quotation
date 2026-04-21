@@ -34,7 +34,7 @@ php artisan migrate                         # Run migrations
 - **Activity logging**: `ActivityLog::log($action, $subject, $properties)`
 - **Config**: Use `ConfigService` (reads `app_config` table with `config/app-defaults.php` fallback)
 - **Views**: `@extends`/`@section` pattern only — never Blade component wrappers
-- **CSS prefix**: `shf-` for all custom classes in `public/css/shf.css`
+- **CSS prefix**: `shf-` for all custom classes in `public/newtheme/css/shf.css`
 - **Customer types**: proprietor, partnership_llp, pvt_ltd, salaried
 - **Inline validation**: Controllers use inline validation (not Form Requests)
 - **7 unified roles**: super_admin, admin, branch_manager, bdh, loan_advisor, bank_employee, office_employee
@@ -126,9 +126,16 @@ Before writing ANY code, read the relevant docs for your task:
 
 ## Source of Truth Files
 
-- `public/css/shf.css` — ALL custom CSS classes (`shf-*` prefix)
-- `public/js/shf-app.js` — Core custom JS (SHF.* namespace)
-- `public/js/shf-loans.js` — Loan module JS (SHFLoans.* namespace)
+- `public/newtheme/css/shf.css` — legacy `shf-*` classes (still used by newtheme blades that embed legacy markup)
+- `public/newtheme/assets/shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css` — newtheme design-system CSS
+- `public/newtheme/pages/*.css` + `public/newtheme/pages/*.js` — per-page styles & scripts
+- `public/newtheme/js/shf-app.js` — core custom JS (SHF.* namespace; used by quotation create form)
+- `public/newtheme/js/offline-manager.js`, `push-notifications.js` — PWA helpers
+- `public/newtheme/assets/shf-newtheme.js`, `shf-interactive.js`, `shf-dropdown.js`, `shf-tab-persist.js`, `shf-create-task.js`, `shf-create-dvr.js` — newtheme runtime JS
+- `public/newtheme/vendor/{bootstrap,jquery,leaflet,datepicker,sortablejs,sweetalert2}/` — vendor libs bundled with newtheme
+- `config/app-defaults.php` — Default config values
+- `config/permissions.php` — Permission definitions and role defaults
+- **Archived (pre-newtheme) source**: `.ignore/old_code_backup/` — old blades + old `public/css`, `public/js`, `public/vendor`; kept in git for easy restore
 - `config/app-defaults.php` — Default config values
 - `config/permissions.php` — Permission definitions and role defaults
 

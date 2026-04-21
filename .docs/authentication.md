@@ -66,7 +66,7 @@ Custom routes (`ImpersonateController`), not Lab404 package UI. See `users.md`.
 
 ## Session / CSRF
 
-- `<meta name="csrf-token">` embedded in `layouts/app.blade.php`
+- `<meta name="csrf-token">` embedded in `newtheme/layouts/app.blade.php`
 - All POST/PUT/PATCH/DELETE requests require `@csrf` or `X-CSRF-TOKEN` header
 - Offline / PWA AJAX reads the meta and sends header
 

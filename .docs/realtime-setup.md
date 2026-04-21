@@ -80,12 +80,12 @@ location /reverb/ {
 
 Since the project is no-build (local vendor), use the UMD builds of `laravel-echo` and `pusher-js`:
 
-1. Download `laravel-echo/dist/echo.iife.js` and `pusher-js/dist/web/pusher.min.js` into `public/vendor/laravel-echo/` and `public/vendor/pusher-js/`.
-2. Add to `layouts/app.blade.php`:
+1. Download `laravel-echo/dist/echo.iife.js` and `pusher-js/dist/web/pusher.min.js` into `public/newtheme/vendor/laravel-echo/` and `public/newtheme/vendor/pusher-js/`.
+2. Add to `newtheme/layouts/app.blade.php`:
 
 ```blade
-<script src="{{ asset('vendor/pusher-js/pusher.min.js') }}"></script>
-<script src="{{ asset('vendor/laravel-echo/echo.iife.js') }}"></script>
+<script src="{{ asset('newtheme/vendor/pusher-js/pusher.min.js') }}"></script>
+<script src="{{ asset('newtheme/vendor/laravel-echo/echo.iife.js') }}"></script>
 <script>
   window.Echo = new Echo.default({
     broadcaster: 'reverb',

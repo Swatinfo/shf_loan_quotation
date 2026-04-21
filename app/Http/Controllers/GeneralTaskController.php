@@ -25,7 +25,14 @@ class GeneralTaskController extends Controller
         $isBdh = $user->hasRole('bdh');
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return view('general-tasks.index', compact('canViewAll', 'isBdh', 'users'));
+        $template = 'newtheme.general-tasks.index';
+
+        return view($template, [
+            'canViewAll' => $canViewAll,
+            'isBdh' => $isBdh,
+            'users' => $users,
+            'pageKey' => 'tasks',
+        ]);
     }
 
     /**
@@ -256,7 +263,9 @@ class GeneralTaskController extends Controller
             'loan_label' => $loanLabel,
         ];
 
-        return view('general-tasks.show', compact('task', 'users', 'taskEditData'));
+        $template = 'newtheme.general-tasks.show';
+
+        return view($template, compact('task', 'users', 'taskEditData') + ['pageKey' => 'tasks']);
     }
 
     public function update(Request $request, GeneralTask $task)

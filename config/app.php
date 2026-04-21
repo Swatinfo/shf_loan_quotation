@@ -49,6 +49,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Skip PDF generation
+    |--------------------------------------------------------------------------
+    |
+    | Dev-only convenience for Windows machines where Chrome headless is slow
+    | or unreliable. When true, QuotationService::generate() short-circuits
+    | PdfGenerationService — the quotation record still saves, but no PDF
+    | file is written. Leave false in production.
+    |
+    */
+    'skip_pdf_generation' => (bool) env('SKIP_PDF_GENERATION', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

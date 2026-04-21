@@ -1,10 +1,10 @@
 # Blade Views
 
-Laravel Blade templates live in `resources/views/`. All pages use the `@extends` / `@section` pattern — **not** Blade component wrappers (`<x-app-layout>`).
+Laravel Blade templates live under `resources/views/newtheme/`. All pages use the `@extends` / `@section` pattern — **not** Blade component wrappers (`<x-app-layout>`). Pre-newtheme blades are archived at `.ignore/old_code_backup/resources/views/` (tracked in git).
 
 ## Layouts
 
-### `layouts/app.blade.php` — authenticated layout
+### `newtheme/layouts/app.blade.php` — authenticated layout
 
 Structure:
 
@@ -12,49 +12,43 @@ Structure:
 <html>
   <head>
     <!-- Meta: CSRF, viewport, PWA meta, favicons, manifest link -->
-    <!-- Bootstrap + Datepicker + shf.css + SweetAlert2 -->
-    @stack('styles')
+    <!-- newtheme CSS bundle (shf.css, shf-extras.css, shf-workflow.css, shf-modals.css) -->
+    @stack('page-styles')
   </head>
-  <body class="font-body bg-body-tertiary">
-    <div class="min-vh-100">
-      @include('layouts.navigation')
+  <body>
+    @include('newtheme.partials.header', ['pageKey' => $pageKey ?? ''])
 
-      @hasSection('header')
-        <header class="shf-page-header">@yield('header')</header>
-      @endif
+    <main>@yield('content')</main>
 
-      <!-- Flash toasts (success/error/warning) with auto-dismiss -->
+    @include('newtheme.partials.bottom-nav')
+    @include('newtheme.partials.fab')
+    @include('newtheme.partials.create-task-modal')
+    @include('newtheme.partials.create-dvr-modal')
 
-      <main>@yield('content')</main>
-    </div>
-
-    <!-- PWA install banner + offline status banner -->
-
-    <!-- jQuery, Bootstrap, Datepicker, SortableJS, SweetAlert2, shf-app.js -->
-    @stack('scripts')
-    <!-- offline-manager.js, pdf-renderer.js -->
-
-    <!-- Inline JS: SW register, impersonate, PWA install, notification polling -->
+    <!-- newtheme vendors: jQuery, Bootstrap Datepicker, SortableJS, SweetAlert2 -->
+    <!-- newtheme runtime: shf-newtheme.js, shf-interactive.js, shf-dropdown.js, shf-tab-persist.js -->
+    <!-- push-notifications.js, shf-create-task.js, shf-create-dvr.js -->
+    @stack('page-scripts')
   </body>
 </html>
 ```
 
-### `layouts/guest.blade.php` — unauthenticated layout
+### `newtheme/layouts/guest.blade.php` — unauthenticated layout
 
-Dark (`#3a3536`) full-height background, centered card with orange top border (`.shf-guest-card`), logo. Used for login, password reset, verify-email. Minimal scripts (jQuery + Bootstrap + shf-app.js + `@stack('scripts')`).
+Light accent-tinted background, centered `.auth-card`. Used for login, password reset, verify-email, register, confirm-password. Loads only jQuery + `shf-newtheme.js` plus whatever pushes to `@stack('scripts')`.
 
-### `layouts/navigation.blade.php` — top navbar
+### `newtheme/partials/header.blade.php` — top bar
 
-Dark blurred bar (`.shf-navbar-bg`), logo + app name, permission-gated menu links (Dashboard, Quotations, Loans, Tasks, DVR, Customers, Users, Settings, Loan Settings, Reports), user dropdown (Profile, Impersonate, Logout), notification bell with unread count polled every 60s.
+Replaces the pre-newtheme `layouts/navigation.blade.php`. Permission-gated menu (Dashboard, Quotations, Loans, Tasks, DVR, Customers, Users, Settings, Loan Settings, Reports, Activity Log), user dropdown (Profile, Impersonate, Logout), notification bell with unread count polled every 60s.
 
-Mobile (< xl / < 1200 px): hamburger is **removed**. Navigation is served by the fixed bottom nav (`partials/bottom-nav.blade.php`) + create FAB (`partials/mobile-fab.blade.php`), both included in `layouts/app.blade.php`. The `#shfNavbar` `.collapse` wrapper stays because Bootstrap's `navbar-expand-xl` uses it for desktop layout at ≥ xl. See `frontend.md` → "Mobile chrome" for the CSS contract (`--shf-bottom-nav-height`, `body.has-bottom-nav`).
+Mobile (< xl / < 1200 px): top nav items collapse into the bottom nav. Navigation served by `newtheme/partials/bottom-nav.blade.php` (5 slots: `Dashboard · Loans · DVR · Tasks · More`) + `newtheme/partials/fab.blade.php` (create-actions FAB), both included in `newtheme/layouts/app.blade.php`. See `frontend.md` → "Mobile chrome" for the CSS contract (`--shf-bottom-nav-height`, `body.has-bottom-nav`).
 
 ## Page template
 
 Every page view follows:
 
 ```blade
-@extends('layouts.app')
+@extends('newtheme.layouts.app', ['pageKey' => 'your-page-key'])
 
 @section('title', 'Page Title — SHF')
 
@@ -69,12 +63,12 @@ Every page view follows:
   </div>
 @endsection
 
-@push('styles')
-  {{-- page-specific CSS, e.g., vendor/datatables/css/dataTables.bootstrap5.min.css --}}
+@push('page-styles')
+  {{-- page-specific CSS, e.g., asset('newtheme/pages/your-page.css') --}}
 @endpush
 
-@push('scripts')
-  {{-- page-specific JS, e.g., vendor/datatables/js/dataTables.min.js + init --}}
+@push('page-scripts')
+  {{-- page-specific JS, e.g., asset('newtheme/pages/your-page.js') --}}
 @endpush
 ```
 

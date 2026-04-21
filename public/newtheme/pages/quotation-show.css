@@ -1,0 +1,84 @@
+/* Newtheme quotation show — loaded after Bootstrap + legacy shf.css so we
+   can re-assert newtheme page-header chrome over Bootstrap's .btn reset. */
+
+/* Re-apply newtheme button look over Bootstrap */
+.page-header .head-actions .btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink, #1c1a1b);
+    background: #fff;
+    border: 1px solid var(--line-strong, #c9c5c3);
+    white-space: nowrap;
+    line-height: 1;
+    text-decoration: none;
+    transition: all 0.1s;
+}
+.page-header .head-actions .btn:hover {
+    background: var(--paper, #fafafa);
+    border-color: var(--ink-4, #6b7280);
+    color: var(--ink, #1c1a1b);
+}
+.page-header .head-actions .btn .i { width: 14px; height: 14px; }
+.page-header .head-actions .btn.primary {
+    background: var(--accent, #f15a29);
+    border-color: var(--accent, #f15a29);
+    color: #fff;
+}
+.page-header .head-actions .btn.primary:hover {
+    background: var(--accent-deep, #c0392b);
+    border-color: var(--accent-deep, #c0392b);
+    color: #fff;
+}
+.page-header .head-actions .btn.danger {
+    background: var(--red, #c0392b);
+    border-color: var(--red, #c0392b);
+    color: #fff;
+}
+.page-header .head-actions .btn.danger:hover {
+    background: #a83227;
+    border-color: #a83227;
+    color: #fff;
+}
+
+.page-header .crumbs a { color: inherit; opacity: 0.8; text-decoration: none; }
+.page-header .crumbs a:hover { opacity: 1; text-decoration: underline; }
+.page-header .crumbs .sep { margin: 0 4px; opacity: 0.5; }
+
+/* Body typography restore (shared with stages / valuation-map pattern) */
+main.content > .py-4 {
+    font-family: 'Archivo', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    margin-top: 0;
+}
+main.content > .py-4 h1,
+main.content > .py-4 h2,
+main.content > .py-4 h3,
+main.content > .py-4 h4,
+main.content > .py-4 h5,
+main.content > .py-4 h6,
+main.content > .py-4 .font-display {
+    font-family: 'Jost', sans-serif;
+}
+main.content > .py-4 input,
+main.content > .py-4 select,
+main.content > .py-4 textarea,
+main.content > .py-4 button,
+main.content > .py-4 .form-control,
+main.content > .py-4 .shf-input {
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Modal z-index (above newtheme topbar) */
+.modal { z-index: 1060; }
+.modal-backdrop { z-index: 1055; }
+.datepicker-dropdown { z-index: 10050; }

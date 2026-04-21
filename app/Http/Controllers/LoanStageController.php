@@ -45,7 +45,9 @@ class LoanStageController extends Controller
             }
         }
 
-        return view('loans.stages', compact('loan', 'mainStages', 'subStages', 'progress', 'allActiveUsers', 'stageRoleEligibility', 'skipAllowed'));
+        $template = 'newtheme.loans.stages';
+
+        return view($template, compact('loan', 'mainStages', 'subStages', 'progress', 'allActiveUsers', 'stageRoleEligibility', 'skipAllowed') + ['pageKey' => 'loans']);
     }
 
     public function updateStatus(Request $request, LoanDetail $loan, string $stageKey): JsonResponse
@@ -190,7 +192,9 @@ class LoanStageController extends Controller
             ->latest('created_at')
             ->get();
 
-        return view('loans.transfers', compact('loan', 'transfers'));
+        $template = 'newtheme.loans.transfers';
+
+        return view($template, compact('loan', 'transfers') + ['pageKey' => 'loans']);
     }
 
     public function reject(Request $request, LoanDetail $loan, string $stageKey): JsonResponse
@@ -595,8 +599,8 @@ class LoanStageController extends Controller
             }
         }
 
-        // Sanction: EMI amount must not exceed sanctioned amount
-        if ($stageKey === 'sanction' && isset($notesData['emi_amount'], $notesData['sanctioned_amount'])) {
+        // Docket: EMI amount must not exceed sanctioned amount (amount/rate/tenure/EMI now captured at docket login)
+        if ($stageKey === 'docket' && isset($notesData['emi_amount'], $notesData['sanctioned_amount'])) {
             $emiAmount = (float) $notesData['emi_amount'];
             $sanctionedAmount = (float) $notesData['sanctioned_amount'];
             if ($emiAmount > $sanctionedAmount) {
@@ -675,7 +679,7 @@ class LoanStageController extends Controller
             'technical_valuation', 'property_valuation' => [], // validated via valuation_details table, not notes
             'rate_pf' => [],
             'sanction' => $this->getSanctionRequiredFields($data),
-            'docket' => ($data['docket_phase'] ?? '') === '2' ? ['login_date' => 'Login Date'] : [],
+            'docket' => $this->getDocketRequiredFields($data),
             'kfs' => [],
             'esign' => [],
             'otc_clearance' => ['handover_date' => 'Handover Date'],
@@ -696,7 +700,8 @@ class LoanStageController extends Controller
      * Only validate required fields that belong to the submitted section.
      */
     /**
-     * Sanction stage phase 3: validate form fields only when task owner fills details.
+     * Sanction stage phase 3: task owner captures only the sanction date.
+     * Loan financials (amount, rate, tenure, EMI) are now captured at docket login.
      */
     private function getSanctionRequiredFields(array $data): array
     {
@@ -706,7 +711,24 @@ class LoanStageController extends Controller
 
         return [
             'sanction_date' => 'Sanction Date',
+        ];
+    }
+
+    /**
+     * Docket stage phase 2: office employee captures login date AND the loan financials
+     * (sanctioned amount, sanctioned rate, tenure in months, EMI amount) that were
+     * previously collected at the sanction stage.
+     */
+    private function getDocketRequiredFields(array $data): array
+    {
+        if (($data['docket_phase'] ?? '') !== '2') {
+            return [];
+        }
+
+        return [
+            'login_date' => 'Login Date',
             'sanctioned_amount' => 'Sanctioned Amount',
+            'sanctioned_rate' => 'Sanctioned Rate',
             'tenure_months' => 'Tenure (Months)',
             'emi_amount' => 'EMI Amount',
         ];
@@ -731,9 +753,13 @@ class LoanStageController extends Controller
             'technical_valuation', 'property_valuation' => false, // auto-completed by ValuationController, not saveNotes
             'rate_pf' => ($notesData['rate_pf_phase'] ?? '') === '3',
             'sanction' => ($notesData['sanction_phase'] ?? '') === '3'
-                && ! empty($notesData['sanction_date'])
-                && isset($notesData['sanctioned_amount']) && $notesData['sanctioned_amount'] !== '',
-            'docket' => ($notesData['docket_phase'] ?? '') === '2' && ! empty($notesData['login_date']),
+                && ! empty($notesData['sanction_date']),
+            'docket' => ($notesData['docket_phase'] ?? '') === '2'
+                && ! empty($notesData['login_date'])
+                && isset($notesData['sanctioned_amount']) && $notesData['sanctioned_amount'] !== ''
+                && isset($notesData['sanctioned_rate']) && $notesData['sanctioned_rate'] !== ''
+                && isset($notesData['tenure_months']) && $notesData['tenure_months'] !== ''
+                && isset($notesData['emi_amount']) && $notesData['emi_amount'] !== '',
             'kfs' => true,
             'sanction_decision' => false, // completed via sanctionDecisionAction, not saveNotes
             'esign' => ($notesData['esign_phase'] ?? '') === '4',

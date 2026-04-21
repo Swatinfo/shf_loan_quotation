@@ -379,7 +379,29 @@ class LoanStageService
             'otc_clearance',
         ];
 
-        $stages = Stage::whereIn('stage_key', $baseStageKeys)->where('is_enabled', true)->get();
+        $stages = Stage::whereIn('stage_key', $baseStageKeys)
+            ->where('is_enabled', true)
+            ->get();
+
+        // Respect product-level disables. If the loan has a product, filter
+        // out any stage whose product_stages row is is_enabled = false. We
+        // treat "no product_stages row" as enabled (safe default — matches
+        // behaviour for legacy loans that pre-date product stage config).
+        if ($loan->product_id) {
+            $productStageStates = ProductStage::where('product_id', $loan->product_id)
+                ->pluck('is_enabled', 'stage_id');
+
+            $stages = $stages->filter(function (Stage $stage) use ($productStageStates) {
+                // Missing row → keep the stage (default to enabled). Existing
+                // row → honour the toggle.
+                if (! $productStageStates->has($stage->id)) {
+                    return true;
+                }
+
+                return (bool) $productStageStates[$stage->id];
+            });
+        }
+
         $mainCount = 0;
 
         foreach ($stages as $stage) {
@@ -805,7 +827,12 @@ class LoanStageService
             return $assignment;
         }
 
-        $userId = $this->findBestAssignee($stageKey, $loan->branch_id, $loan->bank_id, $loan->product_id, $loan->created_by, $loan->assigned_advisor);
+        // Snapshot-first: use workflow_config's frozen role + default_user_id.
+        // For task_owner stages this returns assigned_advisor ?? created_by,
+        // which works uniformly for BDH / branch_manager / loan_advisor — the
+        // legacy findBestAssignee path filtered BDH out because Stage.default_role
+        // only listed branch_manager / loan_advisor.
+        $userId = $this->resolveAutoAssignUser($loan, $stageKey);
         if (! $userId) {
             return $assignment;
         }
@@ -858,13 +885,42 @@ class LoanStageService
                 continue;
             }
 
-            $userId = $this->findBestAssignee($assignment->stage_key, $loan->branch_id, $loan->bank_id, $loan->product_id, $loan->created_by, $loan->assigned_advisor);
+            // Snapshot-first resolution — see resolveAutoAssignUser docblock.
+            $userId = $this->resolveAutoAssignUser($loan, $assignment->stage_key);
             $updateData = ['status' => 'in_progress', 'started_at' => now()];
             if ($userId) {
                 $updateData['assigned_to'] = $userId;
             }
             $assignment->update($updateData);
         }
+    }
+
+    /**
+     * Snapshot-aware auto-assign: reads the loan's frozen workflow_config for
+     * the stage's role + default_user_id, falls through to findUserForRole
+     * (which handles task_owner / bank_employee / office_employee semantics),
+     * and finally falls back to the legacy findBestAssignee for loans without
+     * a snapshot. Keeps per-role uniformity — BDH, branch_manager, and
+     * loan_advisor advisors all route through task_owner → advisor/creator.
+     */
+    private function resolveAutoAssignUser(LoanDetail $loan, string $stageKey): ?int
+    {
+        $role = $this->getLoanStageRole($loan, $stageKey);
+        $userId = $this->findUserForRole($role, $loan, $stageKey);
+        if ($userId) {
+            return $userId;
+        }
+
+        // Legacy loans without workflow_config, or edge cases where role
+        // resolution returned nothing — fall back to the original path.
+        return $this->findBestAssignee(
+            $stageKey,
+            $loan->branch_id,
+            $loan->bank_id,
+            $loan->product_id,
+            $loan->created_by,
+            $loan->assigned_advisor,
+        );
     }
 
     /**

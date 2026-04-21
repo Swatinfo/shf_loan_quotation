@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Disbursement · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="loans.html">Loans</a> <span class="sep">/</span> <a href="loan-show.html">SHF-2026-0479</a> <span class="sep">/</span> Disbursement</div>
+<h1>Disbursement</h1><div class="sub">Stage 10/12₹ 55,00,000 HDFC Navrangpura</div></div>
+<div class="head-actions"><button class="btn" data-action="toast" data-arg="Print DV">Print DV</button><button class="btn primary" data-action="toast" data-arg="Cheque pickup confirmed">Mark picked up</button></div></div>
+<div class="tabs"><a class="tab" href="loan-show.html">Overview</a><a class="tab" href="loan-stages.html">Stages</a><a class="tab" href="loan-documents.html">Documents</a><a class="tab active">Disbursement</a><a class="tab" href="loan-timeline.html">Timeline</a></div>
+</header>
+<main class="content">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Mode</div></div><div class="card-bd">
+<div class="segmented" data-seg="mode"><button class="active" data-value="nach">NACHe NACH</button><button data-value="cheque">Cheque</button><button data-value="rtgs">RTGS direct</button></div>
+<input type="hidden" name="mode" value="nach">
+<div class="form-grid mt-4" data-form>
+<div class="field cond-field" data-cond-when='{"field":"mode","equals":"nach"}'><label>Mandate bank</label><select class="select"><option>HDFCSalary a/c ×1132</option></select></div>
+<div class="field cond-field" data-cond-when='{"field":"mode","equals":"nach"}'><label>First debit date</label><input class="input" type="date" value="2026-05-05"></div>
+<div class="field wide cond-field" data-cond-when='{"field":"mode","equals":"nach"}'><div class="callout info"><strong>e NACH via Digio.</strong> OTP sent to customer's registered mobile. Mandate usually activates within 2 working days.</div></div>
+<div class="field cond-field hide" data-cond-when='{"field":"mode","equals":"cheque"}'><label>Cheque number</label><input class="input font-mono"></div>
+<div class="field cond-field hide" data-cond-when='{"field":"mode","equals":"cheque"}'><label>Issuing bank</label><select class="select"><option>HDFC</option><option>SBI</option><option>Axis</option></select></div>
+<div class="field cond-field hide" data-cond-when='{"field":"mode","equals":"cheque"}'><label>Courierpickup</label><select class="select"><option>Branch pickup</option><option>Blue Dart</option><option>DTDC</option></select></div>
+<div class="field cond-field hide" data-cond-when='{"field":"mode","equals":"rtgs"}'><label>Beneficiary account</label><input class="input font-mono"></div>
+<div class="field cond-field hide" data-cond-when='{"field":"mode","equals":"rtgs"}'><label>IFSC</label><input class="input font-mono"></div>
+</div></div></div>
+
+<div class="card mt-4"><div class="card-hd"><div class="t">OTC (Offer-to-close) tracker</div></div><div class="card-bd" style="padding:0;">
+<div class="doc-row"><div class="chk done"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Signed loan agreement</div></div><span class="badge green sq dot">approved</span></div><div class="doc-row"><div class="chk done"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Original property documents</div></div><span class="badge green sq dot">approved</span></div><div class="doc-row"><div class="chk done"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Post-dated cheques (6 nos)</div></div><span class="badge green sq dot">approved</span></div><div class="doc-row"><div class="chk partial"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Insurance premium receipt</div></div><span class="badge amber sq dot">pending</span></div><div class="doc-row"><div class="chk done"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Disbursement request letter</div></div><span class="badge green sq dot">approved</span></div><div class="doc-row"><div class="chk done"></div><div class="doc-i pdf">D</div><div class="doc-body"><div class="doc-t">Stamp duty paid receipt</div></div><span class="badge green sq dot">approved</span></div>
+</div></div>
+</div>
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Amount</div></div><div class="card-bd">
+<div class="summary-card"><div class="lbl">Net disbursement</div><div class="val tnum">₹ 53,94,500</div>
+<div class="text-xs" style="color:rgba(255,255,255,0.7);">₹55 · L − PF ₹55k − Insurance ₹50.5k</div></div>
+<div class="kv-stack mt-4">
+<div class="kv"><span>Gross loan</span><strong class="tnum">₹ 55,00,000</strong></div>
+<div class="kv"><span>Processing fee</span><strong class="tnum">− ₹ 55,000</strong></div>
+<div class="kv"><span>Insurance</span><strong class="tnum">− ₹ 50,500</strong></div>
+<div class="kv"><span>EMI (first)</span><strong class="tnum">₹ 47,289</strong></div>
+</div></div></div>
+</aside>
+</div>
+</main>
+<script>document.querySelectorAll('.segmented[data-seg]').forEach(s=>{const n=s.dataset.seg,h=document.querySelector('input[name="'+n+'"]');s.addEventListener('change',e=>{h.value=e.detail.value;shfUpdateConditions(document);});});</script>
+<div id="__shell_tweaks"></div></div><script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('loans');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/loan-disbursement.js?v=1"></script>
+</body></html>

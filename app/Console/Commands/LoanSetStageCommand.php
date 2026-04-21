@@ -384,9 +384,10 @@ class LoanSetStageCommand extends Command
             'rate_pf' => ! empty($notes['rate_pf_phase']) ? "Phase {$notes['rate_pf_phase']}".
                 (! empty($notes['interest_rate']) ? ", Rate: {$notes['interest_rate']}%" : '') : '',
             'sanction' => ! empty($notes['sanction_phase']) ? "Phase {$notes['sanction_phase']}".
-                (! empty($notes['sanctioned_amount']) ? ', ₹'.number_format((int) $notes['sanctioned_amount']) : '') : '',
+                (! empty($notes['sanction_date']) ? ", Date: {$notes['sanction_date']}" : '') : '',
             'docket' => ! empty($notes['docket_phase']) ? "Phase {$notes['docket_phase']}".
-                (! empty($notes['login_date']) ? ", Login: {$notes['login_date']}" : '') : '',
+                (! empty($notes['login_date']) ? ", Login: {$notes['login_date']}" : '').
+                (! empty($notes['sanctioned_amount']) ? ', ₹'.number_format((int) $notes['sanctioned_amount']) : '') : '',
             'esign' => ! empty($notes['esign_phase']) ? "Phase {$notes['esign_phase']}" : '',
             'otc_clearance' => ! empty($notes['handover_date']) ? "Handover: {$notes['handover_date']}" : '',
             default => '',
@@ -523,16 +524,19 @@ class LoanSetStageCommand extends Command
             'app_number' => empty($notes['application_number']) ? 'application_number missing' :
                 (! isset($notes['docket_days_offset']) || $notes['docket_days_offset'] === '' ? 'docket_days_offset missing' : null),
             'bsm_osv' => null, // Simple complete — no phase or data required
-            'legal_verification' => (($notes['legal_phase'] ?? '') !== '3' ? 'phase is ' . ($notes['legal_phase'] ?? 'none') . ', expected 3' : null),
+            'legal_verification' => (($notes['legal_phase'] ?? '') !== '3' ? 'phase is '.($notes['legal_phase'] ?? 'none').', expected 3' : null),
             'technical_valuation' => null, // Validated by valuation_details table
             'sanction_decision' => empty($notes['decision_action']) ? 'no decision made' : null,
-            'rate_pf' => (($notes['rate_pf_phase'] ?? '') !== '3' ? 'phase is ' . ($notes['rate_pf_phase'] ?? 'none') . ', expected 3' : null),
-            'sanction' => (($notes['sanction_phase'] ?? '') !== '3' ? 'phase is ' . ($notes['sanction_phase'] ?? 'none') . ', expected 3' :
-                (empty($notes['sanction_date']) ? 'sanction_date missing' :
-                    (empty($notes['sanctioned_amount']) ? 'sanctioned_amount missing' : null))),
-            'docket' => (($notes['docket_phase'] ?? '') !== '2' ? 'phase is ' . ($notes['docket_phase'] ?? 'none') . ', expected 2' :
-                (empty($notes['login_date']) ? 'login_date missing' : null)),
-            'esign' => (($notes['esign_phase'] ?? '') !== '4' ? 'phase is ' . ($notes['esign_phase'] ?? 'none') . ', expected 4' : null),
+            'rate_pf' => (($notes['rate_pf_phase'] ?? '') !== '3' ? 'phase is '.($notes['rate_pf_phase'] ?? 'none').', expected 3' : null),
+            'sanction' => (($notes['sanction_phase'] ?? '') !== '3' ? 'phase is '.($notes['sanction_phase'] ?? 'none').', expected 3' :
+                (empty($notes['sanction_date']) ? 'sanction_date missing' : null)),
+            'docket' => (($notes['docket_phase'] ?? '') !== '2' ? 'phase is '.($notes['docket_phase'] ?? 'none').', expected 2' :
+                (empty($notes['login_date']) ? 'login_date missing' :
+                    (empty($notes['sanctioned_amount']) ? 'sanctioned_amount missing' :
+                        (empty($notes['sanctioned_rate']) ? 'sanctioned_rate missing' :
+                            (empty($notes['tenure_months']) ? 'tenure_months missing' :
+                                (empty($notes['emi_amount']) ? 'emi_amount missing' : null)))))),
+            'esign' => (($notes['esign_phase'] ?? '') !== '4' ? 'phase is '.($notes['esign_phase'] ?? 'none').', expected 4' : null),
             'otc_clearance' => empty($notes['handover_date']) ? 'handover_date missing' : null,
             default => null,
         };
@@ -653,7 +657,7 @@ class LoanSetStageCommand extends Command
 
         // Clear valuation details if resetting before or at technical_valuation
         if ($targetIdx <= array_search('technical_valuation', self::STAGE_ORDER)) {
-            $deleted = $loan->valuations()->delete();
+            $deleted = $loan->valuationDetails()->delete();
             if ($deleted) {
                 $this->line('  → Valuation details cleared');
             }
@@ -721,11 +725,11 @@ class LoanSetStageCommand extends Command
             },
             'sanction' => match ($phase) {
                 2 => [],
-                3 => ['sanction_date', 'sanctioned_amount', 'emi_amount', 'sanction_conditions'],
+                3 => ['sanction_date', 'sanction_conditions'],
                 default => [],
             },
             'docket' => match ($phase) {
-                2 => ['login_date'],
+                2 => ['login_date', 'sanctioned_amount', 'sanctioned_rate', 'tenure_months', 'emi_amount'],
                 default => [],
             },
             'esign' => match ($phase) {

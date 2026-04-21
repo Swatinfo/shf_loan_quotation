@@ -15,7 +15,9 @@ class CustomerController extends Controller
         $user = Auth::user();
         $canEdit = $user->hasPermission('manage_customers');
 
-        return view('customers.index', compact('canEdit'));
+        $template = 'newtheme.customers.index';
+
+        return view($template, compact('canEdit'));
     }
 
     /**
@@ -81,7 +83,9 @@ class CustomerController extends Controller
 
         $customer->load(['loans.branch', 'loans.bank']);
 
-        return view('customers.show', compact('customer'));
+        $template = 'newtheme.customers.show';
+
+        return view($template, compact('customer'));
     }
 
     public function edit(Customer $customer): \Illuminate\Contracts\View\View
@@ -91,7 +95,9 @@ class CustomerController extends Controller
             abort(403);
         }
 
-        return view('customers.edit', compact('customer'));
+        $template = 'newtheme.customers.edit';
+
+        return view($template, compact('customer'));
     }
 
     public function update(Request $request, Customer $customer): \Illuminate\Http\RedirectResponse

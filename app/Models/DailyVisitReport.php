@@ -141,15 +141,37 @@ class DailyVisitReport extends Model
 
     public function isEditableBy(User $user): bool
     {
-        if ($user->hasPermission('edit_dvr') && $this->user_id === $user->id) {
+        // Closed / completed visits are a settled historical record — nobody
+        // can edit them (including super_admin). To change follow-up state
+        // users should log a new follow-up visit instead.
+        if ($this->is_follow_up_done) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
             return true;
         }
 
-        return $user->isSuperAdmin();
+        return $user->hasPermission('edit_dvr') && $this->user_id === $user->id;
     }
 
     public function isDeletableBy(User $user): bool
     {
+        // Completed visits are a settled record — not deletable.
+        if ($this->is_follow_up_done) {
+            return false;
+        }
+
+        // A visit whose follow-up has already been taken (child logged
+        // against it) is also locked — deleting would break the chain.
+        if ($this->follow_up_visit_id) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->hasPermission('delete_dvr');
     }
 

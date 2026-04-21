@@ -40,8 +40,11 @@ Before generating ANY code, read the relevant reference files.
 2. `tasks/todo.md` — current task state
 
 ## Source of Truth Files
-- `public/css/shf.css` — ALL custom CSS classes (`shf-*` prefix)
-- `public/js/shf-app.js` — Core custom JS
-- `public/js/shf-loans.js` — Loan module JS
+- `public/newtheme/css/shf.css` — legacy `shf-*` classes still used by newtheme blades that embed legacy markup
+- `public/newtheme/assets/*.css` — newtheme design-system CSS (`shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css`)
+- `public/newtheme/pages/*.css` + `*.js` — per-page styles & scripts
+- `public/newtheme/js/shf-app.js` — core custom JS (SHF.* namespace)
+- `public/newtheme/vendor/` — bundled libs (bootstrap, jquery, leaflet, datepicker, sortablejs, sweetalert2)
 - `config/app-defaults.php` — Default config values
 - `config/permissions.php` — Permission definitions and role defaults
+- **Pre-newtheme archive**: `.ignore/old_code_backup/` (tracked in git for restore; not referenced by live code)

@@ -44,7 +44,18 @@ class LoanController extends Controller
             ->orderBy('sequence_order')
             ->get();
 
-        return view('loans.index', compact('stats', 'banks', 'branches', 'stages'));
+        $roles = \App\Models\Role::orderBy('id')->get();
+        $permissions = [
+            'create_loan' => $user->hasPermission('create_loan'),
+            'edit_loan' => $user->hasPermission('edit_loan'),
+            'delete_loan' => $user->hasPermission('delete_loan'),
+            'is_bank_employee' => $isBankEmployee,
+            'is_admin_or_manager' => $user->hasAnyRole(['super_admin', 'admin', 'branch_manager', 'bdh']),
+        ];
+
+        $template = 'newtheme.loans.index';
+
+        return view($template, compact('stats', 'banks', 'branches', 'stages', 'roles', 'permissions'));
     }
 
     public function loanData(Request $request): JsonResponse
@@ -131,27 +142,26 @@ class LoanController extends Controller
         $loans = $query->skip($start)->take($length)->get();
 
         $data = $loans->map(function ($loan) use ($canEdit) {
-            $viewIcon = '<svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
-            $editIcon = '<svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
-
-            $stagesIcon = '<svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
-
-            $actions = '<div class="d-flex gap-1">';
-            $actions .= '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">'.$viewIcon.' View</a>';
+            $ntIcon = fn (string $path) => '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="'.$path.'"/></svg>';
+            $actions = '<div class="lx-actions">';
+            $actions .= '<a class="lx-act tone-info" href="'.route('loans.show', $loan).'" title="View" aria-label="View">'.$ntIcon('M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z').'</a>';
             if (in_array($loan->status, ['active', 'on_hold'])) {
-                $actions .= '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#2563eb,#3b82f6);">'.$stagesIcon.' Stages</a>';
+                $actions .= '<a class="lx-act tone-accent" href="'.route('loans.stages', $loan).'" title="Stages" aria-label="Stages">'.$ntIcon('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4').'</a>';
             }
             if ($canEdit && ! $loan->isBasicEditLocked()) {
-                $actions .= '<a href="'.route('loans.edit', $loan).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">'.$editIcon.' Edit</a>';
+                $actions .= '<a class="lx-act tone-gray" href="'.route('loans.edit', $loan).'" title="Edit" aria-label="Edit">'.$ntIcon('M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z').'</a>';
             }
             $actions .= '</div>';
 
             $ownerName = $loan->current_owner?->name ?? '—';
             $timeWithOwner = $loan->time_with_current_owner;
 
-            // Get sanction/disbursement amounts from stage notes
+            // Get sanction/disbursement amounts from stage notes.
+            // Sanctioned amount is now captured at docket login (Phase 2); fall back to
+            // sanction notes for loans completed under the legacy flow.
             $amountInfo = $loan->formatted_amount;
             $sanctionAssignment = $loan->stageAssignments->where('stage_key', 'sanction')->first();
+            $docketAssignmentForAmount = $loan->stageAssignments->where('stage_key', 'docket')->first();
             $disbursementAssignment = $loan->stageAssignments->where('stage_key', 'disbursement')->first();
             if ($disbursementAssignment?->status === 'completed') {
                 $disbNotes = $disbursementAssignment->getNotesData();
@@ -159,9 +169,11 @@ class LoanController extends Controller
                     $amountInfo .= '<br><small class="text-success fw-semibold">DIS-₹ '.number_format($disbNotes['disbursed_amount']).'</small>';
                 }
             } elseif ($sanctionAssignment?->status === 'completed') {
+                $docketNotes = $docketAssignmentForAmount ? $docketAssignmentForAmount->getNotesData() : [];
                 $sancNotes = $sanctionAssignment->getNotesData();
-                if (! empty($sancNotes['sanctioned_amount'])) {
-                    $amountInfo .= '<br><small class="text-primary fw-semibold">SC-₹ '.number_format($sancNotes['sanctioned_amount']).'</small>';
+                $sanctionedAmount = $docketNotes['sanctioned_amount'] ?? $sancNotes['sanctioned_amount'] ?? null;
+                if (! empty($sanctionedAmount)) {
+                    $amountInfo .= '<br><small class="text-primary fw-semibold">SC-₹ '.number_format($sanctionedAmount).'</small>';
                 }
             }
 
@@ -245,7 +257,9 @@ class LoanController extends Controller
             $p->id => $p->locations->pluck('id')->toArray(),
         ]);
 
-        return view('loans.create', compact('banks', 'branches', 'products', 'advisors', 'branchLocationMap', 'productLocationMap'));
+        $template = 'newtheme.loans.create';
+
+        return view($template, compact('banks', 'branches', 'products', 'advisors', 'branchLocationMap', 'productLocationMap') + ['pageKey' => 'loans']);
     }
 
     public function store(Request $request)
@@ -273,7 +287,9 @@ class LoanController extends Controller
         $loan->load(['quotation', 'branch', 'bank', 'product', 'creator', 'advisor', 'location.parent']);
         $stages = app(\App\Services\LoanStageService::class)->getOrderedStages();
 
-        return view('loans.show', compact('loan', 'stages'));
+        $template = 'newtheme.loans.show';
+
+        return view($template, compact('loan', 'stages') + ['pageKey' => 'loans']);
     }
 
     public function timeline(LoanDetail $loan)
@@ -282,7 +298,9 @@ class LoanController extends Controller
 
         $timeline = app(\App\Services\LoanTimelineService::class)->getTimeline($loan);
 
-        return view('loans.timeline', compact('loan', 'timeline'));
+        $template = 'newtheme.loans.timeline';
+
+        return view($template, compact('loan', 'timeline') + ['pageKey' => 'loans']);
     }
 
     public function edit(LoanDetail $loan)
@@ -300,7 +318,9 @@ class LoanController extends Controller
         $products = Product::active()->with(['bank', 'locations'])->orderBy('name')->get();
         $advisors = User::whereHas('roles', fn ($q) => $q->whereNotIn('slug', ['super_admin', 'admin']))->where('is_active', true)->with(['branches', 'locations'])->orderBy('name')->get();
 
-        return view('loans.edit', compact('loan', 'banks', 'branches', 'products', 'advisors'));
+        $template = 'newtheme.loans.edit';
+
+        return view($template, compact('loan', 'banks', 'branches', 'products', 'advisors') + ['pageKey' => 'loans']);
     }
 
     public function update(Request $request, LoanDetail $loan)

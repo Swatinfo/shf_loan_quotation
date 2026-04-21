@@ -61,6 +61,7 @@ return [
         'System' => [
             ['slug' => 'change_own_password', 'name' => 'Change Own Password', 'description' => 'Change own password'],
             ['slug' => 'manage_permissions', 'name' => 'Manage Permissions', 'description' => 'Manage role and user permissions'],
+            ['slug' => 'impersonate_users', 'name' => 'Impersonate Users', 'description' => 'Log in as another user (super_admin and admin always have this)'],
             ['slug' => 'view_activity_log', 'name' => 'View Activity Log', 'description' => 'View system activity log'],
             ['slug' => 'view_reports', 'name' => 'View Reports', 'description' => 'View turnaround time and performance reports'],
         ],
