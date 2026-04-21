@@ -21,7 +21,24 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const BASE_URL = 'https://oldloanproposal.test';
+// Read APP_URL from .env so this stays in sync with the Laravel app.
+// Override by exporting BASE_URL in the shell before running the script.
+function resolveBaseUrl() {
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL.replace(/\/$/, '');
+  }
+  try {
+    const envPath = path.join(__dirname, '..', '.env');
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const match = envContent.match(/^APP_URL=(.+)$/m);
+    if (match) {
+      return match[1].trim().replace(/^["']|["']$/g, '').replace(/\/$/, '');
+    }
+  } catch (_) { /* fall through */ }
+  return 'https://loanproposal.test';
+}
+
+const BASE_URL = resolveBaseUrl();
 const LOGIN_EMAIL = 'admin@shf.com';
 const LOGIN_PASSWORD = 'Admin@123';
 
@@ -169,7 +186,7 @@ const PRODUCT_STAGES_PAGES = [
   { name: 'product-stages',         pathFn: (id) => `/loan-settings/products/${id}/stages` },
 ];
 
-// Users for multi-role loan-stage screenshots (COMPLETE mode only).
+// Users for multi-role captures (COMPLETE mode only).
 const ROLE_USERS = [
   { name: 'admin',           email: 'admin@shf.com',         password: 'Admin@123' },
   { name: 'branch-manager',  email: 'denish@shfworld.com',   password: 'password' },
@@ -178,6 +195,21 @@ const ROLE_USERS = [
   { name: 'bank-employee',   email: 'hdfc@manager.cop',      password: 'password' },
   { name: 'office-employee', email: 'vipul@office.com',      password: 'password' },
 ];
+
+// Static pages captured per non-admin role in COMPLETE mode.
+// Admin-only routes (/settings, /loan-settings, /users, /roles, /permissions, /activity-log, /reports/*)
+// are excluded — non-admin roles hit permission gates there, so admin capture is sufficient.
+// Dashboard tabs are captured per role because tab visibility itself is permission-driven.
+const MULTI_ROLE_PATHS = new Set([
+  '/dashboard',
+  '/quotations',
+  '/loans',
+  '/customers',
+  '/general-tasks',
+  '/dvr',
+  '/notifications',
+  '/profile',
+]);
 
 const SCREENSHOT_DIR = path.join(__dirname);
 const readline = require('readline');
@@ -230,8 +262,11 @@ async function clickTab(page, dataTab) {
 
 /**
  * Capture one page. In COMPLETE mode, iterate each tab. In MAIN mode, one screenshot per page.
+ * Pass `nameSuffix` (e.g. a role name) to disambiguate filenames when the same page is
+ * captured across multiple login contexts.
  */
-async function capturePage(page, pg, pagePath) {
+async function capturePage(page, pg, pagePath, nameSuffix = '') {
+  const suffix = nameSuffix ? `-${nameSuffix}` : '';
   try {
     await page.goto(`${BASE_URL}${pagePath}`, { waitUntil: 'networkidle2' });
     await sleep(1000);
@@ -239,7 +274,7 @@ async function capturePage(page, pg, pagePath) {
     if (coverageMode === 'complete' && pg.tabs && pg.tabs.length > 0) {
       for (const tab of pg.tabs) {
         const num = nextNumber();
-        const numberedName = `${num}-${tab.name}`;
+        const numberedName = `${num}-${tab.name}${suffix}`;
         console.log(`\n📄 ${numberedName} (${pagePath}#${tab.dataTab})`);
         await clickTab(page, tab.dataTab);
         for (const [vpName, vpSize] of Object.entries(VIEWPORTS)) {
@@ -248,7 +283,7 @@ async function capturePage(page, pg, pagePath) {
       }
     } else {
       const num = nextNumber();
-      const numberedName = `${num}-${pg.name}`;
+      const numberedName = `${num}-${pg.name}${suffix}`;
       console.log(`\n📄 ${numberedName} (${pagePath})`);
       for (const [vpName, vpSize] of Object.entries(VIEWPORTS)) {
         await takeScreenshot(page, numberedName, vpName, vpSize);
@@ -493,9 +528,10 @@ async function run() {
     }
   }
 
-  // ── Step 5: COMPLETE mode only — per-loan + per-role loan-stage views ──
+  // ── Step 5: COMPLETE mode only — per-loan + per-role captures ──
   if (coverageMode === 'complete') {
     const loans = loadLoans();
+
     if (loans.length > 0) {
       console.log(`\n── Per-loan captures (${loans.length} loans) ──`);
       for (const loan of loans) {
@@ -503,38 +539,45 @@ async function run() {
           await captureNamedPage(page, `loan-${pg.suffix}-${loan.stageName}`, pg.pathFn(loan.id));
         }
       }
+    } else {
+      console.log('\n⚠ No loans in loan-stage-map.json — per-loan captures skipped.');
+    }
 
-      console.log('\n── Multi-role loan-stage captures ──');
-      for (const roleUser of ROLE_USERS) {
-        if (roleUser.email === LOGIN_EMAIL) continue;
+    // One login per non-admin role: capture multi-role static pages + loan-stages in one session.
+    const multiRolePages = PAGES.filter(p => MULTI_ROLE_PATHS.has(p.path));
+    console.log(`\n── Multi-role captures (${multiRolePages.length} static pages${loans.length > 0 ? ` + ${loans.length} loan-stages` : ''}) ──`);
 
-        console.log(`\n🔑 Switching to ${roleUser.name} (${roleUser.email})...`);
-        const roleContext = await browser.createBrowserContext();
-        const rolePage = await roleContext.newPage();
-        rolePage.setDefaultNavigationTimeout(30000);
+    for (const roleUser of ROLE_USERS) {
+      if (roleUser.email === LOGIN_EMAIL) continue;
 
-        try {
-          await rolePage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
-          await rolePage.type('input[name="email"]', roleUser.email);
-          await rolePage.type('input[name="password"]', roleUser.password);
-          await Promise.all([
-            rolePage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }),
-            rolePage.click('button[type="submit"]'),
-          ]);
+      console.log(`\n🔑 Switching to ${roleUser.name} (${roleUser.email})...`);
+      const roleContext = await browser.createBrowserContext();
+      const rolePage = await roleContext.newPage();
+      rolePage.setDefaultNavigationTimeout(30000);
 
-          for (const loan of loans) {
-            const pagePath = `/loans/${loan.id}/stages`;
-            await captureNamedPage(rolePage, `loan-stages-${loan.stageName}-${roleUser.name}`, pagePath);
-          }
-        } catch (err) {
-          console.log(`  ✗ Login failed for ${roleUser.name}: ${err.message}`);
+      try {
+        await rolePage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
+        await rolePage.type('input[name="email"]', roleUser.email);
+        await rolePage.type('input[name="password"]', roleUser.password);
+        await Promise.all([
+          rolePage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }),
+          rolePage.click('button[type="submit"]'),
+        ]);
+
+        for (const pg of multiRolePages) {
+          await capturePage(rolePage, pg, pg.path, roleUser.name);
         }
 
-        await rolePage.close();
-        await roleContext.close();
+        for (const loan of loans) {
+          const pagePath = `/loans/${loan.id}/stages`;
+          await captureNamedPage(rolePage, `loan-stages-${loan.stageName}-${roleUser.name}`, pagePath);
+        }
+      } catch (err) {
+        console.log(`  ✗ Login failed for ${roleUser.name}: ${err.message}`);
       }
-    } else {
-      console.log('\n⚠ No loans in loan-stage-map.json — per-loan + multi-role captures skipped.');
+
+      await rolePage.close();
+      await roleContext.close();
     }
   }
 

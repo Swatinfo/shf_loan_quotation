@@ -60,6 +60,9 @@ class DefaultDataSeeder extends Seeder
         }
 
         $this->seedSampleQuotationAndLoan();
+        $this->seedExtraPendingQuotations();
+        $this->seedGeneralTaskSamples();
+        $this->seedDvrSamples();
     }
 
     private function purgeLoanData(): void
@@ -598,6 +601,7 @@ class DefaultDataSeeder extends Seeder
             'branch_manager' => array_values(array_intersect_key($permIds, array_flip([
                 'manage_customers',
                 'view_customers',
+                'impersonate_users',
                 'view_dashboard',
                 'manage_notifications',
                 'transfer_loan_stages',
@@ -1566,23 +1570,27 @@ class DefaultDataSeeder extends Seeder
 
                 $this->command?->line("  + Loan #{$loan->id} ({$loan->loan_number}): {$product->bank_name} {$product->product_name}");
             }
-            // Advance some loans through stages to demonstrate auto-assignment
-            $this->advanceSampleLoans();
         }
+
+        // Advance every created loan through stages once, after all loans exist.
+        // Calling inside the foreach would walk each loan multiple times and
+        // smear the target-stage distribution.
+        $this->advanceSampleLoans();
 
         auth()->logout();
     }
 
     /**
-     * Advance some sample loans through workflow stages to verify auto-assignment.
-     * Uses the workflow config snapshot for role resolution.
+     * Advance sample loans across the full workflow so the dashboard / pipeline
+     * has loans sitting in many different stages with realistic intermediate
+     * data populated. The first ~5 loans are kept early (docs / app_number /
+     * bsm_osv / legal / valuation) so QA has fresh tasks to act on; later loans
+     * are walked all the way to disbursement / completion.
      */
     private function advanceSampleLoans(): void
     {
         $stageService = app(\App\Services\LoanStageService::class);
-        $docService = app(\App\Services\LoanDocumentService::class);
 
-        // Get loans by bank for varied advancement
         $loans = \App\Models\LoanDetail::with(['stageAssignments', 'bank', 'product'])
             ->where('status', 'active')
             ->orderBy('id')
@@ -1593,48 +1601,471 @@ class DefaultDataSeeder extends Seeder
         }
 
         $this->command?->line('');
-        $this->command?->line('  Advancing sample loans through stages...');
+        $this->command?->line('  Distributing sample loans across stages...');
+
+        // Cycle each loan to a different target stage so the pipeline has
+        // every column populated. Order maps to LoanWorkflowGuide order.
+        $targetCycle = [
+            'document_collection',  // sit at doc-collection (in progress)
+            'app_number',           // sit at app_number
+            'bsm_osv',              // sit at bsm_osv
+            'legal_verification',   // sit at legal verification
+            'technical_valuation',  // sit at technical valuation
+            'sanction_decision',    // sit at sanction decision
+            'rate_pf',              // sit at rate & pf
+            'sanction',             // sit at sanction letter
+            'docket',               // sit at docket login
+            'kfs',                  // sit at KFS
+            'esign',                // sit at e-sign + enach
+            'disbursement',         // sit at disbursement (some completed)
+        ];
 
         foreach ($loans as $idx => $loan) {
-            $bankName = $loan->bank?->name ?? 'Unknown';
-            $productName = $loan->product?->name ?? '';
+            $target = $targetCycle[$idx % count($targetCycle)];
+            $this->walkLoanToStage($loan, $target, $stageService);
+        }
+    }
 
-            // Login as the loan's advisor for proper auth context
-            $advisor = \App\Models\User::find($loan->assigned_advisor ?? $loan->created_by);
-            if ($advisor) {
-                auth()->login($advisor);
-            }
+    /**
+     * Walk a loan through every stage strictly before the target by completing
+     * each one in order with realistic notes/data, then leave the target stage
+     * in_progress (or completed if target is disbursement).
+     */
+    private function walkLoanToStage(\App\Models\LoanDetail $loan, string $target, \App\Services\LoanStageService $stageService): void
+    {
+        $advisor = \App\Models\User::find($loan->assigned_advisor ?? $loan->created_by);
+        if ($advisor) {
+            auth()->login($advisor);
+        }
 
-            // All loans: complete document_collection → advance to parallel_processing
-            // Mark all docs as received first
-            $loan->documents()->update(['status' => 'received', 'received_date' => now(), 'received_by' => auth()->id()]);
-            $stageService->updateStageStatus($loan, 'document_collection', 'completed', auth()->id());
+        $bankCode = strtoupper(substr($loan->bank?->name ?? 'BNK', 0, 3));
+        $appNumber = 'APP-'.$bankCode.'-'.str_pad((string) $loan->id, 4, '0', STR_PAD_LEFT);
+
+        // Order in which sub/main stages must be completed before the target.
+        $sequence = [
+            'document_collection',
+            'app_number',
+            'bsm_osv',
+            'legal_verification',
+            'technical_valuation',
+            'sanction_decision',
+            'rate_pf',
+            'sanction',
+            'docket',
+            'kfs',
+            'esign',
+            'disbursement',
+        ];
+
+        $targetIdx = array_search($target, $sequence, true);
+        if ($targetIdx === false) {
+            return;
+        }
+
+        // Walk every stage strictly before $target → completed. Then the target
+        // stage stays in its assigned-pending/in_progress state so the dashboard
+        // shows it as the active position.
+        for ($i = 0; $i < $targetIdx; $i++) {
+            $this->completeStageWithData($loan, $sequence[$i], $stageService, $appNumber);
             $loan->refresh();
+        }
 
-            // After doc_collection completes, parallel_processing should auto-start
-            // and app_number should be auto-assigned to task_owner
-            $appAssignment = $loan->stageAssignments()->where('stage_key', 'app_number')->first();
-            $appAssignee = $appAssignment?->assigned_to ? \App\Models\User::find($appAssignment->assigned_to)?->name : 'none';
+        // For disbursement target: also complete it so we have completed loans.
+        if ($target === 'disbursement') {
+            $this->completeStageWithData($loan, 'disbursement', $stageService, $appNumber);
+            $loan->refresh();
+            $loan->update(['status' => 'completed', 'is_sanctioned' => true]);
+        }
 
-            // Every 2nd loan: advance further through app_number
-            if ($idx % 2 === 0) {
-                // Complete app_number with application number data
-                $appAssignment?->mergeNotesData([
-                    'application_number' => 'APP-'.strtoupper(substr($bankName, 0, 3)).'-'.str_pad($loan->id, 4, '0', STR_PAD_LEFT),
+        $this->command?->line('  → '.$loan->loan_number.' ('.$loan->bank?->name.' '.$loan->product?->name.') sitting at '.$target);
+    }
+
+    /**
+     * Complete a single stage with reasonable intermediate data so downstream
+     * stages have the inputs they need. Multi-phase stages (legal / rate_pf /
+     * sanction / docket / esign) get all phase notes populated; the bookkeeping
+     * matches what the controllers would persist.
+     */
+    private function completeStageWithData(\App\Models\LoanDetail $loan, string $stageKey, \App\Services\LoanStageService $stageService, string $appNumber): void
+    {
+        $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
+        if (! $assignment) {
+            return;
+        }
+
+        // Make sure the assignment is in_progress so it can transition to completed.
+        if ($assignment->status === 'pending') {
+            $stageService->updateStageStatus($loan, $stageKey, 'in_progress', auth()->id());
+            $assignment = $assignment->fresh();
+        }
+        if ($assignment->status !== 'in_progress') {
+            return; // already completed/skipped/rejected — leave it alone
+        }
+
+        switch ($stageKey) {
+            case 'document_collection':
+                $loan->documents()->update([
+                    'status' => 'received',
+                    'received_date' => now()->subDays(3),
+                    'received_by' => auth()->id(),
+                ]);
+                break;
+
+            case 'app_number':
+                $assignment->mergeNotesData([
+                    'application_number' => $appNumber,
                     'docket_days_offset' => 21,
                 ]);
-                $loan->update(['application_number' => 'APP-'.strtoupper(substr($bankName, 0, 3)).'-'.str_pad($loan->id, 4, '0', STR_PAD_LEFT)]);
-                $stageService->updateStageStatus($loan, 'app_number', 'completed', auth()->id());
-                $loan->refresh();
+                $loan->update(['application_number' => $appNumber]);
+                break;
 
-                // After app_number completes, bsm_osv should auto-start and auto-assign
-                $bsmAssignment = $loan->stageAssignments()->where('stage_key', 'bsm_osv')->first();
-                $bsmAssignee = $bsmAssignment?->assigned_to ? \App\Models\User::find($bsmAssignment->assigned_to)?->name : 'none';
+            case 'bsm_osv':
+                $assignment->mergeNotesData([
+                    'osv_done_by' => auth()->user()?->name ?? 'BSM',
+                    'osv_date' => now()->subDays(2)->toDateString(),
+                    'remarks' => 'Original Seen and Verified at branch.',
+                ]);
+                break;
 
-                $this->command?->line("  → {$loan->loan_number} ({$bankName} {$productName}): doc_collection ✓ → app_number ✓ → bsm_osv assigned to {$bsmAssignee}");
-            } else {
-                $this->command?->line("  → {$loan->loan_number} ({$bankName} {$productName}): doc_collection ✓ → app_number assigned to {$appAssignee}");
+            case 'legal_verification':
+                $assignment->mergeNotesData([
+                    'phase' => 3,
+                    'phase_1' => ['initiated_at' => now()->subDays(5)->toDateString(), 'by' => 'loan_advisor'],
+                    'phase_2' => ['report_received_at' => now()->subDays(2)->toDateString(), 'by' => 'office_employee'],
+                    'phase_3' => ['cleared_at' => now()->subDay()->toDateString(), 'opinion' => 'Title clear, marketable property'],
+                ]);
+                break;
+
+            case 'technical_valuation':
+                $assignment->mergeNotesData([
+                    'valuation_amount' => max(100000, (int) round($loan->loan_amount * 1.25 / 100000) * 100000),
+                    'valuation_date' => now()->subDay()->toDateString(),
+                    'valuer_name' => 'Approved Valuer',
+                    'remarks' => 'Property valuation completed and report attached.',
+                ]);
+                break;
+
+            case 'sanction_decision':
+                $assignment->mergeNotesData([
+                    'decision' => 'approved',
+                    'decided_at' => now()->subDay()->toDateString(),
+                    'remarks' => 'Sanction-in-principle approved.',
+                ]);
+                break;
+
+            case 'rate_pf':
+                $charges = \App\Models\BankCharge::where('bank_name', $loan->bank?->name)->first();
+                $roi = match ($loan->bank?->name) {
+                    'HDFC Bank' => ['min' => 8.75, 'max' => 9.00],
+                    'ICICI Bank' => ['min' => 9.00, 'max' => 9.15],
+                    'Axis Bank' => ['min' => 9.25, 'max' => 9.50],
+                    'Kotak Mahindra Bank' => ['min' => 8.50, 'max' => 8.75],
+                    default => ['min' => 9.00, 'max' => 9.25],
+                };
+                $loan->update([
+                    'roi_min' => $roi['min'],
+                    'roi_max' => $roi['max'],
+                    'total_charges' => round($loan->loan_amount * (($charges->pf ?? 0.5) / 100)),
+                ]);
+                $assignment->mergeNotesData([
+                    'phase' => 3,
+                    'phase_1' => ['proposed_roi' => $roi['min'], 'proposed_pf' => $charges->pf ?? 0.5, 'by' => 'loan_advisor'],
+                    'phase_2' => ['bank_confirmed_roi' => $roi['min'], 'bank_confirmed_pf' => $charges->pf ?? 0.5, 'by' => 'bank_employee'],
+                    'phase_3' => ['customer_accepted' => true, 'accepted_at' => now()->subHours(6)->toDateString()],
+                ]);
+                break;
+
+            case 'sanction':
+                $assignment->mergeNotesData([
+                    'phase' => 3,
+                    'phase_1' => ['requested_at' => now()->subDays(3)->toDateString(), 'by' => 'loan_advisor'],
+                    'phase_2' => ['issued_at' => now()->subDays(2)->toDateString(), 'sanction_letter_no' => 'SL-'.$loan->id],
+                    'phase_3' => ['accepted_at' => now()->subDay()->toDateString(), 'accepted_by' => $loan->customer_name],
+                ]);
+                $loan->update(['is_sanctioned' => true]);
+                break;
+
+            case 'docket':
+                $assignment->mergeNotesData([
+                    'phase' => 3,
+                    'phase_1' => ['prepared_at' => now()->subDays(2)->toDateString(), 'by' => 'loan_advisor'],
+                    'phase_2' => ['couriered_at' => now()->subDay()->toDateString(), 'awb_no' => 'AWB'.$loan->id.'XYZ'],
+                    'phase_3' => ['received_by_bank_at' => now()->toDateString(), 'by' => 'bank_employee'],
+                ]);
+                break;
+
+            case 'kfs':
+                $assignment->mergeNotesData([
+                    'kfs_generated_at' => now()->subDay()->toDateString(),
+                    'kfs_url' => 'https://example.com/kfs/'.$loan->id.'.pdf',
+                    'shared_with_customer' => true,
+                ]);
+                break;
+
+            case 'esign':
+                $assignment->mergeNotesData([
+                    'phase' => 4,
+                    'phase_1' => ['link_sent_at' => now()->subDays(2)->toDateString(), 'channel' => 'email+sms'],
+                    'phase_2' => ['esign_completed_at' => now()->subDay()->toDateString(), 'aadhaar_otp' => true],
+                    'phase_3' => ['enach_setup_at' => now()->subDay()->toDateString(), 'mandate_id' => 'NACH'.$loan->id],
+                    'phase_4' => ['confirmed_at' => now()->toDateString()],
+                ]);
+                break;
+
+            case 'disbursement':
+                $assignment->mergeNotesData([
+                    'mode' => 'transfer',
+                    'amount' => $loan->loan_amount,
+                    'utr' => 'UTR'.now()->format('Ymd').$loan->id,
+                    'disbursed_at' => now()->toDateString(),
+                ]);
+                \App\Models\DisbursementDetail::updateOrCreate(
+                    ['loan_id' => $loan->id],
+                    [
+                        'mode' => 'transfer',
+                        'amount' => $loan->loan_amount,
+                        'utr' => 'UTR'.now()->format('Ymd').$loan->id,
+                        'disbursed_at' => now(),
+                        'created_by' => auth()->id(),
+                    ],
+                );
+                break;
+        }
+
+        try {
+            $stageService->updateStageStatus($loan, $stageKey, 'completed', auth()->id());
+        } catch (\Throwable $e) {
+            $this->command?->warn('  ⚠ '.$loan->loan_number.' could not complete '.$stageKey.': '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Add a handful of unconverted quotations across various advisors so the
+     * dashboard's "Pending conversion" view always has rows.
+     */
+    private function seedExtraPendingQuotations(): void
+    {
+        $admin = \App\Models\User::find(1);
+        if (! $admin) {
+            return;
+        }
+
+        $config = app(\App\Services\ConfigService::class)->load();
+        $quotationService = app(\App\Services\QuotationService::class);
+
+        $advisorIds = DB::table('role_user')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('roles.slug', ['loan_advisor', 'branch_manager', 'bdh'])
+            ->pluck('role_user.user_id')->unique()->values()->all();
+
+        $extras = [
+            ['name' => 'Anand Mehta', 'type' => 'salaried', 'amount' => 4500000, 'bank' => 'HDFC Bank'],
+            ['name' => 'Bhavesh Shah', 'type' => 'proprietor', 'amount' => 6500000, 'bank' => 'ICICI Bank'],
+            ['name' => 'Chirag Pandya', 'type' => 'partnership_llp', 'amount' => 8500000, 'bank' => 'Axis Bank'],
+            ['name' => 'Divya Joshi', 'type' => 'salaried', 'amount' => 3500000, 'bank' => 'Kotak Mahindra Bank'],
+            ['name' => 'Esha Vora', 'type' => 'pvt_ltd', 'amount' => 11000000, 'bank' => 'HDFC Bank'],
+            ['name' => 'Falguni Soni', 'type' => 'proprietor', 'amount' => 5200000, 'bank' => 'ICICI Bank'],
+        ];
+
+        foreach ($extras as $i => $row) {
+            $creatorId = $advisorIds[$i % count($advisorIds)] ?? $admin->id;
+            $creator = \App\Models\User::find($creatorId);
+            if (! $creator) {
+                continue;
+            }
+            auth()->login($creator);
+
+            $charges = \App\Models\BankCharge::where('bank_name', $row['bank'])->first();
+            $roi = match ($row['bank']) {
+                'HDFC Bank' => ['min' => 8.75, 'max' => 9.00],
+                'ICICI Bank' => ['min' => 9.00, 'max' => 9.15],
+                'Axis Bank' => ['min' => 9.25, 'max' => 9.50],
+                'Kotak Mahindra Bank' => ['min' => 8.50, 'max' => 8.75],
+            };
+            $avgRoi = ($roi['min'] + $roi['max']) / 2;
+
+            $typeDocs = collect($config['documents_en'][$row['type']] ?? [])
+                ->map(fn ($d, $i) => [
+                    'en' => $d,
+                    'gu' => ($config['documents_gu'][$row['type']] ?? [])[$i] ?? $d,
+                ])->toArray();
+
+            $quotationService->generate([
+                'customerName' => $row['name'],
+                'customerType' => $row['type'],
+                'loanAmount' => $row['amount'],
+                'location_id' => 2,
+                'banks' => [[
+                    'name' => $row['bank'],
+                    'roiMin' => $roi['min'],
+                    'roiMax' => $roi['max'],
+                    'charges' => [
+                        'pf' => $charges->pf ?? 0,
+                        'admin' => $charges->admin ?? 0,
+                        'stampNotary' => $charges->stamp_notary ?? 0,
+                        'registrationFee' => $charges->registration_fee ?? 0,
+                        'advocate' => $charges->advocate ?? 0,
+                        'iom' => 0,
+                        'tc' => $charges->tc ?? 0,
+                        'extra1Name' => null, 'extra1Amount' => 0,
+                        'extra2Name' => null, 'extra2Amount' => 0,
+                        'total' => 0,
+                    ],
+                    'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($row, $avgRoi) {
+                        $r = $avgRoi / 12 / 100;
+                        $n = $t * 12;
+                        $emi = (int) ceil($row['amount'] * $r * pow(1 + $r, $n) / (pow(1 + $r, $n) - 1));
+
+                        return [$t => ['emi' => $emi, 'totalInterest' => ($emi * $n) - $row['amount'], 'totalPayment' => $emi * $n]];
+                    })->toArray(),
+                ]],
+                'documents' => $typeDocs,
+                'selectedTenures' => $config['tenures'] ?? [5, 10, 15, 20],
+                'preparedByName' => $creator->name,
+                'preparedByMobile' => $creator->phone ?? '',
+            ], $creatorId);
+        }
+
+        auth()->logout();
+        $this->command?->line('  + '.count($extras).' pending-conversion quotations seeded across advisors.');
+    }
+
+    /**
+     * Seed a handful of GeneralTask rows per active user so every role's
+     * dashboard has a mix of completed / due-today / future-due tasks.
+     */
+    private function seedGeneralTaskSamples(): void
+    {
+        // Wipe previous demo-tasks (idempotent re-seeds)
+        \App\Models\GeneralTask::query()->delete();
+
+        $titles = [
+            'Call customer to confirm document submission',
+            'Schedule meeting with bank RM',
+            'Follow up on OSV pending with bank',
+            'Review quotation before sending',
+            'Coordinate property valuation site visit',
+            'Verify ITR documents',
+            'Send payment reminder to customer',
+            'Prepare weekly sales report',
+            'Update customer CRM notes',
+            'Check pending KYC documents',
+            'Confirm sanction letter delivery',
+            'Coordinate cheque pickup',
+        ];
+
+        $users = \App\Models\User::where('is_active', true)->get();
+        $loanIds = \App\Models\LoanDetail::pluck('id')->all();
+        $i = 0;
+
+        foreach ($users as $user) {
+            // Each user gets 4 tasks: completed (yesterday), due today, due in 3 days, due in 10 days
+            $samples = [
+                [
+                    'status' => 'completed',
+                    'priority' => 'normal',
+                    'due_date' => now()->subDay()->toDateString(),
+                    'completed_at' => now()->subHours(4),
+                ],
+                [
+                    'status' => 'pending',
+                    'priority' => 'high',
+                    'due_date' => now()->toDateString(),
+                ],
+                [
+                    'status' => 'in_progress',
+                    'priority' => 'urgent',
+                    'due_date' => now()->addDays(3)->toDateString(),
+                ],
+                [
+                    'status' => 'pending',
+                    'priority' => 'low',
+                    'due_date' => now()->addDays(10)->toDateString(),
+                ],
+            ];
+
+            foreach ($samples as $s) {
+                $title = $titles[$i % count($titles)];
+                $loanId = $loanIds[$i % max(1, count($loanIds))] ?? null;
+                $i++;
+
+                \App\Models\GeneralTask::create(array_merge([
+                    'title' => $title,
+                    'description' => $title.' for '.$user->name,
+                    'created_by' => $user->id,
+                    'assigned_to' => $user->id,
+                    'loan_detail_id' => ($i % 3 === 0) ? $loanId : null,
+                ], $s));
             }
         }
+
+        $this->command?->line('  + General tasks seeded: '.\App\Models\GeneralTask::count().' across '.$users->count().' users.');
+    }
+
+    /**
+     * Seed DVR (DailyVisitReport) entries with a mix of follow-up states.
+     */
+    private function seedDvrSamples(): void
+    {
+        \App\Models\DailyVisitReport::query()->delete();
+
+        $config = app(\App\Services\ConfigService::class)->load();
+        $contactTypes = collect($config['dvrContactTypes'] ?? [])->pluck('key')->all();
+        $purposes = collect($config['dvrPurposes'] ?? [])->pluck('key')->all();
+        if (empty($contactTypes)) {
+            $contactTypes = ['existing_customer', 'new_customer', 'CA', 'builder/developer', 'DSA/connector', 'other'];
+        }
+        if (empty($purposes)) {
+            $purposes = ['new_lead', 'follow_up', 'document_collection', 'quotation_delivery', 'payment/disbursement', 'relationship', 'other'];
+        }
+
+        // Users who normally create DVRs (advisors + bdh + bm + office employees).
+        $userIds = DB::table('role_user')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('roles.slug', ['loan_advisor', 'branch_manager', 'bdh', 'office_employee'])
+            ->pluck('role_user.user_id')->unique()->values()->all();
+
+        if (empty($userIds)) {
+            return;
+        }
+
+        $contactNames = [
+            'Vipul Parsana', 'Rajesh Patel', 'Amit Shah', 'Priya Mehta', 'Suresh Kumar',
+            'Meera Joshi', 'Kiran Desai', 'Nilesh Bhatt', 'Hetal Trivedi', 'Darshan Raval',
+            'Anand Mehta', 'Bhavesh Shah', 'Chirag Pandya', 'Divya Joshi', 'Esha Vora',
+        ];
+
+        // Templates: (visit_offset_days, follow_up_offset, follow_up_done)
+        $templates = [
+            ['visit' => 0,  'fu' => 0,   'done' => false], // visited today, follow-up due today
+            ['visit' => -1, 'fu' => -1,  'done' => false], // overdue follow-up
+            ['visit' => -2, 'fu' => 2,   'done' => false], // future follow-up
+            ['visit' => -3, 'fu' => -2,  'done' => true],  // completed follow-up
+            ['visit' => -4, 'fu' => null, 'done' => false], // no follow-up needed
+        ];
+
+        $i = 0;
+        foreach ($userIds as $uid) {
+            foreach ($templates as $t) {
+                $i++;
+                \App\Models\DailyVisitReport::create([
+                    'user_id' => $uid,
+                    'visit_date' => now()->addDays($t['visit'])->toDateString(),
+                    'contact_name' => $contactNames[$i % count($contactNames)],
+                    'contact_phone' => '98'.str_pad((string) (10000000 + $i * 731), 8, '0', STR_PAD_LEFT),
+                    'contact_type' => $contactTypes[$i % count($contactTypes)],
+                    'purpose' => $purposes[$i % count($purposes)],
+                    'notes' => 'Sample DVR notes for '.$contactNames[$i % count($contactNames)].'.',
+                    'outcome' => ($i % 3 === 0) ? 'Positive — interested' : 'Needs follow-up',
+                    'follow_up_needed' => $t['fu'] !== null,
+                    'follow_up_date' => $t['fu'] !== null ? now()->addDays($t['fu'])->toDateString() : null,
+                    'follow_up_notes' => $t['fu'] !== null ? 'Follow up to confirm next steps.' : null,
+                    'is_follow_up_done' => $t['done'],
+                    'branch_id' => 1,
+                ]);
+            }
+        }
+
+        $this->command?->line('  + DVR samples seeded: '.\App\Models\DailyVisitReport::count().' across '.count($userIds).' field users.');
     }
 }
