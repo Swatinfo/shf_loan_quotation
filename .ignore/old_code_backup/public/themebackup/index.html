@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHF Redesign — Screens Index</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+ body { background: #f3f1ef; }
+ .hero {
+ padding: 40px 32px 24px;
+ background: linear-gradient(135deg, #3a3536 0%, #5a5254 100%);
+ color: #fff;
+ border-bottom: 3px solid #f15a29;
+ }
+ .hero h1 { font-family: 'Jost', sans-serif; font-size: 32px; margin: 0; letter-spacing: -0.02em; }
+ .hero .sub { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 6px; max-width: 760px; line-height: 1.5; }
+ .hero .brand { display:flex; align-items:center; gap:12px; margin-bottom: 18px; }
+ .hero .brand .logo-mark { width: 40px; height: 40px; border-radius: 8px; background: #f15a29; display: grid; place-items: center; font-weight: 700; font-size: 18px; font-family:'Jost',sans-serif; }
+ .wrap { max-width: 1400px; margin: 0 auto; padding: 30px 32px 60px; }
+ .sect { margin-bottom: 36px; }
+ .sect h2 { font-family: 'Jost', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); margin: 0 0 12px; font-weight: 600; display:flex; align-items:center; gap:10px; }
+ .sect h2 .n { background: var(--ink-2); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; letter-spacing: 0.04em; }
+ .screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+ .screen-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display:flex; gap:12px; align-items:center; transition: all 0.12s; color: inherit; text-decoration: none; min-height: 62px; }
+ .screen-card:hover { border-color: #f15a29; box-shadow: 0 4px 16px rgba(241,90,41,0.1); transform: translate · Y(-1px); }
+ .screen-card .ic { width: 34px; height: 34px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink:0; font-size: 15px; }
+ .screen-card .body { flex: 1; min-width: 0; }
+ .screen-card h3 { font-family: 'Jost', sans-serif; font-size: 13.5px; margin: 0 0 2px; font-weight: 600; }
+ .screen-card p { font-size: 11.5px; color: var(--ink-4); margin: 0; line-height: 1.35; }
+ .screen-card .fname { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-4); opacity: 0.6; }
+ .mini-stats { display:flex; gap:8px; margin-top: 20px; flex-wrap:wrap; }
+ .mini-stats .s { padding: 6px 12px; background: rgba(255,255,255,0.08); border-radius: 999px; font-size: 11px; color: rgba(255,255,255,0.8); display:inline-flex; gap:6px; align-items:center; }
+ .mini-stats .s strong { color: #f15a29; font-weight: 600; }
+ @media (max-width: 720px) { .hero { padding: 28px 18px 18px; } .wrap { padding: 20px 16px 40px; } }
+</style>
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+
+<section class="hero">
+ <div class="brand">
+ <span class="logo-mark">S</span>
+ <div>
+ <div style="font-family:'Jost';font-weight:700;letter-spacing:0.04em;">SHF WORLD</div>
+ <div style="font-size:10px;color:rgba(255,255,255,0.6);letter-spacing:0.14em;">SHREENATHJI HOME FINANCE</div>
+ </div>
+ </div>
+ <h1>Complete screen inventory</h1>
+ <div class="sub">Every page in the redesigned SHF loan management platform. Interactive — click any screen to open. Designed for desktop 1280–1920tabletmobile 375. Pure HTML + CSS + vanilla JSbilingual ENno framework lock-in.</div>
+ <div class="mini-stats">
+ <span class="s"><strong>37</strong> screens</span>
+ <span class="s"><strong>12</strong> loan stages</span>
+ <span class="s"><strong>7</strong> roles</span>
+ <span class="s"><strong>34</strong> permissions</span>
+ <span class="s"><strong>2</strong> languages</span>
+ <span class="s">Responsive 375 → 1920</span>
+ </div>
+</section>
+
+<div class="wrap">
+
+ <div class="sect">
+ <h2><span class="n">A</span> Authentication &amp; account</h2>
+ <div class="screens">
+ <a class="screen-card" href="login.html"><div class="ic">🔐</div><div class="body"><h3>Login</h3><p>Branch sign-in, forgot password link</p></div></a>
+ <a class="screen-card" href="forgot-password.html"><div class="ic">✉️</div><div class="body"><h3>Forgot password</h3><p>Request reset email</p></div></a>
+ <a class="screen-card" href="reset-password.html"><div class="ic">🔑</div><div class="body"><h3>Reset password</h3><p>Set new password</p></div></a>
+ <a class="screen-card" href="confirm-password.html"><div class="ic">✓</div><div class="body"><h3>Confirm password</h3><p>Re-auth for sensitive actions</p></div></a>
+ <a class="screen-card" href="verify-email.html"><div class="ic">📧</div><div class="body"><h3>Verify email</h3><p>Email confirmation</p></div></a>
+ <a class="screen-card" href="welcome.html"><div class="ic">🏠</div><div class="body"><h3>Welcomelanding</h3><p>Guest landing page</p></div></a>
+ <a class="screen-card" href="profile.html"><div class="ic">👤</div><div class="body"><h3>My profile</h3><p>Personal settings, password, avatar</p></div></a>
+ </div>
+ </div>
+
+ <div class="sect">
+ <h2><span class="n">B</span> Core workflows</h2>
+ <div class="screens">
+ <a class="screen-card" href="dashboard.html"><div class="ic">📊</div><div class="body"><h3>Dashboard</h3><p>Role-aware KPIs, pipeline, charts</p></div></a>
+ <a class="screen-card" href="quotations.html"><div class="ic">📄</div><div class="body"><h3>Quotations — list</h3><p>With filters, multi-bank comparison</p></div></a>
+ <a class="screen-card" href="quotation-new.html"><div class="ic">＋</div><div class="body"><h3>Quotation — create</h3><p>Stepped form, EMI preview</p></div></a>
+ <a class="screen-card" href="quotation-show.html"><div class="ic">👁</div><div class="body"><h3>Quotation — detail</h3><p>Side-by-side bank compare + PDF</p></div></a>
+ <a class="screen-card" href="quotation-convert.html"><div class="ic">↪</div><div class="body"><h3>Quotation — convert</h3><p>Convert to live loan file</p></div></a>
+ </div>
+ </div>
+
+ <div class="sect">
+ <h2><span class="n">C</span> Loans — 12-stage workflow</h2>
+ <div class="screens">
+ <a class="screen-card" href="loans.html"><div class="ic">📁</div><div class="body"><h3>Loans — list</h3><p>Pipeline + table, stage filters</p></div></a>
+ <a class="screen-card" href="loan-create.html"><div class="ic">＋</div><div class="body"><h3>Loan — create</h3><p>Conditional form (home/LAP/BT/NRI)</p></div></a>
+ <a class="screen-card" href="loan-edit.html"><div class="ic">✎</div><div class="body"><h3>Loan — edit</h3><p>Edit base loan details</p></div></a>
+ <a class="screen-card" href="loan-show.html"><div class="ic">📋</div><div class="body"><h3>Loan — overview</h3><p>Summary, stage, queries, team</p></div></a>
+ <a class="screen-card" href="loan-stages.html"><div class="ic">🔀</div><div class="body"><h3>Loan — stages</h3><p>The 12-stage workflow</p></div></a>
+ <a class="screen-card" href="loan-documents.html"><div class="ic">📎</div><div class="body"><h3>Loan — documents</h3><p>Checklist, upload modal, categories</p></div></a>
+ <a class="screen-card" href="loan-valuation.html"><div class="ic">🏠</div><div class="body"><h3>Loan — valuation</h3><p>Technical valuation + legal</p></div></a>
+ <a class="screen-card" href="loan-valuation-map.html"><div class="ic">📍</div><div class="body"><h3>Loan — valuation map</h3><p>Property map + comparables</p></div></a>
+ <a class="screen-card" href="loan-disbursement.html"><div class="ic">₹</div><div class="body"><h3>Loan — disbursement</h3><p>NACHcheque RTGSOTC tracker</p></div></a>
+ <a class="screen-card" href="loan-timeline.html"><div class="ic">⏱</div><div class="body"><h3>Loan — timeline</h3><p>Full audit trail</p></div></a>
+ <a class="screen-card" href="loan-transfers.html"><div class="ic">↻</div><div class="body"><h3>Loan — transfers</h3><p>Role hand-offs, assignments</p></div></a>
+ </div>
+ </div>
+
+ <div class="sect">
+ <h2><span class="n">D</span> Customers &amp; field</h2>
+ <div class="screens">
+ <a class="screen-card" href="customers.html"><div class="ic">👥</div><div class="body"><h3>Customers — list</h3><p>Branch-scoped directory</p></div></a>
+ <a class="screen-card" href="customer-show.html"><div class="ic">👤</div><div class="body"><h3>Customer — detail</h3><p>Profile, linked loans, DVR activity</p></div></a>
+ <a class="screen-card" href="customer-edit.html"><div class="ic">✎</div><div class="body"><h3>Customer — edit</h3><p>Conditional: salariedself NRI</p></div></a>
+ <a class="screen-card" href="dvr.html"><div class="ic">📍</div><div class="body"><h3>DVR — list</h3><p>Daily Visit Reports</p></div></a>
+ <a class="screen-card" href="dvr-show.html"><div class="ic">📌</div><div class="body"><h3>DVR — detail</h3><p>Visit log + follow-up chain</p></div></a>
+ <a class="screen-card" href="general-tasks.html"><div class="ic">✓</div><div class="body"><h3>Tasks — list</h3><p>Personal + delegatedkanban</p></div></a>
+ <a class="screen-card" href="task-show.html"><div class="ic">☑</div><div class="body"><h3>Task — detail</h3><p>Checklist, comments</p></div></a>
+ <a class="screen-card" href="documents.html"><div class="ic">📂</div><div class="body"><h3>Document library</h3><p>Uploaded file browser</p></div></a>
+ </div>
+ </div>
+
+ <div class="sect">
+ <h2><span class="n">E</span> Admin &amp; settings</h2>
+ <div class="screens">
+ <a class="screen-card" href="users.html"><div class="ic">👥</div><div class="body"><h3>Users</h3><p>Staff directory, impersonation</p></div></a>
+ <a class="screen-card" href="user-edit.html"><div class="ic">✎</div><div class="body"><h3>User — edit</h3><p>Role-conditional warnings</p></div></a>
+ <a class="screen-card" href="roles.html"><div class="ic">🛡</div><div class="body"><h3>Roles</h3><p>Role list + descriptions</p></div></a>
+ <a class="screen-card" href="permissions.html"><div class="ic">🔐</div><div class="body"><h3>Permissions matrix</h3><p>34 permissions × 7 roles</p></div></a>
+ <a class="screen-card" href="settings.html"><div class="ic">⚙️</div><div class="body"><h3>Quotation settings</h3><p>Banks, rate cards, charges</p></div></a>
+ <a class="screen-card" href="loan-settings.html"><div class="ic">⚙️</div><div class="body"><h3>Loan settings</h3><p>Workflow, SLAs, feature flags</p></div></a>
+ <a class="screen-card" href="activity-log.html"><div class="ic">📜</div><div class="body"><h3>Activity log</h3><p>System-wide audit</p></div></a>
+ <a class="screen-card" href="reports.html"><div class="ic">📈</div><div class="body"><h3>Reports</h3><p>Turnaround, funnel, MIS</p></div></a>
+ <a class="screen-card" href="notifications.html"><div class="ic">🔔</div><div class="body"><h3>Notifications</h3><p>System alerts inbox</p></div></a>
+ </div>
+ </div>
+
+ <div class="sect">
+ <h2><span class="n">F</span> Mobile (field staff)</h2>
+ <div class="screens">
+ <a class="screen-card" href="mobile.html"><div class="ic">📱</div><div class="body"><h3>Mobile preview</h3><p>Home, DVR, loan detail3 device frames</p></div></a>
+ </div>
+ </div>
+
+</div>
+
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/index.js?v=1"></script>
+</body>
+</html>

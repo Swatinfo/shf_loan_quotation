@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Permissions · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Admin <span class="sep">/</span> Permissions</div>
+<h1>Permission matrix</h1><div class="sub">Granular ability mapping per role34 permissions7 roles</div></div>
+<div class="head-actions"><button class="btn" data-action="toast" data-arg="Import">Import</button><button class="btn primary" data-action="save" data-arg="Matrix saved">Save matrix</button></div></div>
+<div class="tabs" data-tab-panel-group="pm"><a class="tab" href="roles.html">Roles</a><a class="tab active" id="pm-tab-matrix" data-panel="matrix">Permissions</a></div>
+</header>
+<main class="content">
+<div data-tab-panel-group="pm">
+<div id="pm-panel-matrix" data-panel-id="matrix">
+<div class="card"><div class="card-hd" style="padding:12px 18px;"><div class="search-wrap" style="flex:1;"><input class="input" placeholder="Search permission…"></div><div class="segmented"><button class="active">All</button><button>Loans</button><button>Customers</button><button>Admin</button></div></div><div class="card-bd" style="padding:0;overflow-x:auto;">
+<table class="matrix"><thead><tr><th style="text-align:left;">Permission</th><th>Admin</th><th>Advisor</th><th>Processing</th><th>Valuer</th><th>Legal</th><th>Viewer</th><th>Customer</th></tr></thead><tbody>
+<tr><td>loan.create</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>loan.view</td><td class="c ok">✓</td><td class="c own">own</td><td class="c own">own</td><td class="c own">own</td><td class="c own">own</td><td class="c ok">✓</td><td class="c own">own</td></tr><tr><td>loan.advance-stage</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c own">own</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>loan.disburse</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>customer.create</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>customer.edit</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c own">own</td></tr><tr><td>customer.kyc-verify</td><td class="c ok">✓</td><td class="c no">—</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>quotation.create</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>quotation.convert</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>dvr.log</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>document.upload</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c own">own</td></tr><tr><td>valuation.submit</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>legal.opinion</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>reports.view</td><td class="c ok">✓</td><td class="c own">own</td><td class="c own">own</td><td class="c own">own</td><td class="c own">own</td><td class="c ok">✓</td><td class="c no">—</td></tr><tr><td>user.manage</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>settings.edit</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr><tr><td>activity-log.view</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c ok">✓</td><td class="c no">—</td></tr>
+</tbody></table>
+</div></div>
+</div>
+</div>
+</main><div id="__shell_tweaks"></div></div><script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('permissions');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/tabs.js"></script>
+<script>wireTabs('pm', ["matrix"]);</script>
+<script src="assets/permissions.js?v=1"></script>
+</body></html>

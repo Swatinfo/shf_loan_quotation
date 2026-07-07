@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quotation settings · SHF World</title><link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Settings <span class="sep">/</span> Quotation</div><h1>Quotation settings</h1><div class="sub">Banks, rate cards &amp; chargesLast updated 2 days ago</div></div></div>
+<div class="tabs" data-tab-panel-group="s">
+<a class="tab active" id="s-tab-banks" data-panel="banks">Banks</a>
+<a class="tab" id="s-tab-rates" data-panel="rates">Rate cards</a>
+<a class="tab" id="s-tab-charges" data-panel="charges">Charges</a>
+<a class="tab" id="s-tab-tmpl" data-panel="tmpl">Templates</a>
+<a class="tab" id="s-tab-pdf" data-panel="pdf">PDF branding</a>
+</div>
+</header>
+<main class="content">
+<div data-tab-panel-group="s">
+<div id="s-panel-banks" data-panel-id="banks">
+<div class="grid c-main">
+<div>
+<div class="card"><div class="card-hd"><div class="t">Connected banks</div><button class="btn sm primary">+ Add bank</button></div><div class="card-bd" style="padding:0;"><table class="tbl"><thead><tr><th>Bank</th><th>Rate category</th><th>Base rate</th><th>PF</th><th>Special</th><th>Status</th><th></th></tr></thead><tbody>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo">HDFC</div>HDFC Bank</div></td><td>Salaried &amp; SEHome</td><td class="tnum">8.40%</td><td class="tnum">0.5%min ₹10k</td><td>Women -5bps</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#1d4e89;">SBI</div>State Bank of India</div></td><td>All segments</td><td class="tnum">8.50%</td><td class="tnum">0.4%</td><td>Govt employee -10bps</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#b7791f;">BOB</div>Bank of Baroda</div></td><td>Home + LAP</td><td class="tnum">8.45%</td><td class="tnum">0.3%</td><td>—</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#107a4f;">ICICI</div>ICICI Bank</div></td><td>Salaried</td><td class="tnum">8.60%</td><td class="tnum">0.5%</td><td>Insurance bundled</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#3a3536;">Axis</div>Axis Bank</div></td><td>All</td><td class="tnum">8.55%</td><td class="tnum">0.4%</td><td>—</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#9c1f2e;">Kotak</div>Kotak Mahindra</div></td><td>Salaried</td><td class="tnum">8.65%</td><td class="tnum">0.4%</td><td>—</td><td><span class="badge green sq">Live</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="bank-logo" style="background:#053870;">PNB</div>Punjab National Bank</div></td><td>All</td><td class="tnum">8.70%</td><td class="tnum">0.3%</td><td>—</td><td><span class="badge amber sq">Paused</span></td><td><button class="btn sm ghost">Edit</button></td></tr>
+</tbody></table></div></div>
+
+<div class="card mt-4"><div class="card-hd"><div class="t">Default comparison rules</div></div><div class="card-bd">
+<div class="form-grid">
+<div class="field"><label>Default banks shown</label><select class="select"><option>Top 5 by lowest EMI</option><option>Top 5 by lowest ROI</option><option>All connected</option><option>Custom</option></select></div>
+<div class="field"><label>Auto-exclude if ROI higher by</label><div class="input-affix"><input class="input" value="50"><span class="post">bps</span></div></div>
+<div class="field"><label>Tenure default</label><select class="select"><option>20 years</option><option>15</option><option>25</option><option>30</option></select></div>
+<div class="field"><label>Rate type</label><select class="select"><option>Floating (default)</option><option>Fixed</option><option>Hybrid</option></select></div>
+</div></div></div>
+</div>
+
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Rate feed</div></div><div class="card-bd">
+<div class="kv-stack"><div class="kv"><span>Source</span><strong>Manual + API (4 banks)</strong></div><div class="kv"><span>Last refresh</span><strong>Today 08:00</strong></div><div class="kv"><span>Next refresh</span><strong>Tomorrow 08:00</strong></div></div><button class="btn sm w-full mt-3">Refresh now</button>
+</div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Global overrides</div></div><div class="card-bd">
+<label class="chk"><input type="checkbox" checked> Allow advisor to override rate</label>
+<label class="chk"><input type="checkbox" checked> Require manager approval &gt; ±10 bps</label>
+<label class="chk"><input type="checkbox"> Lock PF (disable edits)</label>
+<label class="chk"><input type="checkbox" checked> Show amortisation schedule by default</label>
+</div></div>
+</aside>
+</div>
+</div>
+
+<div id="s-panel-rates" data-panel-id="rates" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">HDFC Bankrate card</div><div class="actions"><button class="btn sm ghost">Revert</button><button class="btn sm primary">Save</button></div></div>
+<div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Segment</th><th>Loan amount</th><th>Tenure</th><th class="num">Base rate</th><th class="num">PF</th><th>Effective</th><th></th></tr></thead>
+<tbody>
+<tr><td>Salariedwomen</td><td>up to 30 · L</td><td>up to 30y</td><td class="num tnum">8.35%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Salariedall</td><td>up to 30 · L</td><td>up to 30y</td><td class="num tnum">8.40%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Salariedwomen</td><td>30 · L – 75 · L</td><td>up to 30y</td><td class="num tnum">8.45%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Salariedall</td><td>30 · L – 75 · L</td><td>up to 30y</td><td class="num tnum">8.50%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Self-employed</td><td>up to 50 · L</td><td>up to 20y</td><td class="num tnum">8.70%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Self-employed</td><td>50 · L – 2Cr</td><td>up to 20y</td><td class="num tnum">8.85%</td><td class="num tnum">0.50%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>LAPSE</td><td>any</td><td>up to 15y</td><td class="num tnum">9.90%</td><td class="num tnum">1.00%</td><td>Apr 01</td><td><a class="btn xs">Edit</a></td></tr>
+</tbody>
+</table>
+</div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Repo benchmark history</div></div>
+<div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Effective</th><th class="num">RBI repo</th><th class="num">HDFC RPLR</th><th class="num">Spread (salaried)</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Apr 08, 2026</td><td class="num tnum">6.00%</td><td class="num tnum">9.15%</td><td class="num tnum">−75 bps</td><td>Cut by 25 bps</td></tr>
+<tr><td>Feb 07, 2026</td><td class="num tnum">6.25%</td><td class="num tnum">9.40%</td><td class="num tnum">−75 bps</td><td>Cut by 25 bps</td></tr>
+<tr><td>Dec 06, 2025</td><td class="num tnum">6.50%</td><td class="num tnum">9.65%</td><td class="num tnum">−75 bps</td><td>Hold</td></tr>
+<tr><td>Oct 09, 2025</td><td class="num tnum">6.50%</td><td class="num tnum">9.65%</td><td class="num tnum">−75 bps</td><td>Hold</td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Pick bank</div></div><div class="card-bd">
+<select class="select"><option>HDFC Bank</option><option>SBI</option><option>Bank of Baroda</option><option>ICICI Bank</option><option>Axis Bank</option></select>
+</div></div>
+</aside>
+</div>
+</div>
+
+<div id="s-panel-charges" data-panel-id="charges" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Standard charges</div><div class="actions"><button class="btn sm ghost">+ Charge</button></div></div>
+<div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Charge</th><th>Formula</th><th>Applied</th><th>Editable</th><th>Shown on PDF</th></tr></thead>
+<tbody>
+<tr><td>Processing fee</td><td>Bank PF % × sanction</td><td>At sanction</td><td>✓with approval</td><td>Yes</td></tr>
+<tr><td>GST on PF</td><td>18%</td><td>At sanction</td><td>Locked</td><td>Yes</td></tr>
+<tr><td>Legal &amp; technical</td><td>Actuals</td><td>Before sanction</td><td>✓</td><td>Yes</td></tr>
+<tr><td>CERSAI</td><td>₹ 100</td><td>At disbursement</td><td>Locked</td><td>Yes</td></tr>
+<tr><td>Stamp dutyagreement</td><td>State rate</td><td>At disbursement</td><td>✓</td><td>Yes</td></tr>
+<tr><td>Insurance</td><td>Optional0.25%</td><td>With 1st EMI</td><td>✓</td><td>Yesflagged optional</td></tr>
+<tr><td>Pre-EMI interest</td><td>Outstanding × ROI × days/365</td><td>Deducted at disb.</td><td>Auto</td><td>Yes</td></tr>
+<tr><td>Prepayment penalty</td><td>Nilfloating RBI rules</td><td>—</td><td>Locked</td><td>Yes</td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Default show/hide</div></div><div class="card-bd">
+<label class="chk"><input type="checkbox" checked> Show insurance by default</label>
+<label class="chk"><input type="checkbox" checked> Show GST breakup</label>
+<label class="chk"><input type="checkbox"> Show CERSAI separately</label>
+</div></div>
+</aside>
+</div>
+</div>
+
+<div id="s-panel-tmpl" data-panel-id="tmpl" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Quotation PDF templates</div><div class="actions"><button class="btn sm primary">+ New template</button></div></div>
+<div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Template</th><th>Used for</th><th>Banks</th><th>Language</th><th>Updated</th><th>Active</th><th></th></tr></thead>
+<tbody>
+<tr><td>Standard — 3 banks</td><td>Home LAP</td><td>Any 3</td><td>English</td><td>Mar 14</td><td><span class="badge green sq">Default</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Standard — 5 banks</td><td>Home</td><td>Any 5</td><td>English</td><td>Mar 14</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Gujarati — 3 banks</td><td>Home</td><td>Any 3</td><td>Gujarati</td><td>Feb 28</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Compact summary</td><td>WhatsApp share</td><td>Any 3</td><td>English</td><td>Feb 20</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Best offer highlight</td><td>Sales nudge</td><td>Best 1</td><td>English</td><td>Jan 30</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">Draft</span></td><td><a class="btn xs">Edit</a></td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+<aside>
+<div class="card"><div class="card-hd"><div class="t">Preview</div></div><div class="card-bd">
+<div style="aspect-ratio:.75;background:var(--paper-2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink-4);font-size:11px;">PDF preview</div>
+</div></div>
+</aside>
+</div>
+</div>
+
+<div id="s-panel-pdf" data-panel-id="pdf" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">PDF branding</div></div><div class="card-bd"><div class="form-grid">
+<div class="field span-2"><label>Firm name on header</label><input class="input" value="SHF World — Home &amp; Property Finance"></div>
+<div class="field"><label>Logo (header)</label><input type="file" class="input"></div>
+<div class="field"><label>Logo (footer)</label><input type="file" class="input"></div>
+<div class="field"><label>Primary color</label><input class="input" value="#D9774 · F"></div>
+<div class="field"><label>Accent color</label><input class="input" value="#B7522 · A"></div>
+<div class="field span-2"><label>Tagline</label><input class="input" value="Clear numbers. No surprises."></div>
+<div class="field span-2"><label>Footer legal</label><textarea class="input" rows="3">Sanction and disbursement at sole discretion of the lender. Rates shown are indicative as of the quotation date and subject to change. SHF World is a registered DSA — not a lender.</textarea></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Preview</div></div><div class="card-bd">
+<div style="aspect-ratio:.75;background:var(--paper-2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink-4);font-size:11px;">PDF preview</div>
+<button class="btn w-full mt-3">Generate sample</button>
+</div></div></aside>
+</div>
+</div>
+
+</div>
+</main><div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('settings');</script><script src="assets/shf-interactive.js"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('s', ["banks","rates","charges","tmpl","pdf"]);</script>
+<script src="assets/settings.js?v=1"></script>
+</body></html>

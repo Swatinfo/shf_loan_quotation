@@ -1,0 +1,2 @@
+# Block all direct web access to the rate-limit cache.
+Require all denied

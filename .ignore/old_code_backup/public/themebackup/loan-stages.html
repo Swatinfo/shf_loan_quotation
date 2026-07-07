@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan stages SHF-2026-0479</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header">
+ <div class="head-row">
+ <div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="loans.html">Loans</a> <span class="sep">/</span> <a href="loan-show.html">SHF-2026-0479</a> <span class="sep">/</span> Stages</div>
+ <h1>12-stage workflow <span class="badge amber dot" style="margin-left:10px;">Currently Stage 5</span></h1>
+ <div class="sub">Anil Patel HDFC<span class="font-mono">SHF-2026-0479</span>12 days active</div></div>
+ </div>
+</header>
+<main class="content">
+ <div class="card" style="margin-bottom:16px;">
+ <div class="card-bd" style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+ <div style="font-size:13px;color:var(--ink-2);">Jump to stage:</div>
+ <div class="stage-jumper" style="display:flex;gap:4px;flex-wrap:wrap;">
+ <button class="btn sm stage-jump-btn" data-stage-jump="1">1</button><button class="btn sm stage-jump-btn" data-stage-jump="2">2</button><button class="btn sm stage-jump-btn" data-stage-jump="3">3</button><button class="btn sm stage-jump-btn" data-stage-jump="4">4</button><button class="btn sm stage-jump-btn active" data-stage-jump="5">5</button><button class="btn sm stage-jump-btn" data-stage-jump="6">6</button><button class="btn sm stage-jump-btn" data-stage-jump="7">7</button><button class="btn sm stage-jump-btn" data-stage-jump="8">8</button><button class="btn sm stage-jump-btn" data-stage-jump="9">9</button><button class="btn sm stage-jump-btn" data-stage-jump="10">10</button><button class="btn sm stage-jump-btn" data-stage-jump="11">11</button><button class="btn sm stage-jump-btn" data-stage-jump="12">12</button>
+ </div>
+ <div style="margin-left:auto;display:flex;gap:8px;">
+ <button class="btn sm" data-action="toast" data-arg="Stage history exported">Export history</button>
+ <a class="btn sm primary" href="loan-settings.html">Edit workflow</a>
+ </div>
+ </div>
+ </div>
+
+ <div class="stage-grid" id="stageGrid">
+ <div class="stage-card done"><div class="sh"><div class="sn">1</div><div><div class="st">Inquiry</div><div class="sm">Customer walk-in/lead capture</div></div><span class="badge green sq">CompletedMar 28</span></div><div class="sb"><div class="kv-stack"><div class="kv"><span>Source</span><strong>DSABharat Loans</strong></div><div class="kv"><span>Pre-qualification</span><strong>Eligibility ₹72 · L</strong></div><div class="kv"><span>Advisor</span><strong>Rahul J.</strong></div></div></div></div>
+
+ <div class="stage-card done"><div class="sh"><div class="sn">2</div><div><div class="st">Document selection</div><div class="sm">Bank-specific checklist generated</div></div><span class="badge green sq">CompletedMar 29</span></div><div class="sb"><div class="kv-stack"><div class="kv"><span>Bank checklist</span><strong>HDFC ConstructionPartnership</strong></div><div class="kv"><span>Docs required</span><strong>21 items</strong></div><div class="kv"><span>Sent to customer</span><strong>WhatsAppMar 29</strong></div></div></div></div>
+
+ <div class="stage-card done"><div class="sh"><div class="sn">3</div><div><div class="st">Document collection</div><div class="sm">KYC, income, property, business</div></div><span class="badge green sq">CompletedApr 02</span></div><div class="sb"><div class="progress thin"><div class="fill" style="width:67%;background:var(--green);"></div></div><div class="text-xs text-muted mt-1">14 of 21 collected — enough to proceed</div><a class="btn sm w-full mt-2" href="loan-documents.html">Open document tracker →</a></div></div>
+
+ <div class="stage-card done"><div class="sh"><div class="sn">4</div><div><div class="st">Parallel processing</div><div class="sm">LegalTechnical FICIBILRCU</div></div><span class="badge green sq">CompletedApr 06</span></div><div class="sb"><div class="parallel"><div class="pp-row"><div class="pp-l"><span class="dot green"></span>Legal</div><div class="pp-r">Clear</div></div><div class="pp-row"><div class="pp-l"><span class="dot green"></span>Technical</div><div class="pp-r">₹65 · L</div></div><div class="pp-row"><div class="pp-l"><span class="dot green"></span>CIBIL</div><div class="pp-r">748</div></div><div class="pp-row"><div class="pp-l"><span class="dot green"></span>FI</div><div class="pp-r">Positive</div></div><div class="pp-row"><div class="pp-l"><span class="dot amber"></span>RCU</div><div class="pp-r">1 referral</div></div></div></div></div>
+
+ <div class="stage-card current"><div class="sh"><div class="sn">5</div><div><div class="st">Rate &amp; processing fee</div><div class="sm">Negotiate final rate, PF, tenure</div></div><span class="badge amber dot">In progress</span></div><div class="sb"><div class="kv-stack"><div class="kv"><span>Offered rate</span><strong>8.45% <span style="color:var(--red);">(+5 bps)</span></strong></div><div class="kv"><span>PF</span><strong class="tnum">₹ 27,500</strong></div><div class="kv"><span>EMI</span><strong class="tnum">₹ 47,289</strong></div></div><div class="callout amber sm mt-2">Awaiting customer approval on rate variance.</div><a class="btn primary w-full mt-2" href="loan-show.html">Open rate &amp; fees →</a></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">6</div><div><div class="st">Sanction letter</div><div class="sm">Bank issues sanction, OSV</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Pre-requisites: rate finalised, PF receipt, customer acceptance.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">7</div><div><div class="st">Docket login</div><div class="sm">Physical docket handed to bank</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Originals + attested copies compiled.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">8</div><div><div class="st">KFS (Key Fact Statement)</div><div class="sm">RBI-mandated disclosure</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Generated from sanction letter + final rate.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">9</div><div><div class="st">E-Sign &amp; e NACH</div><div class="sm">Aadhaar-based signing + mandate</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Agreement + e NACH for EMI auto-debit.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">10</div><div><div class="st">Disbursement</div><div class="sm">Cheque NEFT to seller/builder</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Under construction: tranche-wise; Ready: single.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">11</div><div><div class="st">OTC clearance</div><div class="sm">Post-disbursement open-to-close items</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Title deed, sale deed registration, insurance.</div></div></div>
+
+ <div class="stage-card"><div class="sh"><div class="sn">12</div><div><div class="st">Completed</div><div class="sm">File archived to alumni</div></div><span class="badge sq">Upcoming</span></div><div class="sb"><div class="text-xs text-muted">Customer shifts to alumni CRM track for top-ups.</div></div></div>
+ </div>
+</main>
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('loans');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+
+<script>
+(function(){
+ const grid = document.getElementById('stageGrid');
+ if (!grid) return;
+ const cards = [...grid.querySelectorAll('.stage-card')];Initially collapse all except the current stage
+ function collapseAllExcept(activeIdx /* 1-based *{
+ cards.forEach((c, i) => {
+ const body = c.querySelector('.sb');
+ if (!body) return;
+ if (i + 1 === activeIdx) body.classList.remove('collapsed');
+ else body.classList.add('collapsed');
+ });
+ }
+ collapseAllExcept(5);Make each card clickable to expand/collapse its .sb body
+ cards.forEach((c, i) => {
+ c.style.cursor = 'pointer';
+ const head = c.querySelector('.sh');
+ head.addEventListener('click', e => {
+ if (e.target.closest('.btn, a')) return;
+ const body = c.querySelector('.sb');
+ if (!body) return;
+ const wasCollapsed = body.classList.contains('collapsed');Collapse all others, expand this one (accordion behavior)
+ cards.forEach(other => {
+ const ob = other.querySelector('.sb');
+ if (ob && other !== c) ob.classList.add('collapsed');
+ });
+ if (wasCollapsed) body.classList.remove('collapsed');
+ else body.classList.add('collapsed');
+ });
+ });Stage jumper buttons -> set active visual state across all cards
+ document.querySelectorAll('[data-stage-jump]').forEach(btn => {
+ btn.addEventListener('click', e => {
+ e.preventDefault();
+ const target = parseInt(btn.dataset.stageJump, 10);
+ document.querySelectorAll('.stage-jump-btn').forEach(b => b.classList.remove('active'));
+ btn.classList.add('active');
+ cards.forEach((c, idx) => {
+ const n = idx + 1;
+ c.classList.remove('done', 'current');
+ const badge = c.querySelector('.sh > .badge');
+ if (n < target) {
+ c.classList.add('done');
+ if (badge) { badge.className = 'badge green sq'; badge.textContent = 'Completed'; }
+ } else if (n === target) {
+ c.classList.add('current');
+ if (badge) { badge.className = 'badge amber dot'; badge.textContent = 'In progress'; }
+ } else {
+ if (badge) { badge.className = 'badge sq'; badge.textContent = 'Upcoming'; }
+ }
+ });Update header
+ const headerBadge = document.querySelector('.page-header h1 .badge');
+ if (headerBadge) headerBadge.textContent = 'Currently Stage ' + target;Expand the active stage's body, collapse the rest
+ collapseAllExcept(target);
+ if (window.shfToast) window.shfToast('Jumped to stage ' + target);
+ if (window.setActiveStage) window.setActiveStage(target);
+ });
+ });On load, sync to localStorage
+ if (window.getActiveStage) {
+ const cur = window.getActiveStage();
+ if (cur && cur !== 5) {
+ const btn = document.querySelector('[data-stage-jump="' + cur + '"]');
+ if (btn) btn.click();
+ }
+ }
+})();
+</script>
+
+<script src="assets/loan-stages.js?v=1"></script>
+</body></html>

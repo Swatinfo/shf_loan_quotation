@@ -1,0 +1,459 @@
+Complete Loan Workflow — Every Stage, Operation, Input & Action
+
+  ---
+  Stage 1: Inquiry
+
+  Type: Sequential | Completion: Manual | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Form Fields: None
+  Actions: None
+
+  Operation:
+    → Auto-completed when quotation is converted to loan
+    → For direct loan creation: loan creator clicks Complete
+
+  ---
+  Stage 2: Document Selection
+
+  Type: Sequential | Completion: Manual | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Form Fields: None
+  Actions: None
+
+  Operation:
+    → Auto-completed when quotation is converted to loan
+    → Documents auto-populated from quotation or customer type defaults
+
+  ---
+  Stage 3: Document Collection
+
+  Type: Sequential | Completion: Manual | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Form Fields: None (uses separate document collection UI)
+  Actions: None
+
+  Operation:
+    → Advisor opens Documents tab
+    → For each document:
+        Mark as Received (customer provided)
+        Mark as Rejected (not acceptable, provide reason)
+        Mark as Waived (not needed for this case)
+        Upload file attachment
+    → Can add custom documents
+    → Completion blocked until: ALL required docs are Received or Waived
+
+  ---
+  Stage 4: Parallel Processing (Container)
+
+  Type: Parallel | Completion: Auto (when all sub-stages done) | Skippable: No
+  Roles: None (container only, never assigned)
+
+  Sub-stages execute in this order:
+    4a: Application Number (must complete first)
+        ↓
+    4b: BSM/OSV Approval (must complete before 4c, 4d, 4e)
+        ↓
+    4c, 4d, 4e open in parallel:
+        4c: Legal Verification
+        4d: Technical Valuation
+        4e: Loan Sanction Decision
+        ↓
+    ALL complete → Stage 4 done
+
+  ---
+  Stage 4a: Application Number
+
+  Type: Sub-stage | Completion: Auto when fields filled | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+
+  Form Fields:
+  ┌─────────────────────┬──────────┬──────────┬─────────────────────────────────────────┐
+  │ Field               │ Type     │ Required │ Notes                                   │
+  ├─────────────────────┼──────────┼──────────┼─────────────────────────────────────────┤
+  │ application_number  │ text     │ Yes      │ Bank application number                 │
+  │ docket_days_offset  │ select   │ Yes      │ Options: S+1, S+2, S+3, Custom Date     │
+  │ custom_docket_date  │ date     │ No       │ Only visible when offset = Custom (0)   │
+  │ stageRemarks        │ textarea │ No       │ Optional remarks                        │
+  └─────────────────────┴──────────┴──────────┴─────────────────────────────────────────┘
+
+  Actions: None (auto-completes when application_number + docket_days_offset filled)
+
+  Lifecycle:
+    → Advisor assigned
+    → Fills application number + selects docket timeline
+    → If Custom: enters custom docket date
+    → Stage auto-completes → opens BSM/OSV
+
+  ---
+  Stage 4b: BSM/OSV Approval
+
+  Type: Sub-stage | Completion: Manual | Skippable: No
+  Roles: Bank Employee
+
+  Form Fields: None
+  Actions: None
+
+  Lifecycle:
+    → Bank Employee assigned (auto from bank's default employee)
+    → Performs BSM/OSV verification with bank
+    → Clicks Complete
+    → Completes → opens Legal Verification + Technical Valuation + Loan Sanction Decision
+
+  ---
+  Stage 4c: Legal Verification
+
+  Type: Sub-stage | Completion: Auto on action | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+
+  Form Fields:
+  ┌──────────────────────────┬──────────┬──────────┬──────────────────────────────────┐
+  │ Field                    │ Type     │ Required │ Notes                            │
+  ├──────────────────────────┼──────────┼──────────┼──────────────────────────────────┤
+  │ suggested_legal_advisor  │ text     │ Yes      │ Only shown in Phase 1            │
+  │ confirmed_legal_advisor  │ readonly │ No       │ Only shown in Phase 3            │
+  └──────────────────────────┴──────────┴──────────┴──────────────────────────────────┘
+
+  Actions (3-phase):
+  ┌───┬──────────────────────────────┬──────────┬───────────────────┬─────────────────────┐
+  │ # │ Action                       │ Owner    │ Type              │ Transfer to         │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼─────────────────────┤
+  │ 1 │ Send to Bank                 │ Advisor  │ Save & Transfer   │ Bank Side           │
+  │   │ Required: suggested_legal_advisor                                                 │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼─────────────────────┤
+  │ 2 │ Initiate Legal Verification  │ Bank Side│ Save & Transfer   │ Original Assignee   │
+  │   │ Required: none                                                                    │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼─────────────────────┤
+  │ 3 │ Complete                     │ Advisor  │ Complete          │ —                   │
+  │   │ Required: none                                                                    │
+  └───┴──────────────────────────────┴──────────┴───────────────────┴─────────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor enters suggested legal advisor name → clicks "Send to Bank"
+             → transfers to Bank Employee
+    Phase 2: Bank Employee reviews/confirms legal advisor → clicks "Initiate Legal"
+             → transfers back to Advisor
+    Phase 3: Advisor clicks "Complete" when legal verification is done
+             → stage completes
+
+  ---
+  Stage 4d: Technical Valuation
+
+  Type: Sub-stage | Completion: Auto on save | Skippable: No
+  Roles: Branch Manager, Office Employee
+
+  Form Fields: Uses separate Valuation Form (LoanValuationController)
+    - Property Type (6 options: residential_bunglow, flat, commercial, industrial, land, mixed)
+    - Property Address
+    - Latitude/Longitude (map picker)
+    - Land Area + Rate per unit → Land Value (auto-calculated)
+    - Construction Area + Rate per unit → Construction Value (auto-calculated)
+    - Final Valuation = Land + Construction (auto-calculated)
+
+  Actions: None (auto-completes when valuation form saved)
+
+  Lifecycle:
+    → Office Employee assigned (auto from branch default office employee)
+    → Opens Valuation form
+    → Fills property details, areas, rates
+    → Saves form → stage auto-completes
+
+  ---
+  Stage 4e: Loan Sanction Decision
+
+  Type: Sub-stage | Completion: Auto on action | Skippable: No
+  Roles: Office Employee, Branch Manager, BDO
+
+  Form Fields:
+  ┌────────────────────┬──────────┬──────────┬───────────────────────────────────────────┐
+  │ Field              │ Type     │ Required │ Notes                                     │
+  ├────────────────────┼──────────┼──────────┼───────────────────────────────────────────┤
+  │ decision_remarks   │ textarea │ No       │ Required for escalation only              │
+  │ rejection_reason   │ textarea │ Yes      │ Only shown for Reject action              │
+  │ escalation_history │ readonly │ No       │ Shows escalation chain                    │
+  └────────────────────┴──────────┴──────────┴───────────────────────────────────────────┘
+
+  Actions (escalation chain):
+  ┌───┬──────────────────────────────┬──────────────────┬───────────────────┬─────────────────┐
+  │ # │ Action                       │ Owner            │ Type              │ Required Fields │
+  ├───┼──────────────────────────────┼──────────────────┼───────────────────┼─────────────────┤
+  │ 1 │ Approve & Sanction Loan      │ Current Assignee │ Complete          │ None            │
+  │   │ Sets is_sanctioned = true                                                            │
+  ├───┼──────────────────────────────┼──────────────────┼───────────────────┼─────────────────┤
+  │ 2 │ Escalate to Branch Manager   │ Office Side      │ Save & Transfer   │ decision_remarks│
+  │   │ Transfers to Branch Manager                                                          │
+  ├───┼──────────────────────────────┼──────────────────┼───────────────────┼─────────────────┤
+  │ 3 │ Escalate to BDO              │ Advisor          │ Save & Transfer   │ decision_remarks│
+  │   │ Transfers to BDO                                                                     │
+  ├───┼──────────────────────────────┼──────────────────┼───────────────────┼─────────────────┤
+  │ 4 │ Reject Loan                  │ Advisor          │ Complete          │ rejection_reason│
+  │   │ Sets loan status = rejected, all stages locked                                       │
+  └───┴──────────────────────────────┴──────────────────┴───────────────────┴─────────────────┘
+
+  Lifecycle:
+    → Office Employee assigned
+    → Office Employee sees: [Approve] [Escalate to BM]
+       If approves → is_sanctioned=true, stage completes
+       If escalates → transfers to Branch Manager with remarks
+
+    → Branch Manager sees: [Approve] [Escalate to BDO] [Reject]
+       If approves → is_sanctioned=true, stage completes
+       If escalates → transfers to BDO with remarks
+       If rejects → rejection_reason required, loan rejected, ALL stages locked
+
+    → BDO sees: [Approve] [Reject]
+       If approves → is_sanctioned=true, stage completes
+       If rejects → rejection_reason required, loan rejected, ALL stages locked
+
+    On rejection:
+      → loan.status = rejected
+      → loan.rejected_at, rejected_by, rejected_stage, rejection_reason recorded
+      → ALL pending/in_progress stages → status = rejected
+      → All stages become read-only
+
+  ---
+  Stage 5: Rate & PF Request
+
+  Type: Sequential | Completion: Auto on action | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Gate: Only proceeds if is_sanctioned = true
+
+  Form Fields:
+  ┌────────────────────┬────────────┬──────────┬────────────────────────────────────────┐
+  │ Field              │ Type       │ Required │ Notes                                  │
+  ├────────────────────┼────────────┼──────────┼────────────────────────────────────────┤
+  │ [heading]          │ heading    │ —        │ "Interest Rate Details"                 │
+  │ interest_rate      │ percentage │ Yes      │ Validation: 0-30%                      │
+  │ repo_rate          │ percentage │ Yes      │                                        │
+  │ bank_rate          │ percentage │ Yes      │ Bank Margin                            │
+  │ rate_offered_date  │ date       │ Yes      │                                        │
+  │ rate_valid_until   │ date       │ Yes      │                                        │
+  │ bank_reference     │ text       │ Yes      │                                        │
+  │ [heading]          │ heading    │ —        │ "Processing Fee Details"                │
+  │ processing_fee     │ percentage │ Yes      │                                        │
+  │ admin_charges      │ currency   │ Yes      │ Default: 0                             │
+  │ processing_fee_gst │ currency   │ Yes      │ Default: 0                             │
+  │ total_pf           │ currency   │ Yes      │ Default: 0                             │
+  │ special_conditions │ textarea   │ No       │                                        │
+  │ stageRemarks       │ textarea   │ No       │                                        │
+  └────────────────────┴────────────┴──────────┴────────────────────────────────────────┘
+
+  Actions (3-phase):
+  ┌───┬──────────────────────────────┬──────────┬───────────────────┬──────────────────────────┐
+  │ # │ Action                       │ Owner    │ Type              │ Required Fields          │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼──────────────────────────┤
+  │ 1 │ Send to Bank                 │ Advisor  │ Save & Transfer   │ All 10 rate/fee fields   │
+  │   │ Snapshots original values for comparison                                               │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼──────────────────────────┤
+  │ 2 │ Save & Return to Task Owner  │ Bank Side│ Save & Transfer   │ None                     │
+  ├───┼──────────────────────────────┼──────────┼───────────────────┼──────────────────────────┤
+  │ 3 │ Complete                     │ Advisor  │ Complete          │ None                     │
+  │   │ Shows original values as hints below each field                                        │
+  └───┴──────────────────────────────┴──────────┴───────────────────┴──────────────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor fills all 10 rate/fee fields → "Send to Bank"
+             Original values snapshotted → transfers to Bank Employee
+    Phase 2: Bank Employee reviews/modifies fields → "Save & Return"
+             → transfers back to Advisor
+    Phase 3: Advisor sees bank's changes (original values as hints)
+             → reviews → "Complete"
+
+  ---
+  Stage 6: Sanction Letter
+
+  Type: Sequential | Completion: Auto on fields | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Completion fields: sanction_date + sanctioned_amount + emi_amount
+
+  Form Fields:
+  ┌────────────────────┬─────────────┬──────────┬──────────────────────────────────────────┐
+  │ Field              │ Type        │ Required │ Notes                                    │
+  ├────────────────────┼─────────────┼──────────┼──────────────────────────────────────────┤
+  │ sanction_date      │ date        │ Yes      │ Only shown in Phase 3                    │
+  │ sanctioned_amount  │ amount_words│ Yes      │ Shows amount in Indian words. Phase 3    │
+  │ sanctioned_rate    │ readonly    │ No       │ Pre-filled from rate_pf interest_rate     │
+  │ emi_amount         │ amount_words│ Yes      │ Shows amount in Indian words. Phase 3    │
+  │ conditions         │ textarea    │ No       │ Phase 3 only                             │
+  │ stageRemarks       │ textarea    │ No       │                                          │
+  └────────────────────┴─────────────┴──────────┴──────────────────────────────────────────┘
+
+  Actions (3-phase):
+  ┌───┬────────────────────────────────────┬──────────┬───────────────────┬───────────────────────────┐
+  │ # │ Action                             │ Owner    │ Type              │ Required Fields           │
+  ├───┼────────────────────────────────────┼──────────┼───────────────────┼───────────────────────────┤
+  │ 1 │ Send for Sanction Letter Generation│ Advisor  │ Transfer          │ None                      │
+  ├───┼────────────────────────────────────┼──────────┼───────────────────┼───────────────────────────┤
+  │ 2 │ Sanction Letter Generated          │ Bank Side│ Save & Transfer   │ None                      │
+  ├───┼────────────────────────────────────┼──────────┼───────────────────┼───────────────────────────┤
+  │ 3 │ Complete                           │ Advisor  │ Complete          │ sanction_date,             │
+  │   │                                    │          │                   │ sanctioned_amount,emi_amount│
+  └───┴────────────────────────────────────┴──────────┴───────────────────┴───────────────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor clicks "Send for Sanction Letter Generation"
+             → transfers to Bank Employee
+    Phase 2: Bank Employee generates sanction letter → "Sanction Letter Generated"
+             → transfers back to Advisor
+    Phase 3: Advisor fills sanction_date, sanctioned_amount, emi_amount
+             Docket date auto-calculated: sanction_date + docket_days_offset
+             → "Complete"
+
+  ---
+  Stage 7: Docket Login
+
+  Type: Sequential | Completion: Auto on action | Skippable: No
+  Roles: Branch Manager, Loan Advisor, Office Employee
+
+  Form Fields:
+  ┌──────────────┬──────────┬──────────┬────────────────────┐
+  │ Field        │ Type     │ Required │ Notes              │
+  ├──────────────┼──────────┼──────────┼────────────────────┤
+  │ login_date   │ date     │ Yes      │                    │
+  │ stageRemarks │ textarea │ No       │                    │
+  └──────────────┴──────────┴──────────┴────────────────────┘
+
+  Actions (3-phase):
+  ┌───┬──────────────────────────────────┬─────────────┬───────────────────┬─────────────────┐
+  │ # │ Action                           │ Owner       │ Type              │ Required Fields │
+  ├───┼──────────────────────────────────┼─────────────┼───────────────────┼─────────────────┤
+  │ 1 │ Save & Send to Office Employee   │ Advisor     │ Save & Transfer   │ login_date      │
+  ├───┼──────────────────────────────────┼─────────────┼───────────────────┼─────────────────┤
+  │ 2 │ Complete & Return                │ Office Side │ Save & Transfer   │ None            │
+  ├───┼──────────────────────────────────┼─────────────┼───────────────────┼─────────────────┤
+  │ 3 │ Complete                         │ Advisor     │ Complete          │ None            │
+  └───┴──────────────────────────────────┴─────────────┴───────────────────┴─────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor enters login_date → "Send to Office Employee"
+             → transfers to Office Employee
+    Phase 2: Office Employee reviews docket → "Complete & Return"
+             → transfers back to Advisor
+    Phase 3: Advisor → "Complete"
+
+  ---
+  Stage 8: KFS Generation
+
+  Type: Sequential | Completion: Manual | Skippable: No
+  Roles: Branch Manager, Loan Advisor, Office Employee
+  Form Fields: None
+  Actions: None
+
+  Lifecycle:
+    → Assigned user generates Key Fact Statement
+    → Clicks Complete
+
+  ---
+  Stage 9: E-Sign & eNACH
+
+  Type: Sequential | Completion: Auto on action | Skippable: No
+  Roles: Branch Manager, Loan Advisor, Bank Employee
+
+  Form Fields:
+  ┌──────────────┬──────────┬──────────┬────────────────────┐
+  │ Field        │ Type     │ Required │ Notes              │
+  ├──────────────┼──────────┼──────────┼────────────────────┤
+  │ stageRemarks │ textarea │ No       │                    │
+  └──────────────┴──────────┴──────────┴────────────────────┘
+
+  Actions (4-phase):
+  ┌───┬────────────────────────────────────────┬──────────┬───────────────────┬────────────────────┐
+  │ # │ Action                                 │ Owner    │ Type              │ Transfer to        │
+  ├───┼────────────────────────────────────────┼──────────┼───────────────────┼────────────────────┤
+  │ 1 │ Send for E-Sign & eNACH               │ Advisor  │ Save & Transfer   │ Bank Side          │
+  ├───┼────────────────────────────────────────┼──────────┼───────────────────┼────────────────────┤
+  │ 2 │ E-Sign & eNACH Generated              │ Bank Side│ Save & Transfer   │ Original Assignee  │
+  ├───┼────────────────────────────────────────┼──────────┼───────────────────┼────────────────────┤
+  │ 3 │ E-Sign & eNACH Completed with Customer│ Advisor  │ Save & Transfer   │ Bank Side          │
+  ├───┼────────────────────────────────────────┼──────────┼───────────────────┼────────────────────┤
+  │ 4 │ Complete                               │ Bank Side│ Complete          │ —                  │
+  └───┴────────────────────────────────────────┴──────────┴───────────────────┴────────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor initiates → "Send for E-Sign & eNACH"
+             → transfers to Bank Employee
+    Phase 2: Bank Employee generates documents → "E-Sign & eNACH Generated"
+             → transfers to Advisor
+    Phase 3: Advisor completes with customer → "Completed with Customer"
+             → transfers to Bank Employee
+    Phase 4: Bank Employee confirms → "Complete"
+
+  ---
+  Stage 10: Disbursement
+
+  Type: Decision | Completion: Manual | Skippable: No
+  Roles: Branch Manager, Loan Advisor
+  Form Fields: Handled by separate DisbursementController (not stage_form_fields)
+  Actions: None (uses DisbursementController)
+
+  Disbursement Types:
+  ┌───────────────┬───────────────────────────────────────────────────────────────┐
+  │ Fund Transfer │ Enter: loan_account_number, amount, date                     │
+  │               │ → LOAN COMPLETES IMMEDIATELY (OTC skipped)                   │
+  ├───────────────┼───────────────────────────────────────────────────────────────┤
+  │ Cheque        │ Enter: cheque details (number, date, amount per cheque)      │
+  │               │ Total cheques must be ≤ disbursement amount                  │
+  │               │ → ADVANCES TO STAGE 11 (OTC Clearance)                       │
+  └───────────────┴───────────────────────────────────────────────────────────────┘
+
+  Lifecycle:
+    → Advisor fills disbursement form
+    → Selects type: Fund Transfer or Cheque
+    → Fund Transfer: enters account details → Save → loan status = completed
+    → Cheque: enters cheque details → Save → advances to OTC Clearance
+
+  ---
+  Stage 11: OTC Clearance (Cheque disbursement only)
+
+  Type: Sequential | Completion: Auto on fields | Skippable: No | Terminal: Yes
+  Roles: Branch Manager, Loan Advisor, Office Employee
+  Completion fields: handover_date
+
+  Form Fields:
+  ┌────────────────┬──────────┬──────────┬────────────────────┐
+  │ Field          │ Type     │ Required │ Notes              │
+  ├────────────────┼──────────┼──────────┼────────────────────┤
+  │ handover_date  │ date     │ Yes      │ Required always    │
+  │ stageRemarks   │ textarea │ No       │                    │
+  └────────────────┴──────────┴──────────┴────────────────────┘
+
+  Actions (2-phase with choice):
+  ┌───┬──────────────────────────────────┬─────────────┬───────────────────┬─────────────────┐
+  │ # │ Action                           │ Owner       │ Type              │ Required Fields │
+  ├───┼──────────────────────────────────┼─────────────┼───────────────────┼─────────────────┤
+  │ 1 │ Transfer to Office Employee      │ Advisor     │ Transfer          │                 │
+  │ 1 │ Complete OTC Clearance (Advisor) │ Advisor     │ Complete          │ handover_date   │
+  ├───┼──────────────────────────────────┼─────────────┼───────────────────┼─────────────────┤
+  │ 2 │ Complete OTC Clearance (Office)  │ Office Side │ Complete          │ handover_date   │
+  └───┴──────────────────────────────────┴─────────────┴───────────────────┴─────────────────┘
+
+  Lifecycle:
+    Phase 1: Advisor has TWO buttons :
+      Option A: "Complete OTC Clearance" → enters handover_date → LOAN COMPLETED
+      Option B: "Transfer to Office Employee" → transfers
+
+    Phase 2 (if transferred):
+      Office Employee → "Complete OTC Clearance" → LOAN COMPLETED
+
+  ---
+  Cross-Stage Rules
+
+  Query System
+
+  Every stage can have queries raised (can_raise_query = true)
+  Pending queries block stage completion and action execution
+  Flow: Raise → Respond → Resolve → Stage unblocked
+
+  Auto-Assignment Priority
+
+  1. Product Stage Config (branch/city/state-specific user)
+  2. Bank-side: bank default employee → employer bank+branch → employer bank
+  3. Office-side: default office employee for branch
+  4. Advisor: loan creator (if advisor-eligible)
+  5. Branch-based match
+  6. Any active user with eligible role
+
+  Loan Status Rules
+
+  Approve (sanction decision)  → is_sanctioned = true
+  Reject (BM/BDO only)        → loan rejected, all stages locked, read-only
+  On Hold (loan creator only)  → processing paused

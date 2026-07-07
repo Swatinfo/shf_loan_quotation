@@ -1,0 +1,156 @@
+/*
+ * Site-wide modal styles for the newtheme.
+ *
+ * The shared create-task + create-dvr modals live in the layout, so their CSS
+ * also needs to be layout-wide — otherwise any page that doesn't load the
+ * tasks-page CSS renders the modal as unstyled DOM and the `display:flex`
+ * inline style just turns it into a bottom-right block.
+ *
+ * The `.gt-*` class prefix is kept (instead of renaming) so pages that
+ * already depend on these classes (newtheme/pages/general-tasks.css) stay
+ * compatible — the page-CSS rules just become redundant duplicates.
+ */
+
+.gt-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 18, 19, 0.55);
+    z-index: 1200;
+}
+
+.gt-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 32px);
+    max-width: 560px;
+    max-height: calc(100vh - 40px);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+    z-index: 1201;
+    display: flex;
+    flex-direction: column;
+}
+
+.gt-modal form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gt-modal-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line, #e6e4e3);
+}
+.gt-modal-hd h3 {
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0;
+    color: var(--ink, #1c1a1b);
+}
+.gt-modal-hd .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--ink-3, #6b7280);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.gt-modal-hd .icon-btn:hover {
+    background: var(--paper-2, #f4f2f0);
+    color: var(--ink, #1c1a1b);
+}
+
+.gt-modal-bd {
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.gt-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 599px) {
+    .gt-row-2 { grid-template-columns: 1fr; }
+}
+
+.gt-modal-ft {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--line, #e6e4e3);
+}
+
+.gt-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.gt-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.gt-field .err {
+    font-size: 11.5px;
+    color: var(--red, #c0392b);
+    margin-top: 4px;
+    min-height: 14px;
+}
+.gt-field .input.input-error,
+.gt-field input.input-error,
+.gt-field select.input-error,
+.gt-field textarea.input-error {
+    border-color: var(--red, #c0392b) !important;
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+}
+
+/* SHF.validateForm inline-error markup */
+.shf-validation-error {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* Loan-search autocomplete panel (used by create-task modal) */
+.gt-loan-results {
+    background: #fff;
+    border: 1px solid var(--line, #e6e4e3);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+}
+.gt-loan-results.open { display: block; }
+.gt-loan-results .item {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink, #1c1a1b);
+    cursor: pointer;
+    line-height: 1.4;
+}
+.gt-loan-results .item:hover {
+    background: var(--paper-2, #f4f2f0);
+}

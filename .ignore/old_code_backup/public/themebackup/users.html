@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Users · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2"><link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Admin <span class="sep">/</span> Users</div><h1>Users</h1><div class="sub">24 active7 roles3 branches</div></div><div class="head-actions"><button class="btn" data-action="toast" data-arg="Import">Import</button><button class="btn primary" data-action="toast" data-arg="+ Invite user">+ Invite user</button><a class="btn primary" href="user-edit.html">+ Add user</a></div></header>
+<main class="content"><div class="card"><div class="card-hd" style="padding:12px 18px;"><div class="filter-row"><div class="search-wrap"><input class="input" placeholder="Search name, email, phone…"></div><button class="btn sm">Role ▾</button><button class="btn sm">Branch ▾</button><button class="btn sm">Status ▾</button></div></div><div class="card-bd" style="padding:0;"><table class="tbl"><thead><tr><th>User</th><th>Role</th><th>Branch</th><th>Active loans</th><th>Last login</th><th>Status</th><th></th><th class="th-actions" style="width:48px;text-align:right;"></th></tr></thead><tbody>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm">RJ</div><div><div style="font-weight:500;">Rahul Jadeja</div><div class="text-xs text-muted">rahul.j@shfworld.in</div></div></div></td><td><span class="badge blue sq">Loan advisor</span></td><td>Maninagar</td><td class="tnum">12</td><td>2 min ago</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#d4e4f2;color:#1d4e89;">AP</div><div><div style="font-weight:500;">Anita Patel</div><div class="text-xs text-muted">anita.p@shfworld.in</div></div></div></td><td><span class="badge blue sq">Loan advisor</span></td><td>Maninagar</td><td class="tnum">9</td><td>18 min ago</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#d9eed9;color:#107a4f;">NS</div><div><div style="font-weight:500;">Neha Soni</div><div class="text-xs text-muted">neha.s@shfworld.in</div></div></div></td><td><span class="badge sq">Office employee</span></td><td>Maninagar</td><td class="tnum">—</td><td>45 min ago</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#e5dcf2;color:#6b4c97;">VM</div><div><div style="font-weight:500;">Vipul Mehta</div><div class="text-xs text-muted">vipul.m@shfworld.in</div></div></div></td><td><span class="badge blue sq">Loan advisor</span></td><td>Satellite</td><td class="tnum">7</td><td>1h ago</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#f4e6c7;color:#8a5a10;">BM</div><div><div style="font-weight:500;">Bharat Mehta</div><div class="text-xs text-muted">bharat.m@shfworld.in</div></div></div></td><td><span class="badge amber sq">Branch manager</span></td><td>Maninagar</td><td class="tnum">—</td><td>2h ago</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm">DK</div><div><div style="font-weight:500;">Dipti Kaul</div><div class="text-xs text-muted">dipti.k@shfworld.in</div></div></div></td><td><span class="badge blue sq">Loan advisor</span></td><td>Satellite</td><td class="tnum">4</td><td>5h ago</td><td><span class="badge amber sq">On leave</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#d9eed9;color:#107a4f;">SG</div><div><div style="font-weight:500;">Saurabh Gandhi</div><div class="text-xs text-muted">saurabh@hdfcbank.com</div></div></div></td><td><span class="badge violet sq">Bank employee HDFC</span></td><td>—</td><td class="tnum">6</td><td>Yesterday</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#fae3e3;color:#9c1f2e;">HD</div><div><div style="font-weight:500;">Harsh Doshi</div><div class="text-xs text-muted">harsh@hdfcbank.com</div></div></div></td><td><span class="badge violet sq">Bank employee HDFC</span></td><td>—</td><td class="tnum">6</td><td>3d</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm">AM</div><div><div style="font-weight:500;">Admin Master</div><div class="text-xs text-muted">admin@shfworld.in</div></div></div></td><td><span class="badge red sq">Super admin</span></td><td>All</td><td class="tnum">—</td><td>Now</td><td><span class="badge green sq">Active</span></td><td><a class="btn sm ghost" href="user-edit.html">Edit</a></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="user-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="User">Delete</a>
+ </div>
+ </div></td></tr>
+</tbody></table></div></div></main>
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('users');</script><script src="assets/shf-interactive.js"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/users.js?v=1"></script>
+</body></html>

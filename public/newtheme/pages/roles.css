@@ -1,0 +1,329 @@
+/* Page-specific styles for resources/views/newtheme/roles/index.blade.php */
+
+/* Flash */
+.rl-flash {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.10);
+    color: var(--green);
+    border: 1px solid rgba(16, 185, 129, 0.30);
+    font-size: 13px; font-weight: 500;
+}
+.rl-flash .i { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Card */
+.rl-card .card-hd .sub { color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
+
+/* Desktop table */
+.rl-table { width: 100%; border-collapse: collapse; }
+.rl-table thead th {
+    background: var(--paper-2);
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+.rl-table thead th.num { text-align: center; }
+.rl-table thead th.col-actions { width: 52px; text-align: right; }
+
+.rl-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px; color: var(--ink);
+    vertical-align: middle;
+}
+.rl-table tbody tr:last-child td { border-bottom: none; }
+.rl-table tbody tr:hover { background: var(--paper-2); }
+.rl-table tbody td.num { text-align: center; }
+.rl-table tbody td.col-actions { text-align: right; }
+
+.rl-name { font-weight: 600; font-family: 'Jost', sans-serif; }
+.rl-slug {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    background: var(--paper-2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.01em;
+}
+.rl-desc {
+    color: var(--ink-3);
+    max-width: 32rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.rl-user-count {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--blue, #2563eb);
+    min-width: 28px;
+    text-align: center;
+}
+.rl-user-count.zero {
+    background: var(--paper-2);
+    color: var(--ink-4);
+}
+
+/* Edit action button */
+.rl-act {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px;
+    border: 1px solid var(--line-strong, #c9c5c3);
+    background: #fff;
+    color: var(--ink-3);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.12s ease;
+}
+.rl-act .i { width: 14px; height: 14px; }
+.rl-act:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+    border-color: var(--ink-4);
+}
+.rl-act.tone-gray { /* default light action */ }
+
+.rl-empty {
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 13px;
+}
+
+/* Mobile cards */
+.rl-m-card {
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--line);
+}
+.rl-m-card:last-child { border-bottom: none; }
+
+.rl-m-hd {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 8px;
+}
+.rl-m-hd strong { font-size: 14px; font-family: 'Jost', sans-serif; font-weight: 600; }
+.rl-m-hd .rl-slug { margin-top: 4px; }
+
+.rl-m-desc {
+    color: var(--ink-3);
+    font-size: 12.5px;
+    margin-bottom: 8px;
+    line-height: 1.45;
+}
+
+.rl-m-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px;
+    padding: 4px 0;
+}
+.rl-m-row .k {
+    min-width: 74px;
+    color: var(--ink-4);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.rl-m-row .v { color: var(--ink); flex: 1; }
+
+.rl-m-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-soft, #eee);
+    display: flex;
+    gap: 6px;
+}
+
+/* Desktop/mobile toggles */
+@media (max-width: 768px) {
+    .d-desktop-only { display: none !important; }
+    .d-mobile-only { display: block !important; }
+}
+@media (min-width: 769px) {
+    .d-desktop-only { display: block !important; }
+    .d-mobile-only { display: none !important; }
+}
+
+/* ================================================================
+   Role create / edit form
+   ================================================================ */
+
+.rl-errors {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(192, 57, 43, 0.08);
+    color: var(--red);
+    border: 1px solid rgba(192, 57, 43, 0.30);
+    font-size: 13px;
+}
+.rl-errors .i { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+
+.rlf-row { margin-bottom: 14px; }
+.rlf-row-tight { margin-bottom: 8px; }
+
+.rlf-lbl {
+    display: block;
+    font-size: 11px; font-weight: 600;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+.rlf-req { color: var(--red); }
+
+.rlf-hint {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--ink-4);
+}
+
+.rlf-err {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--red);
+}
+.input.is-invalid {
+    border-color: var(--red) !important;
+    background: rgba(192, 57, 43, 0.04);
+}
+
+.rlf-intro {
+    margin: 0 0 14px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+}
+
+.rlf-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    letter-spacing: 0.02em;
+}
+input[readonly].input { background: var(--paper-2); color: var(--ink-3); cursor: not-allowed; }
+
+.rlf-check {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+    user-select: none;
+}
+.rlf-check input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.rlf-copy-opts {
+    margin-top: 4px;
+    padding: 12px 14px;
+    background: var(--paper-2);
+    border-radius: 6px;
+}
+
+.rlf-actions {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 14px 0 0;
+}
+
+/* ================================================================
+   Role edit — permissions & stage eligibility grids
+   ================================================================ */
+
+.rle-card .card-hd .sub { color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
+.rle-card .card-hd .actions .btn.sm {
+    height: 28px; padding: 0 10px; font-size: 11.5px;
+}
+
+.rle-group {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+.rle-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+
+.rle-group-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.rle-group-name {
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.rle-group-toggle {
+    border: none;
+    background: none;
+    color: var(--ink-4);
+    font-size: 11px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+.rle-group-toggle:hover { color: var(--accent); background: var(--paper-2); }
+
+.rle-perm-grid,
+.rle-stage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 12px;
+}
+@media (max-width: 960px) {
+    .rle-perm-grid,
+    .rle-stage-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .rle-perm-grid,
+    .rle-stage-grid { grid-template-columns: 1fr; }
+}
+
+.rle-perm {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    min-width: 0;
+}
+.rle-perm:hover { background: var(--paper-2); }
+.rle-perm input[type="checkbox"] {
+    width: 15px; height: 15px;
+    accent-color: var(--accent);
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.rle-perm-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rle-perm-name {
+    font-size: 12.5px;
+    color: var(--ink);
+    font-weight: 500;
+    word-break: break-word;
+}
+.rle-perm-desc {
+    font-size: 11px;
+    color: var(--ink-4);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.rle-stage.is-sub { padding-left: 20px; }
+.rle-stage.is-sub .rle-perm-name::before {
+    content: '↳ ';
+    color: var(--ink-4);
+    margin-right: 2px;
+}

@@ -1,0 +1,285 @@
+# Frontend (CSS + JS)
+
+Bootstrap 5.3 + jQuery 3.7, local vendor files, no build step. Newtheme is the only theme: all views under `resources/views/newtheme/`, all assets under `public/newtheme/`. The pre-newtheme source is preserved in `.ignore/old_code_backup/` (tracked in git).
+
+Design tokens and component classes live across several stylesheets:
+- `public/newtheme/assets/shf.css` — newtheme design system (topbar, cards, buttons, forms)
+- `public/newtheme/assets/shf-extras.css`, `shf-workflow.css`, `shf-modals.css` — shared overlays and workflow/modal styles
+- `public/newtheme/css/shf.css` — legacy `shf-*` classes kept for screens that still render legacy markup (loan stages, documents, valuation, quotation show, settings)
+- `public/newtheme/pages/*.css` — per-page stylesheets (e.g. `dashboard.css`, `loans.css`, `quotation-show.css`)
+
+## Vendor stack
+
+Loaded globally in `resources/views/newtheme/layouts/app.blade.php`:
+
+- **CSS**: newtheme bundle (`shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css`), Bootstrap Datepicker, SweetAlert2
+- **JS**: jQuery 3.7.1, Bootstrap Datepicker, SortableJS, SweetAlert2, newtheme runtime (`shf-newtheme.js`, `shf-interactive.js`, `shf-dropdown.js`, `shf-tab-persist.js`), push-notifications
+
+Some pages additionally load Bootstrap bundle + legacy `public/newtheme/js/shf-app.js` (quotation create, loan stages, valuation, settings) — done per-page, not globally.
+
+## Global AJAX loader (`SHF.loader`, 2026-07-07)
+
+`shf-newtheme.js` installs a site-wide loading overlay (`.shf-ajax-loader`, styles in `shf-extras.css`) driven by `$(document).ajaxSend/ajaxComplete` — **every jQuery `$.post`/`$.ajax` user action shows it automatically**, no per-page code. Semantics: reference-counted across overlapping requests; 250ms show-delay (fast requests never flash it); ≥300ms minimum visible (no blink); 30s watchdog force-hides if an `end()` is lost; overlay DOM is created on demand and blocks pointer events (double-submit protection). Guarded by `window.__shfLoaderInstalled`.
+
+Rules:
+
+- **Background jQuery calls** (polling, autosaves) must opt out with jQuery's `global: false` option.
+- **`fetch()` is NOT hooked** — the notification badge poll, DataTables/list loads, offline sync, and push registration stay silent by design. A `fetch()`-based *user action* must call `SHF.loader.begin()` before and `SHF.loader.end()` in a `finally` (see quotation `_create-script.blade.php` submit, `loans/show.blade.php` DME update, `pages/users.js` `postJson`). Guard with `if (window.SHF && SHF.loader)` in files that can run without the newtheme bundle.
+- List pages that render their own inline `Loading…` placeholder (users/loans/quotations data loads) keep that pattern — don't add the global overlay to table refreshes.
+
+Vendor directories under `public/newtheme/vendor/`: `bootstrap`, `datepicker`, `jquery`, `leaflet`, `sortablejs`, `sweetalert2`.
+
+Fonts under `public/fonts/`:
+- Jost (Regular, Medium, SemiBold, Bold) — display/headers, via `font-display` class
+- Archivo (Regular, Medium, SemiBold) — body/UI, default `body` font
+- NotoSansGujarati (Regular, Bold) — bilingual support
+
+## Design tokens (`:root` in `shf.css`)
+
+Colors:
+- `--primary-dark` `#3a3536bf`, `--primary-dark-solid` `#3a3536`, `--primary-dark-light` `#3a353696`
+- `--accent` `#f15a29`, `--accent-warm` `#f47929`, `--accent-light` `#f99d3e`, `--accent-dim` `rgba(241,90,41,0.10)`
+- `--bg` `#f8f8f8`, `--bg-alt` `#e6e7e8`, `--text` `#1a1a1a`, `--text-muted` `#6b7280`, `--border` `#bcbec0`, `--white`, `--red` `#c0392b`, `--green` `#27ae60`
+
+Sizing / shape:
+- `--radius` `10px`, `--shadow`, `--shadow-lg`
+- `--bs-border-width` `2px` (Bootstrap override)
+- `--shf-bottom-nav-height` — see **Mobile chrome (bottom nav + FAB)** below
+
+Font scale (use utility classes of the same name):
+- `--shf-text-2xs` `0.65rem` — badges, tiny labels
+- `--shf-text-xs` `0.75rem` — secondary labels
+- `--shf-text-sm` `0.8rem` — form labels
+- `--shf-text-base` `0.875rem` — body default
+- `--shf-text-md` `0.95rem` — slightly emphasized
+- `--shf-text-lg` `1.1rem` — section headings
+- `--shf-text-xl` `1.25rem` — page titles
+
+## Component classes
+
+### Sections
+- `.shf-section` — white card container
+- `.shf-section-header` — dark gradient header with number + title
+- `.shf-section-number` — orange 24px circle with a step number
+- `.shf-section-title`
+- `.shf-section-body` — 20px padding
+- `.shf-section-no-top-radius` — for tab-connected sections
+
+### Buttons (orange pill by default)
+- `.btn-accent`, `.btn-accent-sm`
+- `.btn-accent-outline`, `.btn-accent-outline-white` (for dark backgrounds)
+- Status variants: `.shf-btn-success` (green gradient), `.shf-btn-warning`, `.shf-btn-danger`, `.shf-btn-gray`, `.shf-btn-danger-alt`
+- `.shf-btn-minimal` — unstyled link-like button
+- `.shf-btn-icon` — icon-in-button positioning
+
+### Cards & stat cards
+- `.shf-card`
+- `.shf-stat-card` — white card with left border + icon + value + label
+- Color variants: `-blue`, `-accent`, `-green`, `-warning` (border + icon pair)
+
+### Forms
+- `.shf-form-label` — uppercase small label
+- `.shf-input`, `.shf-input-sm`, `.shf-input-readonly`
+- `.shf-amount-wrap` / `.shf-amount-input` / `.shf-amount-raw` — Indian currency trio
+- `.shf-select-compact`
+- `.shf-validation-error` — error message under invalid field
+
+### Badges
+- `.shf-badge` base
+- Colors: `-orange`, `-blue`, `-gray`, `-green`, `-purple`, `-red`, `-username`
+- **Stage-specific**: `shf-badge-stage-inquiry`, `-doc-selection`, `-doc-collection`, `-app-number`, `-bsm-osv`, `-legal`, `-valuation`, `-sanction-decision`, `-rate-pf`, `-sanction`, `-docket`, `-kfs`, `-esign`, `-disbursement`, `-otc`
+
+### Stage status (left border 4px)
+- `.shf-stage-pending`, `-in-progress`, `-completed`, `-rejected`, `-skipped`
+
+### Stage cards
+- `.shf-stage-card`, `.shf-stage-card--child` (left indent + accent border)
+- `.shf-stage-header`, `.shf-stage-header-title`, `.shf-stage-body`, `.shf-stage-roles`
+
+### Phase pills
+- `.shf-phase-pill` base
+- `--done`, `--active`, `--pending`
+- `.shf-phase-chevron` — arrow between pills
+- `.shf-transfer-hint` — muted caption
+
+### Stage notes block
+- `.shf-stage-notes`, `.shf-phase-step`, `.shf-phase-num`, `.shf-role-dot`, `.shf-note-line`, `.shf-transfer-line`
+
+### Role colors (CSS custom props in the file)
+Named: `.shf-role-loan-advisor` `#2563eb`, `.shf-role-bank-employee` `#d97706`, `.shf-role-branch-manager` `#059669`, `.shf-role-office-employee` `#7c3aed`, `.shf-role-task-owner` `#4b5563`. Background variants: `.shf-role-bg-*`.
+
+### Tabs
+- `.shf-tabs` (dark container), `.shf-tab`, `.shf-tab.active`, `.shf-tab-pane-hidden`, `.shf-tab-close`
+- `.shf-nav-link` / `.shf-nav-active` — navbar tab styling
+
+### Tags & chips
+- `.shf-tag`, `.shf-tag-remove` — removable inline tag
+- `.shf-chip` — toggleable chip (uses `input:checked`)
+
+### Documents
+- `.shf-doc-grid` (2-col on desktop)
+- `.shf-doc-item`, `.shf-doc-received`, `.shf-doc-pending`, `.shf-doc-rejected`, `.shf-doc-highlight`, `.shf-doc-actions`
+- Drag: `.doc-sortable-ghost`, `.doc-drag-handle`
+
+### Icons
+- Size classes: `.shf-icon-xs` (10px), `-2xs` (12), `-sm` (14), `-md` (16), `-lg` (20), `-xl` (32)
+- `.shf-icon-inline` — vertical-align middle
+- `.shf-header-icon` — for section headers
+
+### Navigation
+- `.shf-navbar-bg` — semi-transparent dark with backdrop blur
+- `.shf-header-back` — hover-white "← back" link
+
+### Stage pipeline (progress visualization)
+- `.shf-pipeline`, `.shf-pipeline-border`, `.shf-pipeline-step`, `.shf-connector`
+- `.shf-stage-dot`, `.shf-stage-dot--completed`, `--current`, `--in-progress`, `--pending`, `--skipped`, `--rejected`
+- `.shf-stage-label`, `.shf-stage-label--current`, `--completed`
+- Animations: `.shf-anim-dot`, `.shf-anim-conn-appear`
+
+### Empty state
+- `.shf-empty-state-icon`, `.shf-empty-icon-blue`, `-accent`, `-green`
+
+### Toasts
+- `.shf-toast-wrapper` — fixed bottom-right container
+- `.shf-toast` — + `.success`, `.error`, `.warning` variants (left-border color)
+- `.shf-toast-close`
+
+### Collapsible/filter helpers
+- `.shf-collapsible`, `.shf-filter-open`, `.shf-filter-count`, `.shf-filter-body-collapse`
+- `.shf-collapse-arrow` (rotates on open), `.shf-collapse-hidden`
+- `.shf-add-form-wrapper`, `.shf-add-form-toggle`, `.shf-add-form-body` — collapsible add-item form pattern
+
+### Other layout
+- `.shf-page-header` (dark gradient with title)
+- `.shf-page-title` (1.25rem)
+- `.shf-parallel-grid` — 2-col on desktop, 1-col mobile
+- `.shf-form-actions` — sticky-bottom button bar on mobile (<1200px), inline on desktop; respects safe-area-inset-bottom
+- `.shf-impersonation-banner` — fixed bottom amber banner
+- `.shf-guest-card` — login card with orange top border
+- `.shf-timeline-line` — left-side vertical rule for timelines
+- `.shf-remark-item`, `.shf-notification-badge`, `.shf-upload-label`, `.shf-password-toggle`
+
+### Toggles & checkboxes
+- `.shf-checkbox` — accent-colored
+- `.shf-toggle` — switch (18x36px)
+- `.shf-password-toggle` — absolute positioned eye button
+
+### Progress
+- `.shf-progress-sm` (6px), `.shf-progress-md` (8px)
+
+### Utility classes
+- Text colors: `.shf-text-accent`, `.shf-text-white-muted`, `.shf-text-white-70`, `.shf-text-nowrap`, `.shf-text-gray`, `.shf-text-gray-light`, `.shf-text-dark-alt`, `.shf-text-error`, `.shf-text-success-alt`, `.text-prewrap`, `.text-inherit`
+- Font: `.font-display` (Jost), `.font-body` (Archivo), `.shf-font-mono`
+- Max widths: `.shf-max-w-sm` (28rem), `-md` (42), `-lg` (48), `-xl` (56), `-20` (20), `-36` (36)
+- Cursor/border: `.shf-clickable`, `.shf-border-accent`, `.shf-border-top-light`, `.bg-accent-dim`
+
+### Per-page, pagination, DataTables
+- `.shf-per-page` — accent-bordered "X per page" selector
+- `.shf-pagination` — native pagination styled with accent
+- `.shf-dt-section`, `.shf-dt-bottom` — DataTables wrappers
+- Dom layout convention: `{ dom: 'rt<"shf-dt-bottom"ip>' }`
+- DataTables applies themed overrides automatically; native filter hidden (`.dataTables_filter { display: none }`)
+
+### Dates
+- Use the global Bootstrap Datepicker (loaded in layout). Don't add native `<input type="date">`.
+- Class: `.shf-datepicker` (or variants: `-past`, `-custom`). Initialized by `shf-app.js`.
+
+## JS API — `SHF.*` (public/newtheme/js/shf-app.js)
+
+### Validation
+
+`SHF.validateForm($form, rules) → boolean` — client-side validation. Rule types:
+
+- `required: true`
+- `maxlength: N`, `minlength: N`, `min: N`, `max: N` (numeric; strips commas)
+- `email: true`
+- `numeric: true`
+- `pattern: regex`, `patternMsg: string`
+- `dateFormat: 'd/m/Y'`
+- `label: string` — custom label for errors
+- `custom: function(val, $field, $form) → errorMessage | null`
+
+On failure: adds `.is-invalid`, inline error div `.shf-validation-error`, scrolls to first error (-120px), focuses. Clears automatically on next `input` / `change`.
+
+`SHF.validateBeforeAjax($container, rules, url, data)` — validate first, then `$.post` if valid. Returns jqXHR or `false`.
+
+### Indian number formatting
+
+- `SHF.formatIndianNumber(num) → "12,34,567"`
+- `SHF.numberToWordsEn(num)` — English words with Crore/Lakh/Thousand + "Rupees"
+- `SHF.numberToWordsGu(num)` — Gujarati words + "રૂપિયા"
+- `SHF.bilingualAmountWords(num)` — "EN / GU"
+- `SHF.initAmountFields()` — auto-init `.shf-amount-input` fields: formats display, syncs hidden `.shf-amount-raw`, updates `[data-amount-words]`. Runs automatically on DOMContentLoaded.
+
+### Auto behaviors (on `$(document).ready()`)
+
+- All forms get `novalidate`
+- `[data-auto-dismiss]` toasts fade after delay (default 5000ms)
+- `.shf-toast-close` removes toast
+- `.shf-password-toggle` toggles password visibility + eye icon
+- `.shf-saved-msg` fades out after 2s
+- `[data-bs-show-on-load="true"]` modals auto-open
+- `.shf-confirm-delete` triggers SweetAlert2 confirm before submit
+- `.shf-collapsible[data-target]` slideToggles target
+- Mobile (<768px): filters auto-collapse; `window.shfCollapseFiltersOnMobile()` helper
+- Desktop: filters auto-expand at load
+- Radio in multi-select auto-checks the neighboring checkbox
+- Textarea auto-expand fallback for browsers lacking `field-sizing: content`
+
+## JS API — `SHFLoans.*` (archived)
+
+The `SHFLoans.*` helpers lived in `public/js/shf-loans.js` (bank-dependent product dropdown, loan toasts). That file now sits in the archive at `.ignore/old_code_backup/public/js/shf-loans.js`. If a newtheme page needs that logic, copy the file into `public/newtheme/js/` and load it from the relevant blade.
+
+## Global inline scripts (newtheme/layouts/app.blade.php)
+
+- **Notification badge polling** — `updateNotifBadge()` every 60s, calls `/api/notifications/count`
+- **Impersonate search modal** — SweetAlert2 user picker
+- **Service Worker registration** — `navigator.serviceWorker.register('/sw.js')`
+- **OfflineManager** — network listeners + auto-sync on reconnect if pending items exist
+- **PWA install prompt** — captures `beforeinstallprompt`, shows `#installBanner` with 24h dismiss cooldown stored in localStorage
+
+## Responsive pattern for tables
+
+Wrap in `.shf-section .shf-dt-section`. Use `{ dom: 'rt<"shf-dt-bottom"ip>' }`. Build mobile cards in `drawCallback`:
+
+- On `<768px`: `table.dataTable` is hidden via CSS; data rendered as `.shf-card` blocks
+- Each cell becomes a key/value row with `data-label` pseudo-element
+
+Alternative: use `.shf-table-mobile` on simpler tables — CSS transforms rows into cards automatically with `<td data-label="...">` markup.
+
+## Mobile chrome (bottom nav + FAB)
+
+Below xl (< 1200 px — same breakpoint the top navbar uses with `navbar-expand-xl`), the app hands navigation off to two fixed widgets instead of a hamburger:
+
+- **Bottom nav** (`resources/views/newtheme/partials/bottom-nav.blade.php`) — 5 slots: `Dashboard · Loans · DVR · Tasks · More`. Class `.shf-bottom-nav` + `.shf-bottom-nav-item`. **More** opens a Bootstrap bottom `offcanvas` (`#shfMoreOffcanvas`) listing Quotations, Customers, Users, Settings, Activity Log, Reports, Notifications, Profile, Logout — all permission-gated.
+- **Mobile FAB** (`resources/views/newtheme/partials/fab.blade.php`) — expanding create-actions launcher. Pills: `New Quotation`, `New Task`, `New Visit`. Triggered via `data-bs-toggle` or `?create=1` deep-link. Class `.shf-fab-wrap` + `.shf-fab-main` + `.shf-fab-item`. Classes `shf-fab-backdrop` + body state `shf-fab-open` drive the expanded UI.
+
+Both are included in `newtheme/layouts/app.blade.php` at `</body>` — guarded by `request()->routeIs(...)` against loan deep-workflow routes (`loans.stages`, `loans.documents`, `loans.valuation`, `loans.valuation-map`, `loans.transfers`, `loans.timeline`, `loans.disbursement`). When suppressed, the body lacks `has-bottom-nav`, so `--shf-bottom-nav-height` resolves to `0` and in-page sticky bars keep their natural bottom anchor.
+
+### Height variable + sticky-bar contract
+
+```
+:root                          → --shf-bottom-nav-height: 0
+@media (max-width: 1199.98px)
+  body.has-bottom-nav          → --shf-bottom-nav-height: 64px
+                                  body { padding-bottom: var(--...); }
+```
+
+Any fixed/sticky bottom bar on a page that coexists with the bottom nav should read the variable: `bottom: var(--shf-bottom-nav-height, 0px)`. Example: the loan stages page's `.shf-bottom-bar`.
+
+### Hamburger removed
+
+`<button class="navbar-toggler">` is gone from `layouts/navigation.blade.php`. The `#shfNavbar` collapse wrapper stays because Bootstrap's `navbar-expand-xl` uses it to render the desktop horizontal nav at ≥ xl. At < xl the collapse stays closed; navigation happens via the bottom nav + More sheet.
+
+## CSS rules of engagement
+
+- **All custom classes start with `shf-`** to avoid Bootstrap collisions
+- **No new files** — for legacy classes, extend `public/newtheme/css/shf.css`. For newtheme design-system additions, extend `public/newtheme/assets/shf.css` or the page-scoped file under `public/newtheme/pages/`. Keep tokens in `:root`.
+- **No build step** — don't add SCSS or PostCSS. Plain CSS with custom properties.
+- **Responsive breakpoints**: 1200px (desktop chrome), 768px (tablet), 480px (small phones). Match existing usage.
+- **Media queries** grouped at the end of the file (mobile first would require a rewrite — not planned)
+
+## See also
+
+- `views.md` — Blade view conventions
+- `offline-pwa.md` — service worker + PWA install behavior

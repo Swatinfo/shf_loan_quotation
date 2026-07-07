@@ -1,0 +1,118 @@
+# Shreenathji Home Finance — Marketing Site
+# Clean URLs: extension-less (.php files are the source).
+# Works whether the site is served at the domain root OR from a subfolder.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ---- 0. HTTP → HTTPS redirect (opt-in) ----
+    # Leave as-is by default: visitors who request HTTP stay on HTTP, visitors
+    # who request HTTPS stay on HTTPS. This avoids breaking the site if an
+    # SSL certificate hasn't been installed yet.
+    #
+    # When HTTPS is confirmed working, un-comment the SetEnv line below to
+    # switch on automatic HTTP→HTTPS redirects (301 Permanent Redirect).
+    # The rule will NOT loop: the first three conditions skip it whenever the
+    # request is already HTTPS (direct or via reverse proxy like Cloudflare).
+    #
+    # SetEnv HTTPS_REDIRECT on
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{ENV:HTTPS_REDIRECT} =on
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+
+    # ---- 1. Canonicalise /index, /index.php, /index.html → /  (hide "index" from URL) ----
+    RewriteCond %{THE_REQUEST} ^[A-Z]+\s([^\s]*/)?index(\.(php|html))?[\s?] [NC]
+    RewriteRule ^ %1 [R=301,L,NE]
+
+    # ---- 2. Redirect any other .html URL to its extension-less form (legacy) ----
+    RewriteCond %{THE_REQUEST} ^[A-Z]+\s([^\s?]+?)\.html[\s?] [NC]
+    RewriteRule ^ %1 [R=301,L,NE]
+
+    # ---- 3. Redirect any other .php URL to its extension-less form ----
+    RewriteCond %{THE_REQUEST} ^[A-Z]+\s([^\s?]+?)\.php[\s?] [NC]
+    RewriteRule ^ %1 [R=301,L,NE]
+
+    # ---- 4. Internally rewrite extension-less URL to the matching .php file ----
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.+?)/?$ $1.php [L]
+
+    # ---- 5. Default directory index (used when the bare / is hit) ----
+    DirectoryIndex index.php index.html
+
+    # ---- 6. Dynamic robots.txt — served by robots.php so it respects
+    #         the RANK_SITE flag in config.php without any redirect. ----
+    RewriteRule ^robots\.txt$ robots.php [L,QSA]
+</IfModule>
+
+# Block direct access to sensitive / internal files
+<FilesMatch "^(config\.php|_bootstrap\.php|_seo-pages\.php|_seo-head\.php|_seo-foot\.php|_disposable-email-domains\.txt|_diagnose\.php|_smtp-test\.php|asset-version\.txt|\.htaccess|\.htpasswd|composer\.(json|lock))$">
+    Require all denied
+</FilesMatch>
+
+# Block any .sh (shell script) from being served
+<FilesMatch "\.(sh|env|log|bak|sql)$">
+    Require all denied
+</FilesMatch>
+
+# Block the rate-limit cache directory entirely (defence-in-depth;
+# it also has its own .htaccess). A plain 'RedirectMatch 403' is
+# simpler than a RewriteRule and works on every Apache version.
+RedirectMatch 403 ^/_rate-cache(/.*)?$
+
+# ---- Compression ----
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript image/svg+xml application/json application/xml
+</IfModule>
+
+# ---- Browser caching for static assets ----
+# Long cache windows are safe because every URL carries a ?v= cache-bust query.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                 "access plus 1 year"
+    ExpiresByType application/javascript   "access plus 1 year"
+    ExpiresByType image/png                "access plus 90 days"
+    ExpiresByType image/jpeg               "access plus 90 days"
+    ExpiresByType image/svg+xml            "access plus 90 days"
+    ExpiresByType image/x-icon             "access plus 1 year"
+    ExpiresByType font/woff2               "access plus 1 year"
+    ExpiresByType application/manifest+json "access plus 7 days"
+    ExpiresByType application/xml          "access plus 1 day"
+</IfModule>
+
+# ---- Security headers ----
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+
+    # HSTS — tied to the same HTTPS_REDIRECT opt-in flag above. Activates only
+    # when (a) the request is already HTTPS AND (b) HTTPS_REDIRECT has been set.
+    # Browser then remembers to auto-upgrade HTTP → HTTPS for 1 year.
+    # Safe short-term default: includeSubDomains + no preload (preload is hard
+    # to reverse). Add ; preload only after submitting to hstspreload.org.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS_REDIRECT
+
+    # Content Security Policy (explicit: overrides any CSP inherited from hosting
+    # provider / CDN that would otherwise break Cloudflare Turnstile and the
+    # Google Maps iframe on the contact page).
+    # Force-overwrite so the host's layer can't add restrictive directives.
+    Header unset Content-Security-Policy
+    Header always set Content-Security-Policy "default-src 'self'; \
+script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.google.com https://*.gstatic.com; \
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+img-src 'self' data: https: blob:; \
+font-src 'self' data: https://fonts.gstatic.com; \
+connect-src 'self' https://challenges.cloudflare.com https://www.google-analytics.com; \
+frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.google.com/maps/ https://maps.google.com; \
+frame-ancestors 'self'; \
+form-action 'self'; \
+base-uri 'self'; \
+object-src 'none'"
+
+    # Kill any upstream-set Trusted-Types directive that blocks Turnstile's own iframe
+    Header unset Content-Security-Policy-Report-Only
+</IfModule>

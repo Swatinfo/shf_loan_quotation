@@ -1,0 +1,281 @@
+/* Page-specific styles for resources/views/newtheme/quotations/index.blade.php */
+
+/* Filters grid — flexible across screen sizes */
+.qx-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+/* Collapsed-by-default filters card */
+.qx-filters-card .qx-filters-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.qx-filters-card .qx-chevron {
+    display: inline-flex;
+    margin-left: 4px;
+    color: var(--ink-3);
+    transition: transform 0.15s;
+}
+.qx-filters-card .qx-chevron svg { width: 14px; height: 14px; }
+.qx-filters-card.collapsed .qx-chevron { transform: rotate(-90deg); }
+.qx-filters-card.collapsed .qx-filters-body { display: none; }
+
+/* Plain orange filter icon (no filled badge background) */
+.qx-filters-card .qx-filter-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    margin-right: 6px;
+}
+.qx-filters-card .qx-filter-icon svg { width: 18px; height: 18px; }
+
+/* Active-filter counter — always visible, "0" when none */
+.qx-filters-card .qx-active-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    margin-left: 8px;
+    background: var(--paper-2, #f4f2f0);
+    color: var(--ink-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.qx-filters-card .qx-active-count.has-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.qx-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.qx-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Results table */
+.qx-loader {
+    padding: 24px;
+    text-align: center;
+    color: var(--ink-4);
+    font-size: 13px;
+}
+
+.qx-results .tbl thead th { background: var(--paper-2); }
+.qx-results .tbl tbody tr { cursor: default; }
+
+.qx-bank-chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.qx-bank-chips .bank-chip { font-size: 10.5px; padding: 2px 6px; }
+
+/* Per-row inline action strip — icon-only buttons with title tooltips.
+   Use the most-specific selector so this is what wins, not earlier rules. */
+.qx-results .tbl .col-actions { width: auto; min-width: 160px; text-align: right; }
+.qx-actions {
+    display: inline-flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+}
+.qx-act {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--line-strong, #c9c5c3);
+    background: #fff;
+    color: var(--ink-3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.1s;
+    flex-shrink: 0;
+}
+.qx-act .i { width: 14px; height: 14px; }
+.qx-act:hover {
+    background: var(--paper-2, #f4f2f0);
+    color: var(--ink);
+    border-color: var(--ink-4);
+}
+/* ===== Tone variants ===== Each tone is a tinted soft background at rest +
+   matching color + filled solid on hover. Mirrors the standard semantic
+   palette (info / success / warning / danger / accent / gray). */
+
+/* Accent — branded download (primary action, filled orange) */
+.qx-act.tone-accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.qx-act.tone-accent:hover {
+    background: var(--accent-deep, #c0392b);
+    border-color: var(--accent-deep, #c0392b);
+    color: #fff;
+}
+
+/* Gray — secondary neutral (Plain download) */
+.qx-act.tone-gray {
+    background: #fff;
+    border-color: var(--line-strong, #c9c5c3);
+    color: var(--ink-4);
+}
+.qx-act.tone-gray:hover {
+    background: var(--paper-2);
+    color: var(--ink-3);
+    border-color: var(--ink-4);
+}
+
+/* Info — View / Open Loan (blue) */
+.qx-act.tone-info {
+    background: var(--blue-soft, rgba(37, 99, 235, 0.12));
+    border-color: rgba(37, 99, 235, 0.55);
+    color: var(--blue, #2563eb);
+}
+.qx-act.tone-info:hover {
+    background: var(--blue, #2563eb);
+    border-color: var(--blue, #2563eb);
+    color: #fff;
+}
+
+/* Success — Convert / Resume (green) */
+.qx-act.tone-success {
+    background: var(--green-soft, rgba(39, 174, 96, 0.12));
+    border-color: rgba(39, 174, 96, 0.55);
+    color: var(--green, #1f8c4d);
+}
+.qx-act.tone-success:hover {
+    background: var(--green, #27ae60);
+    border-color: var(--green, #27ae60);
+    color: #fff;
+}
+
+/* Warning — Hold (amber) */
+.qx-act.tone-warning {
+    background: var(--amber-soft, rgba(217, 119, 6, 0.14));
+    border-color: rgba(217, 119, 6, 0.55);
+    color: var(--amber, #b85a00);
+}
+.qx-act.tone-warning:hover {
+    background: var(--amber, #d97706);
+    border-color: var(--amber, #d97706);
+    color: #fff;
+}
+
+/* Danger — Cancel / Delete (red) */
+.qx-act.tone-danger {
+    background: var(--red-soft, rgba(192, 57, 43, 0.10));
+    border-color: rgba(192, 57, 43, 0.55);
+    color: var(--red, #c0392b);
+}
+.qx-act.tone-danger:hover {
+    background: var(--red, #c0392b);
+    border-color: var(--red, #c0392b);
+    color: #fff;
+}
+
+/* ===== Responsive action strip =====
+   Tablets get smaller buttons + wrap. On phones, .tbl applies a card-style
+   transformation (each <td> becomes a label:value flex row) — we override the
+   actions cell so its label stacks above and the buttons sit in a horizontal
+   strip below, instead of stacking one-button-per-line. */
+@media (max-width: 991.98px) {
+    .qx-results .tbl .col-actions { min-width: 140px; width: auto; }
+    .qx-actions { flex-wrap: wrap; gap: 3px; }
+    .qx-act { width: 26px; height: 26px; }
+    .qx-act .i { width: 13px; height: 13px; }
+}
+@media (max-width: 768px) {
+    /* Phone — the table transforms to row-cards. Make the actions cell
+       break out of the flex-row label/value layout into a full-width
+       horizontal strip with buttons that stretch to fill the available row.
+       The `width: auto !important` overrides any narrow width inherited from
+       the desktop column rule (and beats `.tbl .col-actions { width: ... }`
+       via the same specificity + !important). */
+    .qx-results .tbl .col-actions,
+    table.tbl td.col-actions {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px;
+        padding-top: 8px !important;
+        margin-top: 4px;
+        border-top: 1px dashed var(--line);
+    }
+    table.tbl td.col-actions::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        flex: 0 0 auto !important;
+        text-align: left;
+        margin-bottom: 2px;
+    }
+    /* Auto-fit grid — buttons grow to fill the row, evenly distributed.
+       `1fr` columns give each button equal width, with a comfortable min so
+       icons stay legible on the narrowest phones. */
+    .qx-actions {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)) !important;
+        gap: 8px;
+        width: 100%;
+    }
+    /* Forms (Delete) need to behave as grid items too — flex inline-flex by
+       default would only be as wide as the inner button. */
+    .qx-actions form { display: inline-flex; width: 100%; }
+    .qx-actions form .qx-act { width: 100%; }
+    .qx-act {
+        width: 100%;
+        height: 38px;          /* taller for thumb taps */
+        min-width: 0;
+    }
+    .qx-act .i { width: 16px; height: 16px; }
+}
+
+/* Pagination */
+.qx-pager {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-3);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.qx-pager .qx-pages { display: flex; gap: 4px; }
+.qx-pager .qx-pg-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-size: 12px;
+    cursor: pointer;
+}
+.qx-pager .qx-pg-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+.qx-pager .qx-pg-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}

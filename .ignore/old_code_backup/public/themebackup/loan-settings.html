@@ -1,0 +1,136 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loan settings · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Admin <span class="sep">/</span> Loan settings</div>
+<h1>Loan workflow settings</h1><div class="sub">Configure stages, documents, feature flags, alerts</div></div>
+<div class="head-actions"><button class="btn" data-action="toast" data-arg="Revert">Revert</button><button class="btn primary" data-action="save" data-arg="Settings saved">Save</button></div></div>
+<div class="tabs" data-tab-panel-group="ls">
+<a class="tab active" id="ls-tab-wf" data-panel="wf">Workflow</a>
+<a class="tab" id="ls-tab-docs" data-panel="docs">Document sets</a>
+<a class="tab" id="ls-tab-slas" data-panel="slas">SLAs</a>
+<a class="tab" id="ls-tab-flags" data-panel="flags">Feature flags</a>
+<a class="tab" id="ls-tab-alerts" data-panel="alerts">Alerts</a>
+</div>
+</header>
+<main class="content">
+<div data-tab-panel-group="ls">
+<div id="ls-panel-wf" data-panel-id="wf">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">12-stage workflow</div></div><div class="card-bd">
+<div class="text-xs text-muted mb-4">Enabledisable stagesrenamere-order</div>
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">01</div><input class="input" value="Inquiry" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">02</div><input class="input" value="Doc Selection" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">03</div><input class="input" value="Login at Bank" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">04</div><input class="input" value="Sanction" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">05</div><input class="input" value="Rate & PF" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">06</div><input class="input" value="OTC" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">07</div><input class="input" value="Agreement" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">08</div><input class="input" value="E-Sign" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">09</div><input class="input" value="PDD" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">10</div><input class="input" value="Disbursement" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">11</div><input class="input" value="First EMI" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><div class="num font-mono" style="color:var(--ink-4);width:24px;">12</div><input class="input" value="Closure" style="flex:1;"><span class="toggle on"><input type="hidden" value="1"></span></div>
+</div></div>
+
+
+<aside><div class="card"><div class="card-hd"><div class="t">Preset</div></div><div class="card-bd">
+<select class="select"><option>Standard (default)</option><option>Fast-track (pre-approved)</option><option>NRI workflow</option><option>Construction finance</option></select>
+<button class="btn w-full mt-4" data-action="toast" data-arg="Preset loaded">Apply preset</button>
+</div></div></aside>
+</div>
+
+</div>
+
+<div id="ls-panel-docs" data-panel-id="docs" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Document sets by loan type</div><div class="actions"><button class="btn sm ghost">+ New set</button></div></div><div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Set</th><th>Loan type</th><th>Bank scope</th><th class="num">Docs</th><th>Updated</th><th></th></tr></thead>
+<tbody>
+<tr><td>Home — Salaried (Std)</td><td>Home purchase</td><td>All banks</td><td class="num tnum">18</td><td>Mar 14</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Home — Self-employed</td><td>Home purchase</td><td>All banks</td><td class="num tnum">21</td><td>Mar 14</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>LAP — Self-employed</td><td>Loan against property</td><td>All banks</td><td class="num tnum">24</td><td>Mar 02</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>BT + top-up</td><td>Balance transfer</td><td>All banks</td><td class="num tnum">16</td><td>Feb 28</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>HDFC — construction linked</td><td>Home construction</td><td>HDFC</td><td class="num tnum">23</td><td>Feb 20</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>SBI — NRI special</td><td>Home purchase</td><td>SBI</td><td class="num tnum">26</td><td>Jan 18</td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Shop/commercial</td><td>Commercial property</td><td>All banks</td><td class="num tnum">22</td><td>Jan 12</td><td><a class="btn xs">Edit</a></td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Add to set</div></div><div class="card-bd">
+<div class="text-xs text-muted">When a document is marked mandatory it becomes a blocker for stage 3 completion.</div>
+<button class="btn w-full mt-4">+ Add document type</button>
+</div></div></aside>
+</div>
+</div>
+
+<div id="ls-panel-slas" data-panel-id="slas" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card mt-4"><div class="card-hd"><div class="t">SLAs</div></div><div class="card-bd">
+<div class="slider-row"><div class="lbl">Inquiry → Doc Selection</div><input type="range" class="range" min="1" max="30" value="3"><span class="font-mono" style="width:48px;text-align:right;">3 days</span></div><div class="slider-row"><div class="lbl">Doc Selection → Login</div><input type="range" class="range" min="1" max="30" value="5"><span class="font-mono" style="width:48px;text-align:right;">5 days</span></div><div class="slider-row"><div class="lbl">Login → Sanction</div><input type="range" class="range" min="1" max="30" value="7"><span class="font-mono" style="width:48px;text-align:right;">7 days</span></div><div class="slider-row"><div class="lbl">Sanction → OTC</div><input type="range" class="range" min="1" max="30" value="10"><span class="font-mono" style="width:48px;text-align:right;">10 days</span></div><div class="slider-row"><div class="lbl">OTC → Disbursement</div><input type="range" class="range" min="1" max="30" value="14"><span class="font-mono" style="width:48px;text-align:right;">14 days</span></div>
+</div></div>
+</div>
+
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">SLA breach behavior</div></div><div class="card-bd">
+<div class="kv-stack">
+<div class="kv"><span>At 80% of SLA</span><strong>Warn advisor</strong></div>
+<div class="kv"><span>At 100% of SLA</span><strong>Escalate to manager</strong></div>
+<div class="kv"><span>At 150% of SLA</span><strong>Flag reddaily digest</strong></div>
+</div>
+</div></div></aside>
+</div>
+</div>
+
+<div id="ls-panel-flags" data-panel-id="flags" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Feature flags</div></div><div class="card-bd">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">e NACH integration (Digio)</span><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">WhatsApp customer updates</span><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">Bank rate-card auto-sync</span><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">AI document OCR pre-fill</span><span class="toggle "><input type="hidden" value="0"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">Co-applicant mandatory for LAP</span><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">Gujarati UI for customers</span><span class="toggle on"><input type="hidden" value="1"></span></div><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);"><span style="flex:1;">Show stage timer countdown</span><span class="toggle "><input type="hidden" value="0"></span></div>
+</div></div>
+
+
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Rollout</div></div><div class="card-bd">
+<div class="text-xs text-muted">Feature flags apply org-wide. For per-user experiments, use the Settings → Experiments tab.</div>
+</div></div></aside>
+</div>
+</div>
+
+<div id="ls-panel-alerts" data-panel-id="alerts" style="display:none;">
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Alert rules</div><div class="actions"><button class="btn sm ghost">+ New rule</button></div></div><div class="card-bd" style="padding:0;">
+<table class="tbl">
+<thead><tr><th>Rule</th><th>Trigger</th><th>Channel</th><th>Recipients</th><th>Status</th><th></th></tr></thead>
+<tbody>
+<tr><td>Rate variance at sanction</td><td>&gt; ±10 bps vs quoted</td><td>In-appemail</td><td>AdvisorBranch mgr</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Doc pending &gt; 5 days</td><td>Stage 3overdue</td><td>In-app</td><td>Advisor</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Sanction received</td><td>Stage 6 entry</td><td>WhatsAppin-app</td><td>Advisorcustomer</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Disbursement overdue</td><td>Stage 10 &gt; 14 days</td><td>Emaildaily digest</td><td>Manager</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>PEMI imminent</td><td>7 days before</td><td>WhatsApp</td><td>Customer</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>Conversion aging</td><td>Quotation &gt; 30 days</td><td>In-app</td><td>Advisor</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">Off</span></td><td><a class="btn xs">Edit</a></td></tr>
+<tr><td>DVR missed</td><td>Day endno entry</td><td>In-apppush</td><td>Advisor</td><td><span class="badge green sq">On</span></td><td><a class="btn xs">Edit</a></td></tr>
+</tbody>
+</table>
+</div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Digest</div></div><div class="card-bd">
+<div class="kv-stack">
+<div class="kv"><span>Daily9:30 AM</span><strong style="color:var(--green);">On</strong></div>
+<div class="kv"><span>Weekly Mon9 AM</span><strong style="color:var(--green);">On</strong></div>
+</div>
+</div></div></aside>
+</div>
+</div>
+
+</div>
+</main><div id="__shell_tweaks"></div></div><script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('admin');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/tabs.js"></script>
+<script>wireTabs('ls', ["wf","docs","slas","flags","alerts"]);</script>
+<script src="assets/loan-settings.js?v=1"></script>
+</body></html>

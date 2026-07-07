@@ -1,0 +1,224 @@
+/* Page-specific styles for resources/views/newtheme/general-tasks/show.blade.php */
+
+/* Collapse the two-col grid to one column on mobile */
+.ts-grid { gap: 20px; }
+@media (max-width: 899px) {
+    .ts-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Description paragraph */
+.ts-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink);
+    margin: 0;
+    white-space: pre-line;
+}
+.ts-desc-empty { color: var(--ink-4); font-style: italic; }
+
+/* Linked loan banner inside description card */
+.ts-linked {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--paper-2, #f4f2f0);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+}
+.ts-linked-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+.ts-linked-link {
+    display: block;
+    font-size: 13px;
+    color: var(--ink);
+    text-decoration: none;
+}
+.ts-linked-link:hover { color: var(--accent-deep, #c0392b); }
+.ts-muted { color: var(--ink-4); }
+
+/* Status row — each button colored by its meaning. Inactive buttons show the
+   status color as an outline; the current (disabled) one is filled. */
+.ts-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ts-status-btn {
+    background: #fff;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.ts-status-btn:disabled {
+    cursor: default;
+    opacity: 1;
+}
+
+/* Pending — neutral dark */
+.ts-status-btn--pending {
+    border-color: var(--ink-3, #6b7280);
+    color: var(--ink-3, #6b7280);
+}
+.ts-status-btn--pending:hover:not(:disabled) {
+    background: var(--ink-3, #6b7280);
+    border-color: var(--ink-3, #6b7280);
+    color: #fff;
+}
+.ts-status-btn--pending.is-current {
+    background: var(--ink-3, #6b7280);
+    border-color: var(--ink-3, #6b7280);
+    color: #fff;
+}
+
+/* In progress — blue */
+.ts-status-btn--in-progress {
+    border-color: var(--blue, #2563eb);
+    color: var(--blue, #2563eb);
+}
+.ts-status-btn--in-progress:hover:not(:disabled) {
+    background: var(--blue, #2563eb);
+    border-color: var(--blue, #2563eb);
+    color: #fff;
+}
+.ts-status-btn--in-progress.is-current {
+    background: var(--blue, #2563eb);
+    border-color: var(--blue, #2563eb);
+    color: #fff;
+}
+
+/* Completed — green */
+.ts-status-btn--completed {
+    border-color: var(--green, #1f8c4d);
+    color: var(--green, #1f8c4d);
+}
+.ts-status-btn--completed:hover:not(:disabled) {
+    background: var(--green, #1f8c4d);
+    border-color: var(--green, #1f8c4d);
+    color: #fff;
+}
+.ts-status-btn--completed.is-current {
+    background: var(--green, #1f8c4d);
+    border-color: var(--green, #1f8c4d);
+    color: #fff;
+}
+
+/* Cancelled — red */
+.ts-status-btn--cancelled {
+    border-color: var(--red, #c0392b);
+    color: var(--red, #c0392b);
+}
+.ts-status-btn--cancelled:hover:not(:disabled) {
+    background: var(--red, #c0392b);
+    border-color: var(--red, #c0392b);
+    color: #fff;
+}
+.ts-status-btn--cancelled.is-current {
+    background: var(--red, #c0392b);
+    border-color: var(--red, #c0392b);
+    color: #fff;
+}
+
+/* KV grid on details card — single column (fits in the 360px rail) */
+.ts-kv {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.ts-kv > div {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+    font-size: 12.5px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line);
+}
+.ts-kv > div:last-child { border-bottom: none; }
+.ts-kv > div > span:first-child {
+    color: var(--ink-4);
+    font-weight: 500;
+}
+.ts-kv > div > span:last-child {
+    color: var(--ink);
+    font-weight: 500;
+}
+
+/* Linked file (aside) */
+.ts-linked-file {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+}
+.ts-linked-file:hover { color: var(--accent-deep, #c0392b); }
+.ts-linked-file .text-xs { font-size: 11.5px; margin-top: 4px; }
+
+/* Comments */
+.ts-comment {
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+}
+.ts-comment:last-of-type { border-bottom: none; }
+.ts-comment-body { flex: 1; min-width: 0; }
+.ts-comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.3;
+    margin-bottom: 3px;
+}
+.ts-comment-meta strong { font-size: 12.5px; color: var(--ink); }
+.ts-comment-meta .ts-muted { font-size: 11.5px; }
+.ts-comment-del-form { margin-left: auto; display: inline-flex; }
+.ts-icon-btn {
+    border: none;
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+.ts-icon-btn svg { width: 14px; height: 14px; }
+.ts-icon-btn:hover { color: var(--red, #c0392b); background: var(--paper-2, #f4f2f0); }
+
+.ts-comment-text {
+    font-size: 12.5px;
+    color: var(--ink);
+    margin: 0;
+    white-space: pre-line;
+    line-height: 1.45;
+}
+
+.ts-empty {
+    padding: 10px 0;
+    font-size: 12.5px;
+}
+
+/* Add-comment form */
+.ts-comment-form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ts-comment-form textarea {
+    width: 100%;
+    height: auto;
+    padding: 10px;
+    line-height: 1.45;
+    resize: vertical;
+    min-height: 72px;
+}
+.ts-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+}

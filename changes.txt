@@ -1,0 +1,17 @@
+documenttion conversion id
+claude --resume defb21c4-eab1-4fa5-bbf5-50103b0dbf91
+
+
+
+Add loan account number in cheque entry disbusrment and also event after entring all cheque details it show error
+
+disbusrment goes to wrong user assigned
+
+Rate & PF Request -> remove save button keep only send to bank in both mobile device and desktop
+docket login -> remoe save button 
+
+Disbursement office employee assignment is not there for default due to which assinged to wrong office employee
+
+Rate & PF Request : directly assigned to bank employee not to the loan advisor
+
+personal task asigned to another user can not see action buttons

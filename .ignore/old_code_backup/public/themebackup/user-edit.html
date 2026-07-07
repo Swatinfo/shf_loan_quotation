@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Edit user · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div>
+<div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="users.html">Users</a> <span class="sep">/</span> Edit</div>
+<h1>Edit user</h1><div class="sub">Neha Shukla SHF-EMP-0124</div></div>
+<div class="head-actions"><a class="btn" href="users.html">Cancel</a><button class="btn" data-action="delete" data-arg="User deactivated">Deactivate</button><button class="btn primary" data-action="submit" data-arg="Saved" data-next="users.html">Save</button></div></div>
+</header>
+<main class="content"><form data-form>
+<div class="grid c-main"><div>
+<div class="card"><div class="card-hd"><div class="t">Identity</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Full name</label><input class="input" value="Neha Shukla"></div>
+<div class="field"><label>Employee ID</label><input class="input font-mono" value="SHF-EMP-0124" readonly></div>
+<div class="field"><label>Email</label><input class="input" value="neha.s@shfworld.in"></div>
+<div class="field"><label>Mobile</label><input class="input" value="+91 99870 44221"></div>
+</div></div></div>
+<div class="card mt-4"><div class="card-hd"><div class="t">Role &amp; access</div></div><div class="card-bd"><div class="form-grid">
+<div class="field"><label>Role</label><select class="select" name="role"><option value="processing" selected>Processing officer</option><option value="advisor">Loan advisor</option><option value="valuer">Valuer</option><option value="legal">Legal</option><option value="admin">Admin</option></select></div>
+<div class="field"><label>Branch</label><select class="select"><option>Ahmedabad — Maninagar</option><option>Surat — Adajan</option></select></div>
+<div class="field wide cond-field hide" data-cond-when='{"field":"role","equals":"admin"}'><div class="callout warn"><strong>Admin role.</strong> Grants full system access including user management and config. Require CEO approval.</div></div>
+<div class="field"><label>Status</label><select class="select"><option>Active</option><option>Suspended</option><option>On leave</option></select></div>
+<div class="field"><label>Can impersonate?</label><span class="toggle"><input type="hidden" value="0"></span></div>
+</div></div></div>
+</div>
+<aside><div class="card"><div class="card-hd"><div class="t">Security</div></div><div class="card-bd">
+<button class="btn w-full mb-2" data-action="toast" data-arg="Reset email sent">Send password reset</button>
+<button class="btn w-full mb-2">Enable 2 FA</button>
+<button class="btn w-full" data-action="toast" data-arg="All sessions revoked">Revoke sessions</button>
+</div></div></aside>
+</div>
+</form></main><div id="__shell_tweaks"></div></div><script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('users');</script><script src="assets/shf-interactive.js"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END --><script src="assets/user-edit.js?v=1"></script>
+</body></html>

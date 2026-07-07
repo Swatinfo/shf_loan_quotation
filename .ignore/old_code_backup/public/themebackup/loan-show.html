@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHF-2026-0479Anil Patel</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="app">
+<div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="loans.html">Loans</a> <span class="sep">/</span> SHF-2026-0479</div>
+ <h1 style="display:flex;align-items:center;gap:14px;">Anil Patel <span class="badge amber dot" style="font-size:11px;">Stage 5Rate &amp; PF</span></h1>
+ <div class="sub"><span class="font-mono">SHF-2026-0479</span>HDFC BankHome loan — Construction<span class="tnum">₹ 55,00,000</span>Opened 12 days ago</div>
+ </div>
+ <div class="head-actions">
+ <button class="btn"><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01 M12 12h.01 M16 12h.01 M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949 L3 20l1.395-3.72 C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>WhatsApp</button>
+ <button class="btn"><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11 11 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949 V19a2 2 0 01-2 2h-1 C9.716 21 3 14.284 3 6 V5z"/></svg>Call</button>
+ <button class="btn" data-action="toast" data-arg="Assign">Assign</button>
+ <button class="btn primary" data-action="toast" data-arg="Advance stage →">Advance stage →</button>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="loan">
+ <a class="tab active" id="loan-tab-workflow" data-panel="workflow">Workflow</a>
+ <a class="tab" id="loan-tab-documents" data-panel="documents">Documents <span class="count">14/21</span></a>
+ <a class="tab" id="loan-tab-rate" data-panel="rate">Rate &amp; fees</a>
+ <a class="tab" id="loan-tab-queries" data-panel="queries">Queries <span class="count">2</span></a>
+ <a class="tab" id="loan-tab-timeline" data-panel="timeline">Timeline</a>
+ <a class="tab" id="loan-tab-notes" data-panel="notes">Notes</a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="loan">
+
+<!-- WORKFLOW panel -->
+<div id="loan-panel-workflow" data-panel-id="workflow">
+ <!-- 12-stage rail -->
+ <div class="card" style="margin-bottom:16px;">
+ <div class="card-bd" style="padding:18px;">
+ <div class="stage-rail" id="stageRail" data-clickable>
+ <div class="stg done" data-stage="1"><div class="num">1</div><div class="lbl">Inquiry</div><div class="meta">Mar 28</div></div>
+ <div class="stg done" data-stage="2"><div class="num">2</div><div class="lbl">Doc Selection</div><div class="meta">Mar 29</div></div>
+ <div class="stg done" data-stage="3"><div class="num">3</div><div class="lbl">Doc Collection</div><div class="meta">Apr 02</div></div>
+ <div class="stg done" data-stage="4"><div class="num">4</div><div class="lbl">Parallel Proc.</div><div class="meta">Apr 06</div></div>
+ <div class="stg current" data-stage="5"><div class="num">5</div><div class="lbl">Rate &amp; PF</div><div class="meta">In progress</div></div>
+ <div class="stg" data-stage="6"><div class="num">6</div><div class="lbl">Sanction Letter</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="7"><div class="num">7</div><div class="lbl">Docket Login</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="8"><div class="num">8</div><div class="lbl">KFS</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="9"><div class="num">9</div><div class="lbl">E-Sign &amp; e NACH</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="10"><div class="num">10</div><div class="lbl">Disbursement</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="11"><div class="num">11</div><div class="lbl">OTC Clearance</div><div class="meta">—</div></div>
+ <div class="stg" data-stage="12"><div class="num">12</div><div class="lbl">Completed</div><div class="meta">—</div></div>
+ </div>
+ <div class="text-xs text-muted mt-2" style="padding:0 4px;">Click any stage above to view its details.</div>
+ </div>
+ </div>
+
+ <div class="grid c-main">
+ <!-- LEFT: stage body -->
+ <div id="stageBody">
+ <div class="card" data-stage-body="5">
+ <div class="card-hd">
+ <div class="t"><span class="num">5</span>Rate &amp; processing fee</div>
+ <div class="actions">
+ <span class="badge amber dot">Awaiting bank confirmation</span>
+ </div>
+ </div>
+ <div class="card-bd">
+ <div class="grid c2" style="gap:18px;">
+ <div class="field">
+ <label>Interest rate offered</label>
+ <div class="input-affix"><input class="input" value="8.45"><span class="post">% p.a.</span></div>
+ <div class="text-xs text-muted mt-1">Quoted: 8.40%Bank's current MCLR: 8.30%</div>
+ </div>
+ <div class="field">
+ <label>Rate type</label>
+ <select class="select"><option>Floating — linked to Repo</option><option>Fixed — 3 years</option><option>Hybrid</option></select>
+ </div>
+ <div class="field">
+ <label>Processing fee</label>
+ <div class="input-affix"><span class="pre">₹</span><input class="input" value="27,500"></div>
+ <div class="text-xs text-muted mt-1">0.50% of loan amount</div>
+ </div>
+ <div class="field">
+ <label>PF paid</label>
+ <select class="select"><option>Yes — receipt attached</option><option>No — to be deducted from disbursement</option></select>
+ </div>
+ <div class="field">
+ <label>Margin money</label>
+ <div class="input-affix"><span class="pre">₹</span><input class="input" value="13,00,000"></div>
+ </div>
+ <div class="field">
+ <label>Reset frequency</label>
+ <select class="select"><option>3 months</option><option>6 months</option><option>12 months</option></select>
+ </div>
+ </div>
+
+ <hr style="border:none;border-top:1px dashed var(--line);margin:20px 0;">
+
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+ <div class="stat-cell"><div class="l">Sanction amount</div><div class="v tnum">₹ 55,00,000</div></div>
+ <div class="stat-cell"><div class="l">EMI @ 8.45%</div><div class="v tnum">₹ 47,289</div></div>
+ <div class="stat-cell"><div class="l">Tenure</div><div class="v">20 yr</div></div>
+ <div class="stat-cell"><div class="l">Total interest</div><div class="v tnum">₹ 58,49,360</div></div>
+ </div>
+
+ <div class="callout amber mt-4">
+ <svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01 M5.07 19h13.86a2 2 0 001.73-3 L13.73 4a2 2 0 00-3.46 0 L3.34 16a2 2 0 001.73 3z"/></svg>
+ <div>
+ <strong>Rate variance</strong> — The offered rate (8.45%) is 5 bps higher than the quoted rate (8.40%).
+ Customer approval is required before proceeding to Sanction Letter.
+ <div class="mt-2"><button class="btn sm">Request approval</button> <button class="btn sm ghost">Renegotiate with bank</button></div>
+ </div>
+ </div>
+ </div>
+ <div class="card-ft">
+ <button class="btn ghost">← Back: Parallel processing</button>
+ <div style="margin-left:auto;display:flex;gap:8px;">
+ <button class="btn" data-action="toast" data-arg="Save progress">Save progress</button>
+ <button class="btn primary" data-action="toast" data-arg="Mark complete → Sanction Letter">Mark complete → Sanction Letter</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Parallel processing summary (stage 4 retrospect) -->
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t"><span class="num">4</span>Parallel processing <span class="sub">completed Apr 06</span></div></div>
+ <div class="card-bd" style="padding:0;">
+ <div class="parallel">
+ <div class="pp-row"><div class="pp-l"><span class="dot green"></span>Legal opinion</div><div class="pp-r tnum">₹ 3,500Mehul Adv.</div><div class="pp-s"><span class="badge green sq">Clear</span></div></div>
+ <div class="pp-row"><div class="pp-l"><span class="dot green"></span>Technicalvaluation</div><div class="pp-r tnum">₹ 65,00,000Est Value Co.</div><div class="pp-s"><span class="badge green sq">Report in</span></div></div>
+ <div class="pp-row"><div class="pp-l"><span class="dot green"></span>CIBILbureau check</div><div class="pp-r">Score 748</div><div class="pp-s"><span class="badge green sq">Pass</span></div></div>
+ <div class="pp-row"><div class="pp-l"><span class="dot green"></span>Field investigation</div><div class="pp-r">Residence + Office</div><div class="pp-s"><span class="badge green sq">Positive</span></div></div>
+ <div class="pp-row"><div class="pp-l"><span class="dot amber"></span>RCU (fraud check)</div><div class="pp-r">All docs</div><div class="pp-s"><span class="badge amber sq">1 referral</span></div></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- RIGHT: people + context -->
+ <aside>
+ <div class="card">
+ <div class="card-hd"><div class="t">Customer</div></div>
+ <div class="card-bd">
+ <div style="display:flex;gap:12px;align-items:center;">
+ <div class="avatar lg" style="background:#efd3c0;color:#8a3a10;">AP</div>
+ <div><div style="font-weight:600;">Anil Patel</div><div class="text-xs text-muted">PartnershipAge 44</div></div>
+ </div>
+ <div class="mt-3 kv-stack">
+ <div class="kv"><span>Phone</span><strong>+91 98980 22211</strong></div>
+ <div class="kv"><span>PAN</span><strong class="font-mono">ABCPP1234 · F</strong></div>
+ <div class="kv"><span>CIBIL</span><strong>748</strong></div>
+ <div class="kv"><span>Monthly income</span><strong class="tnum">₹ 2,05,000</strong></div>
+ <div class="kv"><span>Existing EMI</span><strong class="tnum">₹ 18,400</strong></div>
+ </div>
+ <a class="btn w-full mt-3 ghost" href="customer-show.html">Open customer profile →</a>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Bank contacts</div></div>
+ <div class="card-bd">
+ <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+ <div class="bank-logo">HDFC</div>
+ <div><div style="font-weight:600;font-size:13px;">HDFC Bank Ltd</div><div class="text-xs text-muted">Ahmedabad — Navrangpura branch</div></div>
+ </div>
+ <div class="kv-stack">
+ <div class="kv"><span>Relationship mgr</span><strong>Saurabh Gandhi</strong></div>
+ <div class="kv"><span>Credit manager</span><strong>Harsh Doshi</strong></div>
+ <div class="kv"><span>Bank file #</span><strong class="font-mono">HDFC-AHM-0879421</strong></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Team</div></div>
+ <div class="card-bd" style="padding:0;">
+ <div class="team-row"><div class="avatar sm">RJ</div><div><div style="font-size:12.5px;font-weight:500;">Rahul Jadeja</div><div class="text-xs text-muted">Loan advisorOwner</div></div></div>
+ <div class="team-row"><div class="avatar sm" style="background:#d4e4f2;color:#1d4e89;">NS</div><div><div style="font-size:12.5px;font-weight:500;">Neha Soni</div><div class="text-xs text-muted">Office employeeDocuments</div></div></div>
+ <div class="team-row"><div class="avatar sm" style="background:#d9eed9;color:#107a4f;">SG</div><div><div style="font-size:12.5px;font-weight:500;">Saurabh Gandhi</div><div class="text-xs text-muted">Bank employee HDFC</div></div></div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Open queries</div><span class="badge red sq">2</span></div>
+ <div class="card-bd" style="padding:0;">
+ <div class="q-item"><div class="q-t">Valuation report mismatch (₹63 · L vs ₹65 · L)</div><div class="q-m">Saurabh → Rahul1d</div></div>
+ <div class="q-item"><div class="q-t">Income proof — need ITR-3</div><div class="q-m">Neha → Rahul3h</div></div>
+ <div style="padding:10px 18px;"><button class="btn sm w-full">Raise new query</button></div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- DOCUMENTS panel -->
+<div id="loan-panel-documents" data-panel-id="documents" style="display:none;">
+ <div class="grid c-main">
+ <div>
+ <div class="card">
+ <div class="card-hd"><div class="t">Documents14 of 21 collected</div>
+ <div class="actions"><button class="btn sm">Request missing</button><button class="btn sm primary" data-action="toast" data-arg="Uploaded">Upload</button></div>
+ </div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Document</th><th>Required for</th><th>Status</th><th>Collected</th><th>Verified by</th><th></th></tr></thead>
+ <tbody>
+ <tr><td>PAN card copy</td><td>KYC</td><td><span class="badge green sq">Received</span></td><td>Apr 02</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Aadhaar — front &amp; back</td><td>KYC</td><td><span class="badge green sq">Received</span></td><td>Apr 02</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Partnership deed</td><td>Income</td><td><span class="badge green sq">Received</span></td><td>Apr 03</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Form 26 ASFY24-25</td><td>Income</td><td><span class="badge green sq">Received</span></td><td>Apr 03</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>ITR3 years</td><td>Income</td><td><span class="badge amber sq">Partial2 of 3</span></td><td>Apr 04</td><td>Rahul J.</td><td><a class="btn xs">Chase</a></td></tr>
+ <tr><td>Bank statement12 mo.</td><td>Income</td><td><span class="badge green sq">Received</span></td><td>Apr 04</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>GST returns4 qtr</td><td>Income</td><td><span class="badge green sq">Received</span></td><td>Apr 05</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Index-IIproperty</td><td>Property</td><td><span class="badge green sq">Received</span></td><td>Apr 06</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Sale deed chain</td><td>Property</td><td><span class="badge green sq">Received</span></td><td>Apr 06</td><td>Mehul Adv.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>NATata order</td><td>Property</td><td><span class="badge green sq">Received</span></td><td>Apr 06</td><td>Mehul Adv.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Property tax receipt</td><td>Property</td><td><span class="badge green sq">Received</span></td><td>Apr 06</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Building plansanctioned</td><td>Property</td><td><span class="badge green sq">Received</span></td><td>Apr 07</td><td>Est Value Co.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Passport photos2</td><td>KYC</td><td><span class="badge green sq">Received</span></td><td>Apr 02</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Processing fee cheque</td><td>Fees</td><td><span class="badge green sq">Received</span></td><td>Apr 09</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr style="opacity:0.65;"><td>ITRFY23-24</td><td>Income</td><td><span class="badge amber sq">Missing</span></td><td>—</td><td>—</td><td><button class="btn xs primary">Request</button></td></tr>
+ <tr style="opacity:0.65;"><td>Completion certificate</td><td>Property</td><td><span class="badge amber sq">Missing</span></td><td>—</td><td>—</td><td><button class="btn xs primary">Request</button></td></tr>
+ <tr style="opacity:0.65;"><td>Post-dated cheques6</td><td>Security</td><td><span class="badge amber sq">Pending</span></td><td>—</td><td>—</td><td><button class="btn xs">Schedule</button></td></tr>
+ <tr style="opacity:0.65;"><td>Co-applicant KYC (N/A)</td><td>KYC</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">Not applicable</span></td><td>—</td><td>—</td><td>—</td></tr>
+ <tr style="opacity:0.65;"><td>Vendor NOC</td><td>Property</td><td><span class="badge red sq">Overdue</span></td><td>—</td><td>—</td><td><button class="btn xs primary">Chase</button></td></tr>
+ <tr style="opacity:0.65;"><td>Insurance proposal</td><td>Post-disb.</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">Not yet due</span></td><td>—</td><td>—</td><td>—</td></tr>
+ <tr style="opacity:0.65;"><td>Power of Attorney (if any)</td><td>Legal</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">N/A</span></td><td>—</td><td>—</td><td>—</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ <aside>
+ <div class="card"><div class="card-hd"><div class="t">Completion</div></div>
+ <div class="card-bd" style="padding:20px;text-align:center;">
+ <div style="font-size:44px;font-weight:700;font-family:Jost;">67%</div>
+ <div style="height:8px;background:var(--paper-2);border-radius:4px;overflow:hidden;margin:10px 0;"><div style="height:100%;width:67%;background:var(--accent);"></div></div>
+ <div class="text-xs text-muted">14 of 212 missing3 overdue</div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">By category</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>KYC</span><strong>4/4 ✓</strong></div>
+ <div class="kv"><span>Income</span><strong>4/5</strong></div>
+ <div class="kv"><span>Property</span><strong>5/7</strong></div>
+ <div class="kv"><span>Fees</span><strong>1/1 ✓</strong></div>
+ <div class="kv"><span>Security</span><strong>0/1</strong></div>
+ <div class="kv"><span>Post-disb.</span><strong>0/1</strong></div>
+ </div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- RATE & FEES panel -->
+<div id="loan-panel-rate" data-panel-id="rate" style="display:none;">
+ <div class="grid c-main">
+ <div>
+ <div class="card"><div class="card-hd"><div class="t">Offer summary HDFC Bank</div></div>
+ <div class="card-bd">
+ <div class="grid c4" style="gap:14px;margin-bottom:18px;">
+ <div class="stat-cell"><div class="l">Sanction</div><div class="v tnum">₹ 55,00,000</div></div>
+ <div class="stat-cell"><div class="l">Rate</div><div class="v tnum">8.45%</div></div>
+ <div class="stat-cell"><div class="l">Tenure</div><div class="v tnum">20 yr</div></div>
+ <div class="stat-cell"><div class="l">EMI</div><div class="v tnum">₹ 47,289</div></div>
+ </div>
+ <table class="tbl">
+ <thead><tr><th>Charge</th><th>Rate/Base</th><th class="num">Amount</th><th>When</th><th>Status</th></tr></thead>
+ <tbody>
+ <tr><td>Processing fee</td><td>0.50% of sanction</td><td class="num tnum">₹ 27,500</td><td>At sanction</td><td><span class="badge green sq">Paid</span></td></tr>
+ <tr><td>GST on PF</td><td>18%</td><td class="num tnum">₹ 4,950</td><td>At sanction</td><td><span class="badge green sq">Paid</span></td></tr>
+ <tr><td>Legal &amp; technical</td><td>Actuals</td><td class="num tnum">₹ 6,500</td><td>Before sanction</td><td><span class="badge green sq">Paid</span></td></tr>
+ <tr><td>CERSAI charge</td><td>Fixed</td><td class="num tnum">₹ 100</td><td>At disbursement</td><td><span class="badge sq" style="background:var(--paper-2);">Pending</span></td></tr>
+ <tr><td>Stamp dutyloan agmt</td><td>State rate</td><td class="num tnum">₹ 500</td><td>At disbursement</td><td><span class="badge sq" style="background:var(--paper-2);">Pending</span></td></tr>
+ <tr><td>Insurance premium</td><td>Optional0.25%</td><td class="num tnum">₹ 13,750</td><td>With 1st EMI</td><td><span class="badge sq" style="background:var(--paper-2);">Optional</span></td></tr>
+ <tr><td>Pre-EMI interest</td><td>Estimated 38 days</td><td class="num tnum">₹ 48,240</td><td>Deducted</td><td><span class="badge sq" style="background:var(--paper-2);">Pending</span></td></tr>
+ <tr><td>Prepayment penalty</td><td>Nilfloating</td><td class="num tnum">—</td><td>—</td><td>—</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Competing offers</div><div class="sub">Best rates at quotation stageas of Mar 29</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Bank</th><th class="num">Rate</th><th class="num">PF</th><th class="num">EMI</th><th>Notes</th></tr></thead>
+ <tbody>
+ <tr style="background:rgba(217,119,87,0.06);"><td><strong>HDFC Bank ✓</strong></td><td class="num tnum">8.40%</td><td class="num tnum">0.50%</td><td class="num tnum">₹ 47,073</td><td>Selectedconstruction link supported</td></tr>
+ <tr><td>SBI</td><td class="num tnum">8.50%</td><td class="num tnum">0.35%</td><td class="num tnum">₹ 47,615</td><td>Lower PF but slower TAT</td></tr>
+ <tr><td>Bank of Baroda</td><td class="num tnum">8.55%</td><td class="num tnum">Waived</td><td class="num tnum">₹ 47,886</td><td>New banklimited history</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ <aside>
+ <div class="card"><div class="card-hd"><div class="t">Rate variance</div></div>
+ <div class="card-bd">
+ <div class="callout amber"><div><strong>+5 bps</strong> over quoted 8.40%<div class="text-xs text-muted mt-1">Bank cited increased repo — awaiting customer approval</div></div></div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Amortizationfirst year</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Mo.</th><th class="num">Principal</th><th class="num">Interest</th><th class="num">Balance</th></tr></thead>
+ <tbody>
+ <tr><td>1</td><td class="num tnum">8,568</td><td class="num tnum">38,721</td><td class="num tnum">54,91,432</td></tr>
+ <tr><td>2</td><td class="num tnum">8,628</td><td class="num tnum">38,661</td><td class="num tnum">54,82,804</td></tr>
+ <tr><td>3</td><td class="num tnum">8,689</td><td class="num tnum">38,600</td><td class="num tnum">54,74,115</td></tr>
+ <tr><td>6</td><td class="num tnum">8,874</td><td class="num tnum">38,415</td><td class="num tnum">54,47,660</td></tr>
+ <tr><td>12</td><td class="num tnum">9,256</td><td class="num tnum">38,033</td><td class="num tnum">53,93,012</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- QUERIES panel -->
+<div id="loan-panel-queries" data-panel-id="queries" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Open queries2</div><div class="actions"><button class="btn sm primary">Raise query</button></div></div>
+ <div class="card-bd" style="padding:0;">
+ <div class="notif unread"><div class="n-i amber">?</div><div class="n-b">
+ <div class="n-t"><strong>Saurabh Gandhi</strong> (HDFC RM)<span class="text-xs text-muted">1d ago</span></div>
+ <div class="n-m">Valuation report mismatch — ₹63 · L (earlier estimate) vs ₹65 · L (final). Please confirm which to use for LTV calc.</div>
+ <div class="mt-2" style="display:flex;gap:6px;"><button class="btn xs primary">Respond</button><button class="btn xs ghost">Assign to Neha</button></div>
+ </div></div>
+ <div class="notif unread"><div class="n-i amber">?</div><div class="n-b">
+ <div class="n-t"><strong>Neha Soni</strong> (Office)<span class="text-xs text-muted">3h ago</span></div>
+ <div class="n-m">Income proof — bank asked for ITR-3 specifically (partnership). Customer sent ITR-4. Need updated copy.</div>
+ <div class="mt-2" style="display:flex;gap:6px;"><button class="btn xs primary">Call customer</button><button class="btn xs ghost">Mark resolved</button></div>
+ </div></div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Closed queries4</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Query</th><th>Raised by</th><th>Raised</th><th>Closed</th><th>Time</th></tr></thead>
+ <tbody>
+ <tr><td>NA order — year clarification</td><td>Mehul Adv. (legal)</td><td>Apr 05</td><td>Apr 05</td><td>4h</td></tr>
+ <tr><td>Form 26 AS vs ITR mismatch</td><td>Harsh Doshi (credit)</td><td>Apr 04</td><td>Apr 04</td><td>2h</td></tr>
+ <tr><td>Co-applicant clarity</td><td>Saurabh Gandhi</td><td>Apr 03</td><td>Apr 03</td><td>1h</td></tr>
+ <tr><td>Partnership deed old version</td><td>Neha Soni</td><td>Apr 02</td><td>Apr 03</td><td>18h</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+</div>
+
+<!-- TIMELINE panel -->
+<div id="loan-panel-timeline" data-panel-id="timeline" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Activity timeline</div><div class="sub">12 days42 events</div></div>
+ <div class="card-bd" style="padding:4px 0;">
+ <div class="tl">
+ <div class="tl-day">Today20 Apr</div>
+ <div class="tl-item"><div class="tl-dot amber"></div><div><strong>Rate variance raised</strong>offer 8.45% vs quoted 8.40%<div class="text-xs text-muted">HDFC credit10:22 AM</div></div></div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div><strong>Rahul Jadeja</strong> requested approval from customer<div class="text-xs text-muted">Stage 510:24 AM</div></div></div>
+
+ <div class="tl-day">Yesterday19 Apr</div>
+ <div class="tl-item"><div class="tl-dot green"></div><div><strong>Parallel processing complete</strong><div class="text-xs text-muted">Legal, tech, CIBIL, FI all cleared RCU 1 referral resolved</div></div></div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div><strong>Valuation report</strong> received₹ 65,00,000<div class="text-xs text-muted">Est Value Co.Bipin Joshi</div></div></div>
+
+ <div class="tl-day">Apr 18</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div>Site visit — 221 · B Vastrapur<div class="text-xs text-muted">With valuer42 photosgeo-tagged</div></div></div>
+ <div class="tl-item"><div class="tl-dot"></div><div>FI positive — residence<div class="text-xs text-muted">Neha K.3h 18m</div></div></div>
+
+ <div class="tl-day">Apr 16</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div>CIBIL pulledscore 748<div class="text-xs text-muted">Report attachedno red flags</div></div></div>
+
+ <div class="tl-day">Apr 12</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div>Docket submitted to HDFC<div class="text-xs text-muted">14 of 16 docs2 to follow</div></div></div>
+
+ <div class="tl-day">Apr 06</div>
+ <div class="tl-item"><div class="tl-dot green"></div><div>Doc collection complete<div class="text-xs text-muted">Stage 3 closed</div></div></div>
+
+ <div class="tl-day">Mar 29</div>
+ <div class="tl-item"><div class="tl-dot"></div><div>Quotation sent3 banks compared<div class="text-xs text-muted">HDFC selected</div></div></div>
+
+ <div class="tl-day">Mar 28</div>
+ <div class="tl-item"><div class="tl-dot"></div><div>Inquiry loggedwalk-inref: Priya Mehta<div class="text-xs text-muted">Opened by Rahul J.</div></div></div>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- NOTES panel -->
+<div id="loan-panel-notes" data-panel-id="notes" style="display:none;">
+ <div class="grid c-main">
+ <div>
+ <div class="card"><div class="card-hd"><div class="t">Notes &amp; discussions</div></div>
+ <div class="card-bd">
+ <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;">
+ <div class="avatar sm">RJ</div>
+ <div style="flex:1;"><textarea class="input" rows="3" placeholder="Add a note, @mention someone, or paste a link…"></textarea>
+ <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn xs primary">Post</button><button class="btn xs ghost">Attach file</button><label class="text-xs text-muted" style="margin-left:auto;display:flex;align-items:center;gap:4px;"><input type="checkbox"> Notify customer</label></div>
+ </div>
+ </div>
+ <hr style="border:none;border-top:1px dashed var(--line);margin:14px 0;">
+ <div class="note"><div class="avatar sm">RJ</div><div class="note-b"><div class="note-h"><strong>Rahul Jadeja</strong><span class="text-xs text-muted">Today 10:24 AM</span></div><div>Called Anil — he's ok with 8.45% but wants PF renegotiated. Have asked Saurabh to check if 0.40% is possible.</div></div></div>
+ <div class="note"><div class="avatar sm" style="background:#d4e4f2;color:#1d4e89;">NS</div><div class="note-b"><div class="note-h"><strong>Neha Soni</strong><span class="text-xs text-muted">Yesterday 4:12 PM</span></div><div>ITR-3 for FY23-24 still pending. Customer's CA said he'd share by tomorrow. Will chase.</div></div></div>
+ <div class="note"><div class="avatar sm" style="background:#d9eed9;color:#107a4f;">SG</div><div class="note-b"><div class="note-h"><strong>Saurabh Gandhi</strong><span class="text-xs text-muted">Apr 1811:20 AM</span></div><div>File queued for credit review. Expect decision in 2-3 working days. RCU flagged one doc but it's been cleared.</div></div></div>
+ <div class="note"><div class="avatar sm">RJ</div><div class="note-b"><div class="note-h"><strong>Rahul Jadeja</strong><span class="text-xs text-muted">Apr 16</span></div><div>Customer mentioned he's also considering PNB — but PNB rates are 40+ bps higher. Not a serious threat.</div></div></div>
+ <div class="note"><div class="avatar sm" style="background:#efd3c0;color:#8a3a10;">BM</div><div class="note-b"><div class="note-h"><strong>Bharat Mehta</strong> (Branch Mgr)<span class="text-xs text-muted">Apr 12</span></div><div>Nice work on the quotation — clean comparison. Keep me posted on sanction outcome.</div></div></div>
+ </div>
+ </div>
+ </div>
+ <aside>
+ <div class="card"><div class="card-hd"><div class="t">@ Mentions</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Rahul J.</span><strong>12</strong></div>
+ <div class="kv"><span>Neha S.</span><strong>6</strong></div>
+ <div class="kv"><span>Saurabh G.</span><strong>4</strong></div>
+ <div class="kv"><span>Bharat M.</span><strong>2</strong></div>
+ </div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Pinned</div></div>
+ <div class="card-bd">
+ <div class="note" style="padding:8px 0;"><div class="note-b" style="border-left:3px solid var(--accent);padding-left:10px;"><div class="text-xs text-muted">Apr 04</div><div>Bank prefers ITR-3 (partnership firm) — customer initially sent ITR-4.</div></div></div>
+ <div class="note" style="padding:8px 0;"><div class="note-b" style="border-left:3px solid var(--accent);padding-left:10px;"><div class="text-xs text-muted">Mar 29</div><div>Customer's margin-money source: sale of flat in Chandkheda — agreement attached.</div></div></div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+</div>
+</main>
+
+<div id="__shell_tweaks"></div>
+</div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('loans');</script>
+<script>Stage rail click → jump to stage (demo)
+ document.querySelectorAll('#stageRail .stg').forEach(el => {
+ el.addEventListener('click', () => {
+ document.querySelectorAll('#stageRail .stg').forEach(s => s.classList.remove('current'));
+ const n = parseInt(el.dataset.stage);
+ document.querySelectorAll('#stageRail .stg').forEach(s => {
+ const sn = parseInt(s.dataset.stage);
+ s.classList.remove('done','current');
+ if (sn < n) s.classList.add('done');
+ else if (sn === n) s.classList.add('current');
+ });
+ });
+ });
+</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script src="assets/loan-stages.js"></script>
+<script>wireTabs('loan', ["workflow","documents","rate","queries","timeline","notes"]);</script>
+<script src="assets/loan-show.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roles · SHF World</title><link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header"><div class="head-row"><div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Admin <span class="sep">/</span> Roles &amp; permissions</div><h1>Roles &amp; permissions</h1><div class="sub">7 roles42 permissionslast edited Apr 15</div></div><div class="head-actions"><a class="btn" href="permissions.html">Permission matrix</a><a class="btn primary" href="role-edit.html">+ New role</a></div></header>
+<main class="content">
+<div class="card"><div class="card-hd"><div class="t">Permission matrix</div></div><div class="card-bd" style="padding:0;overflow:auto;">
+<table class="tbl matrix"><thead><tr><th style="min-width:220px;text-align:left;">Permission</th><th>Super admin</th><th>Branch mgr</th><th>Loan advisor</th><th>Office emp.</th><th>Bank emp.</th><th>Customer</th><th>Read-only</th><th class="th-actions" style="width:48px;text-align:right;"></th></tr></thead><tbody>
+<tr><td><strong>Quotations</strong></td><td colspan="7" style="background:var(--paper);"></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Create quotation</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Edit rate card</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">View all (branch)</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c own">own</td><td class="c own">assigned</td><td class="c no">—</td><td class="c own">own</td><td class="c ok">read</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><strong>Loans</strong></td><td colspan="7" style="background:var(--paper);"></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Create loan</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Advance stage</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c own">stage 3</td><td class="c own">6-9</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Upload documents</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c ok">✓</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Approve disbursement</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><strong>Customers</strong></td><td colspan="7" style="background:var(--paper);"></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Create customer</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Edit KYC</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c no">—</td><td class="c own">own</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td><strong>Admin</strong></td><td colspan="7" style="background:var(--paper);"></td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Manage users</td><td class="c ok">✓</td><td class="c own">branch</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">Edit roles</td><td class="c ok">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+<tr><td class="indent">View activity log</td><td class="c ok">✓</td><td class="c own">branch</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c ok">read</td><td style="text-align:right;"><div class="row-actions">
+ <button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>
+ <div class="row-actions-menu">
+ <a href="role-edit.html">Edit</a>
+ <a href="#" data-toast="Duplicated">Duplicate</a>
+ <hr>
+ <a href="#" class="danger" data-confirm-delete="Role">Delete</a>
+ </div>
+ </div></td></tr>
+</tbody></table></div></div>
+</main><div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script><script>shfMount('users');</script><script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/roles.js?v=1"></script>
+</body></html>

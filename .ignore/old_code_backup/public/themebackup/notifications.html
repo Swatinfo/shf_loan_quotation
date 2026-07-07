@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifications · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+<header class="page-header">
+ <div class="head-row">
+ <div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Notifications</div><h1>Notifications</h1><div class="sub">12 unread48 total this week</div></div>
+ <div class="head-actions"><button class="btn" data-action="toast" data-arg="Marked all read">Mark all read</button><a class="btn" href="profile.html">Preferences</a></div>
+ </div>
+ <div class="tabs" data-tab-panel-group="notif">
+ <a class="tab active" id="notif-tab-all" data-panel="all">All <span class="count">48</span></a>
+ <a class="tab" id="notif-tab-mentions" data-panel="mentions">Mentions <span class="count">6</span></a>
+ <a class="tab" id="notif-tab-queries" data-panel="queries">Queries <span class="count">4</span></a>
+ <a class="tab" id="notif-tab-disbursements" data-panel="disbursements">Disbursements <span class="count">9</span></a>
+ <a class="tab" id="notif-tab-system" data-panel="system">System <span class="count">7</span></a>
+ </div>
+</header>
+<main class="content">
+<div data-tab-panel-group="notif">
+
+ <!-- ALL -->
+ <div id="notif-panel-all" data-panel-id="all">
+ <div class="card"><div class="card-bd" style="padding:0;">
+ <div class="notif unread"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Saurabh Gandhi</strong> raised a query on <a class="font-mono">SHF-2026-0479</a></div><div class="n-m">Valuation report mismatch — ₹63 · L vs ₹65 LPlease clarify</div><div class="n-t2">6h ago</div></div><button class="btn sm">View</button></div>
+ <div class="notif unread"><div class="n-i amber">!</div><div class="n-b"><div class="n-t">Document overdue — <a class="font-mono">SHF-2026-0458</a></div><div class="n-m">OTC clearance has been pending for 15 days</div><div class="n-t2">Today 09:00</div></div><button class="btn sm">Open file</button></div>
+ <div class="notif unread"><div class="n-i green">₹</div><div class="n-b"><div class="n-t">Disbursement scheduledJayesh Trivedi</div><div class="n-m">₹ 18,00,000cheque ready for pickup from Axis Bank</div><div class="n-t2">Today 08:30</div></div><button class="btn sm">Acknowledge</button></div>
+ <div class="notif unread"><div class="n-i violet">e</div><div class="n-b"><div class="n-t">e NACH mandate confirmedRashmika Shah</div><div class="n-m">Next: loan agreement e-sign</div><div class="n-t2">Yesterday 18:20</div></div><button class="btn sm">View</button></div>
+ <div class="notif unread"><div class="n-i">@</div><div class="n-b"><div class="n-t"><strong>Bharat Mehta</strong> assigned you to SHF-2026-0484</div><div class="n-m">New loan file HDFC₹ 36 · L</div><div class="n-t2">Yesterday 15:10</div></div><button class="btn sm">Open</button></div>
+ <div class="notif"><div class="n-i blue">Q</div><div class="n-b"><div class="n-t">Quotation QT-2026-00147 viewed by Anil Patel</div><div class="n-m">3 views4 min spentclicked HDFC twice</div><div class="n-t2">2d</div></div></div>
+ <div class="notif"><div class="n-i">!</div><div class="n-b"><div class="n-t">Rate card updated HDFC</div><div class="n-m">Home loan salaried segment: 8.40% → 8.35% (-5 bps)</div><div class="n-t2">3d</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">Sanction receivedNirav Bhatt</div><div class="n-m">SBI sanction ₹48 · L @ 8.50%KFS pending</div><div class="n-t2">3d</div></div></div>
+ <div class="notif"><div class="n-i">🛈</div><div class="n-b"><div class="n-t">Scheduled maintenanceSunday 2 AM</div><div class="n-m">Expect 15 min downtime for DB upgrade</div><div class="n-t2">4d</div></div></div>
+ </div></div>
+ </div>
+
+ <!-- MENTIONS -->
+ <div id="notif-panel-mentions" data-panel-id="mentions" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Where you were @mentioned</div><div class="sub">6 newpast 30 days</div></div><div class="card-bd" style="padding:0;">
+ <div class="notif unread"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Bharat Mehta</strong> mentioned you on <a class="font-mono">SHF-2026-0484</a></div><div class="n-m">"@rahul please verify the co-applicant's ITR — looks different from what's on PAN."</div><div class="n-t2">Yesterday 15:10</div></div><button class="btn sm">Reply</button></div>
+ <div class="notif unread"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Anita Shah</strong> mentioned you on <a class="font-mono">QT-2026-00148</a></div><div class="n-m">"@rahul client accepted HDFC variant — please convert and kick off KYC"</div><div class="n-t2">2d</div></div><button class="btn sm">Reply</button></div>
+ <div class="notif unread"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Saurabh Gandhi</strong> mentioned you on DVR-4821</div><div class="n-m">"@rahul shared valuation pics — please attach to the loan file"</div><div class="n-t2">3d</div></div><button class="btn sm">Reply</button></div>
+ <div class="notif"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Vipul Joshi</strong> mentioned you on <a class="font-mono">SHF-2026-0461</a></div><div class="n-m">"@rahul can you pick up the cheque on your way back from Maninagar?"</div><div class="n-t2">5d</div></div></div>
+ <div class="notif"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Dipti Raval</strong> mentioned you in Task T-2026-402</div><div class="n-m">"@rahul final check before sending KFS"</div><div class="n-t2">8d</div></div></div>
+ <div class="notif"><div class="n-i blue">@</div><div class="n-b"><div class="n-t"><strong>Harsh Chheda</strong> mentioned you on <a class="font-mono">SHF-2026-0455</a></div><div class="n-m">"@rahul quick doubt about stamp duty calc"</div><div class="n-t2">12d</div></div></div>
+ </div></div>
+ </div>
+
+ <!-- QUERIES -->
+ <div id="notif-panel-queries" data-panel-id="queries" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Open queries</div><div class="sub">4 awaiting your response SLA 24h</div></div><div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Loan</th><th>Raised by</th><th>Query</th><th>Age</th><th>SLA</th><th></th></tr></thead>
+ <tbody>
+ <tr><td class="font-mono">SHF-2026-0479</td><td>Saurabh Gandhi<div class="sub">Valuer</div></td><td>Valuation report mismatch — ₹63 · L vs ₹65 · L</td><td>6h</td><td><span class="badge green">OK</span></td><td><button class="btn xs primary">Respond</button></td></tr>
+ <tr><td class="font-mono">SHF-2026-0458</td><td>HDFC OTC desk</td><td>Missing salary slip for Feb 2026</td><td>18h</td><td><span class="badge yellow">6h left</span></td><td><button class="btn xs primary">Respond</button></td></tr>
+ <tr><td class="font-mono">SHF-2026-0471</td><td>ICICI credit</td><td>CIBIL rejection reason — need LOE</td><td>26h</td><td><span class="badge red">Overdue</span></td><td><button class="btn xs primary">Respond</button></td></tr>
+ <tr><td class="font-mono">SHF-2026-0466</td><td>Axis legal</td><td>Chain document pre-1994 missing</td><td>2d</td><td><span class="badge red">Overdue</span></td><td><button class="btn xs primary">Respond</button></td></tr>
+ </tbody>
+ </table>
+ </div></div>
+ </div>
+
+ <!-- DISBURSEMENTS -->
+ <div id="notif-panel-disbursements" data-panel-id="disbursements" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Disbursement events</div><div class="sub">Scheduled, released, and completed — past 14 days</div></div><div class="card-bd" style="padding:0;">
+ <div class="notif unread"><div class="n-i green">₹</div><div class="n-b"><div class="n-t"><strong>Cheque ready for pickup</strong>Jayesh Trivedi<a class="font-mono">SHF-2026-0476</a></div><div class="n-m">₹ 18,00,000Axis Bank Navrangpuracollect by 4 PM</div><div class="n-t2">Today 08:30</div></div><button class="btn sm primary">Confirm pickup</button></div>
+ <div class="notif unread"><div class="n-i green">₹</div><div class="n-b"><div class="n-t">Disbursement scheduledNirali Shah<a class="font-mono">SHF-2026-0472</a></div><div class="n-m">₹ 42,00,000 HDFCDV print Friday</div><div class="n-t2">Today 07:45</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">DisbursedRashmika Shah<a class="font-mono">SHF-2026-0468</a></div><div class="n-m">₹ 27,50,000 creditede NACH live from May 5</div><div class="n-t2">Yesterday 16:02</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">DisbursedAnil Patel<a class="font-mono">SHF-2026-0464</a></div><div class="n-m">₹ 55,00,000 credited to builder escrow</div><div class="n-t2">2d</div></div></div>
+ <div class="notif"><div class="n-i amber">⏱</div><div class="n-b"><div class="n-t">Partial disbursement heldSuresh Mistry<a class="font-mono">SHF-2026-0451</a></div><div class="n-m">50% releasedbalance awaiting slab completion certificate</div><div class="n-t2">3d</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">DisbursedPriya Mehta<a class="font-mono">SHF-2026-0449</a></div><div class="n-m">₹ 32,00,000 SBI — NEFT UTR SBIN0045218</div><div class="n-t2">5d</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">DisbursedKunal Desai<a class="font-mono">SHF-2026-0441</a></div><div class="n-m">₹ 12,00,000 top-up ICICI</div><div class="n-t2">9d</div></div></div>
+ <div class="notif"><div class="n-i amber">!</div><div class="n-b"><div class="n-t">DV returned by bankMeera Shah<a class="font-mono">SHF-2026-0437</a></div><div class="n-m">Signature mismatch — reprint required</div><div class="n-t2">11d</div></div></div>
+ <div class="notif"><div class="n-i green">✓</div><div class="n-b"><div class="n-t">DisbursedNirav Bhatt<a class="font-mono">SHF-2026-0433</a></div><div class="n-m">₹ 48,00,000 SBI — first EMI Jun 5</div><div class="n-t2">12d</div></div></div>
+ </div></div>
+ </div>
+
+ <!-- SYSTEM -->
+ <div id="notif-panel-system" data-panel-id="system" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">System announcements</div><div class="sub">Rate cards, policy changes, maintenance</div></div><div class="card-bd" style="padding:0;">
+ <div class="notif"><div class="n-i">!</div><div class="n-b"><div class="n-t">Rate card updated HDFC</div><div class="n-m">Home loan salaried segment: 8.40% → 8.35% (-5 bps)effective Apr 21</div><div class="n-t2">3d</div></div><button class="btn sm">View card</button></div>
+ <div class="notif"><div class="n-i">!</div><div class="n-b"><div class="n-t">Rate card updated ICICI</div><div class="n-m">Balance transfer: +10 bps on low-CIBIL segment</div><div class="n-t2">4d</div></div></div>
+ <div class="notif"><div class="n-i">🛈</div><div class="n-b"><div class="n-t">Scheduled maintenanceSunday 2 AM</div><div class="n-m">Expect 15 min downtime for DB upgrade</div><div class="n-t2">4d</div></div></div>
+ <div class="notif"><div class="n-i">🛈</div><div class="n-b"><div class="n-t">Gujarati translations updated</div><div class="n-m">Documents module46 new strings live</div><div class="n-t2">6d</div></div></div>
+ <div class="notif"><div class="n-i">!</div><div class="n-b"><div class="n-t">Policy updateStamp duty</div><div class="n-m">Gujarat state stamp duty 4.9% → 4.75% from Apr 15</div><div class="n-t2">8d</div></div></div>
+ <div class="notif"><div class="n-i">🛈</div><div class="n-b"><div class="n-t">New bank onboardedBank of Baroda</div><div class="n-m">Home loan rates starting 8.50% — rate card live</div><div class="n-t2">11d</div></div></div>
+ <div class="notif"><div class="n-i">!</div><div class="n-b"><div class="n-t">PDF branding refreshed</div><div class="n-m">KFS and sanction letter templates updated with new logo</div><div class="n-t2">14d</div></div></div>
+ </div></div>
+ </div>
+
+</div>
+</main>
+<div id="__shell_tweaks"></div></div>
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('notifications');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('notif', ["all","mentions","queries","disbursements","system"]);</script>
+<script src="assets/notifications.js?v=1"></script>
+</body></html>

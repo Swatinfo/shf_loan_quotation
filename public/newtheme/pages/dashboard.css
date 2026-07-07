@@ -1,0 +1,36 @@
+/*
+ * Page-specific styles for resources/views/newtheme/dashboard.blade.php.
+ * Anything global belongs in shf-workflow.css (do NOT edit that file).
+ */
+
+/* Greeting block tightens up under our actual layout (no demo head-actions) */
+.page-header h1#greeting {
+    margin: 4px 0 2px;
+}
+
+/* Bank mix donut size — keeps numerals legible */
+.donut {
+    width: 110px;
+    height: 110px;
+    flex: 0 0 110px;
+}
+
+/* Field activity 2x2 on narrow sidebar */
+@media (max-width: 1199.98px) {
+    aside .strip {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Pipeline collapses to 3-up below tablet */
+@media (max-width: 991.98px) {
+    #pipelineGrid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    #pipelineGrid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasks · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css"><link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head><body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div><div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Tasks</div>
+ <h1>Tasks &amp; follow-ups</h1><div class="sub">18 open4 overdue6 due today</div></div>
+ <div class="head-actions">
+ <button class="btn" data-action="toast" data-arg="Filter by advisor ▾">Filter by advisor ▾</button>
+ <a class="btn primary" href="task-create.html">+ New task</a>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="tsk">
+ <a class="tab active" id="gt-tab-my" data-panel="my">My tasks <span class="count">12</span></a>
+ <a class="tab" id="gt-tab-team" data-panel="team">Team <span class="count">38</span></a>
+ <a class="tab" id="gt-tab-overdue" data-panel="overdue">Overdue <span class="count">4</span></a>
+ <a class="tab" id="gt-tab-completed" data-panel="completed">Completed <span class="count">24</span></a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="tsk">
+
+ <!-- MY TASKS - kanban -->
+ <div id="gt-panel-my" data-panel-id="my">
+ <div class="grid c3" style="gap:18px;">
+ <div class="card kanban-col">
+ <div class="card-hd"><div class="t">Today6</div></div>
+ <div class="card-bd" style="padding:12px;">
+ <div class="task-card overdue"><div class="task-t">Call Priya — missing PAN copy</div><div class="task-m"><span class="font-mono">SHF-2026-0482</span>10:30 AM</div><div class="task-f"><span class="badge red sq">Overdue 30m</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Site visit — 221 · B Vastrapur</div><div class="task-m">DVR1:00 PMwith Neha</div><div class="task-f"><span class="badge blue sq">Field</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Collect cheque from Jayesh</div><div class="task-m"><span class="font-mono">SHF-2026-0462</span>3:00 PM</div><div class="task-f"><span class="badge amber sq">Disbursement</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Send revised quotationKiran</div><div class="task-m"><span class="font-mono">QT-2026-00145</span>4:30 PM</div><div class="task-f"><span class="badge sq">Doc</span><div class="avatar xs">VM</div></div></div>
+ <div class="task-card"><div class="task-t">Branch manager 1:1</div><div class="task-m">Ops review5:30 PM</div><div class="task-f"><span class="badge sq">Meeting</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Close OTC for SHF-2026-0458</div><div class="task-m">2 pending items EOD</div><div class="task-f"><span class="badge red sq">Aging 15d</span><div class="avatar xs">AP</div></div></div>
+ </div>
+ </div>
+ <div class="card kanban-col">
+ <div class="card-hd"><div class="t">Tomorrow5</div></div>
+ <div class="card-bd" style="padding:12px;">
+ <div class="task-card"><div class="task-t">Follow-up Rashmika — e NACH status</div><div class="task-m"><span class="font-mono">SHF-2026-0471</span>9:30 AM</div><div class="task-f"><span class="badge violet sq">E-Sign</span><div class="avatar xs">AP</div></div></div>
+ <div class="task-card"><div class="task-t">Collect Form 16 from Shilpa</div><div class="task-m"><span class="font-mono">SHF-2026-0455</span>11 AM</div><div class="task-f"><span class="badge blue sq">Doc</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Bank visit — BOB Navrangpura</div><div class="task-m">Docket handover2 PM</div><div class="task-f"><span class="badge sq">Field</span><div class="avatar xs">VM</div></div></div>
+ <div class="task-card"><div class="task-t">Call Meera — top-up renewal</div><div class="task-m">Alumni CRM4 PM</div><div class="task-f"><span class="badge sq">CRM</span><div class="avatar xs">AP</div></div></div>
+ <div class="task-card"><div class="task-t">Review valuation reportAnil</div><div class="task-m"><span class="font-mono">SHF-2026-0479</span></div><div class="task-f"><span class="badge amber sq">Parallel</span><div class="avatar xs">RJ</div></div></div>
+ </div>
+ </div>
+ <div class="card kanban-col">
+ <div class="card-hd"><div class="t">This week7</div></div>
+ <div class="card-bd" style="padding:12px;">
+ <div class="task-card"><div class="task-t">Docket login — SBI</div><div class="task-m">SHF-2026-0471Wed</div><div class="task-f"><span class="badge violet sq">Docket</span><div class="avatar xs">AP</div></div></div>
+ <div class="task-card"><div class="task-t">Property visit — Satellite plot</div><div class="task-m">Kavya IyerThu AM</div><div class="task-f"><span class="badge sq">Field</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">Quarterly KPI review</div><div class="task-m">Team meetingFri 11 AM</div><div class="task-f"><span class="badge sq">Meeting</span><div class="avatar xs">BM</div></div></div>
+ <div class="task-card"><div class="task-t">Bank rate negotiation HDFC</div><div class="task-m">Anil — 5 bps variance</div><div class="task-f"><span class="badge amber sq">Rate</span><div class="avatar xs">RJ</div></div></div>
+ <div class="task-card"><div class="task-t">KFS dispatch — Nirav</div><div class="task-m">SHF-2026-0449Thu</div><div class="task-f"><span class="badge violet sq">KFS</span><div class="avatar xs">VM</div></div></div>
+ <div class="task-card"><div class="task-t">Sanction letter chaseKiran</div><div class="task-m">SHF-2026-04687d old</div><div class="task-f"><span class="badge amber sq">Sanction</span><div class="avatar xs">VM</div></div></div>
+ <div class="task-card"><div class="task-t">Follow-up 5 cold leads</div><div class="task-m">From FB campaign</div><div class="task-f"><span class="badge sq">CRM</span><div class="avatar xs">AP</div></div></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- TEAM -->
+ <div id="gt-panel-team" data-panel-id="team" style="display:none;">
+ <div class="grid c2" style="gap:18px;">
+ <div class="card">
+ <div class="card-hd"><div class="t">Workload by advisor</div><div class="sub">Open taskspast 7 days throughput</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Advisor</th><th>Open</th><th>Today</th><th>Overdue</th><th>Done/wk</th><th>Avg. age</th></tr></thead>
+ <tbody>
+ <tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm">RJ</div><div><div style="font-weight:500;">Rahul J.</div><div class="text-xs text-muted">Advisor</div></div></div></td><td>12</td><td>6</td><td>1</td><td>22</td><td>1.8d</td></tr>
+ <tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#efd3c0;color:#8a3a10;">AP</div><div><div style="font-weight:500;">Anita P.</div><div class="text-xs text-muted">Advisor</div></div></div></td><td>9</td><td>3</td><td>0</td><td>19</td><td>2.1d</td></tr>
+ <tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#d4e4f2;color:#1d4e89;">VM</div><div><div style="font-weight:500;">Vipul M.</div><div class="text-xs text-muted">Advisor</div></div></div></td><td>11</td><td>4</td><td>2</td><td>16</td><td>3.4d</td></tr>
+ <tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#d9eed9;color:#107a4f;">NK</div><div><div style="font-weight:500;">Neha K.</div><div class="text-xs text-muted">Field</div></div></div></td><td>6</td><td>2</td><td>1</td><td>14</td><td>1.2d</td></tr>
+ <tr><td><div style="display:flex;gap:10px;align-items:center;"><div class="avatar sm" style="background:#fae3e3;color:#9c1f2e;">BM</div><div><div style="font-weight:500;">Bharat M.</div><div class="text-xs text-muted">Branch mgr</div></div></div></td><td>0</td><td>0</td><td>0</td><td>6</td><td>—</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ <div class="card">
+ <div class="card-hd"><div class="t">Unassigned4</div><div class="sub">Claim or assign</div></div>
+ <div class="card-bd" style="padding:12px;">
+ <div class="task-card"><div class="task-t">Collect 3-month bank stmtSuresh</div><div class="task-m">SHF-2026-0481Today EOD</div><div class="task-f"><span class="badge blue sq">Doc</span><button class="btn xs">Claim</button></div></div>
+ <div class="task-card"><div class="task-t">Respond to ICICI query</div><div class="task-m">SHF-2026-0471 SLA 6h</div><div class="task-f"><span class="badge red sq">Urgent</span><button class="btn xs">Claim</button></div></div>
+ <div class="task-card"><div class="task-t">Send KFS to Jayesh</div><div class="task-m">SHF-2026-0462Tomorrow</div><div class="task-f"><span class="badge violet sq">KFS</span><button class="btn xs">Claim</button></div></div>
+ <div class="task-card"><div class="task-t">Schedule site visitSatellite</div><div class="task-m">Kavya Iyer</div><div class="task-f"><span class="badge sq">Field</span><button class="btn xs">Claim</button></div></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- OVERDUE -->
+ <div id="gt-panel-overdue" data-panel-id="overdue" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Overdue4</div><div class="sub">Breached SLA or missed due date</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Task</th><th>Linked to</th><th>Due</th><th>Age</th><th>Owner</th><th>Reason</th><th></th></tr></thead>
+ <tbody>
+ <tr><td>Close OTC clearance</td><td class="font-mono">SHF-2026-0458</td><td>5 Apr</td><td><span class="badge red sq">15d over</span></td><td>Anita P.</td><td>Missing salary slip Feb</td><td><button class="btn xs primary">Chase</button></td></tr>
+ <tr><td>Call Priya — PAN copy</td><td class="font-mono">SHF-2026-0482</td><td>Today 10:30</td><td><span class="badge red sq">30m over</span></td><td>Rahul J.</td><td>Left voicemail</td><td><button class="btn xs primary">Call</button></td></tr>
+ <tr><td>Respond to ICICI query</td><td class="font-mono">SHF-2026-0471</td><td>Yesterday</td><td><span class="badge red sq">26h over</span></td><td>Vipul M.</td><td>CIBIL LOE pending</td><td><button class="btn xs primary">Respond</button></td></tr>
+ <tr><td>Chain doc pre-1994</td><td class="font-mono">SHF-2026-0466</td><td>18 Apr</td><td><span class="badge red sq">3d over</span></td><td>Vipul M.</td><td>Builder unresponsive</td><td><button class="btn xs primary">Escalate</button></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <!-- COMPLETED -->
+ <div id="gt-panel-completed" data-panel-id="completed" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Completed this week24</div><div class="sub">Archive of recent closures</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Task</th><th>Linked to</th><th>Completed</th><th>By</th><th>Time taken</th></tr></thead>
+ <tbody>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Collect Form 16 from Nirav</td><td class="font-mono">SHF-2026-0449</td><td>Today 09:12</td><td>Rahul J.</td><td>2h</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Docket handover to Axis</td><td class="font-mono">SHF-2026-0464</td><td>Yesterday 16:45</td><td>Vipul M.</td><td>1d</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">e NACH setupRashmika</td><td class="font-mono">SHF-2026-0471</td><td>Yesterday 14:22</td><td>Anita P.</td><td>45m</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Valuation visitManinagar</td><td class="font-mono">SHF-2026-0476</td><td>2d ago</td><td>Neha K.</td><td>3h</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Call Kavya — fresh lead</td><td>Lead intake</td><td>2d ago</td><td>Anita P.</td><td>25m</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Sanction receivedNirav</td><td class="font-mono">SHF-2026-0449</td><td>3d ago</td><td>Vipul M.</td><td>—</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Dispatch KFSAnil</td><td class="font-mono">SHF-2026-0464</td><td>3d ago</td><td>Rahul J.</td><td>20m</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">OTC clearedKiran</td><td class="font-mono">SHF-2026-0468</td><td>4d ago</td><td>Vipul M.</td><td>5d</td></tr>
+ <tr><td style="text-decoration:line-through;color:var(--ink-3);">Send revised offerShilpa</td><td class="font-mono">QT-2026-00142</td><td>5d ago</td><td>Rahul J.</td><td>1h</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+</div>
+</main>
+<div id="__shell_tweaks"></div></div>
+
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('tasks');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('gt', ["my","team","overdue","completed"]);</script>
+<script src="assets/general-tasks.js?v=1"></script>
+</body></html>

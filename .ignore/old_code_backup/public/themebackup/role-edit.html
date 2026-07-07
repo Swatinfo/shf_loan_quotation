@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New role · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+ .perm-group { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; background: #fff; }
+ .perm-group-hd { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+ .perm-group-hd .t { font-weight: 600; font-size: 14px; flex: 1; }
+ .perm-group-hd .cnt { font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono'; }
+ .perm-group-hd .chev { transition: transform 0.2s; }
+ .perm-group.collapsed .chev { transform: rotate(-90deg); }
+ .perm-group.collapsed .perm-body { display: none; }
+ .perm-body { padding: 6px 8px 10px; }
+ .perm-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 8px; }
+ .perm-row:hover { background: var(--paper); }
+ .perm-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: 0 0 18px; }
+ .perm-row .lbl { font-size: 13.5px; font-weight: 500; }
+ .perm-row .desc { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+ .perm-row .scope { font-size: 10.5px; font-family: 'JetBrains Mono'; color: var(--ink-3); background: var(--paper-2); padding: 3px 8px; border-radius: 5px; }
+ .perm-head-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+ .perm-head-actions .btn { flex: 0 0 auto; }
+ .selected-count { padding: 10px 14px; background: var(--accent-soft); border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+ .selected-count b { font-family: 'Jost'; font-size: 18px; }
+ @media (max-width: 768px) {
+ .perm-row { grid-template-columns: auto 1fr; gap: 10px; }
+ .perm-row .scope { grid-column: 2; justify-self: start; margin-top: 2px; }
+ }
+</style>
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="roles.html">Roles</a> <span class="sep">/</span> New role</div>
+ <h1 id="page-title">New role</h1>
+ <div class="sub" id="page-sub">Define a role with a name, description, and scoped permissions.</div>
+ </div>
+ <div class="head-actions">
+ <a class="btn" href="roles.html">Cancel</a>
+ <button class="btn" id="btn-save-draft">Save draft</button>
+ <button class="btn primary" id="btn-create">Create role →</button>
+ </div>
+ </div>
+</header>
+
+<main class="content">
+<form id="role-form" onsubmit="return false;">
+
+ <!-- BASICS -->
+ <div class="card" style="margin-bottom: 16px;">
+ <div class="card-hd"><div class="t">Role details</div></div>
+ <div class="card-bd">
+ <div class="grid c2" style="gap: 16px;">
+ <div class="field">
+ <label>Role name <span style="color: var(--danger);">*</span></label>
+ <input class="input" id="f-name" placeholder="e.g. Branch Manager" required>
+ <div class="text-xs text-muted mt-1">Shown in user assignments and permission matrix.</div>
+ </div>
+ <div class="field">
+ <label>Key (slug)</label>
+ <input class="input font-mono" id="f-key" placeholder="branch_manager" pattern="[a-z0-9_]+">
+ <div class="text-xs text-muted mt-1">Auto-generated from name if left blank.</div>
+ </div>
+ <div class="field" style="grid-column: 11;">
+ <label>Description</label>
+ <textarea class="input" id="f-desc" rows="2" placeholder="What does this role do? Who typically gets assigned this role?"></textarea>
+ </div>
+ <div class="field">
+ <label>Scope</label>
+ <select class="select" id="f-scope">
+ <option value="branch">Branch — sees only own branch</option>
+ <option value="region">Region — sees multiple branches</option>
+ <option value="org">Organization-wide</option>
+ <option value="own">Own records only</option>
+ </select>
+ </div>
+ <div class="field">
+ <label>Status</label>
+ <div class="segmented">
+ <label class="seg-opt"><input type="radio" name="status" value="active" checked><span>Active</span></label>
+ <label class="seg-opt"><input type="radio" name="status" value="draft"><span>Draft</span></label>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- PERMISSIONS -->
+ <div class="card">
+ <div class="card-hd">
+ <div class="t">Permissions</div>
+ <div class="sub" style="margin-left: 10px;" id="perm-summary">0 of 42 selected</div>
+ <div class="actions">
+ <button type="button" class="btn sm ghost" id="btn-check-all">Select all</button>
+ <button type="button" class="btn sm ghost" id="btn-uncheck-all">Clear all</button>
+ </div>
+ </div>
+ <div class="card-bd">
+ <div class="selected-count" id="selected-count-box">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4 M12 22 C6.477 22 2 17.523 2 12 S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+ <span><b id="sel-n">0</b> permissions selected out of <b>42</b></span>
+ </div>
+
+ <div class="perm-head-actions">
+ <input class="input" id="perm-search" placeholder="Search permissions…" style="flex:1;">
+ <button type="button" class="btn sm" id="btn-expand-all">Expand all</button>
+ <button type="button" class="btn sm" id="btn-collapse-all">Collapse all</button>
+ </div>
+
+ <div id="perm-groups"></div>
+ </div>
+ <div class="card-ft">
+ <div class="text-xs text-muted">Changes take effect immediately for all users assigned this role.</div>
+ <div style="margin-left: auto; display: flex; gap: 8px;">
+ <a class="btn" href="roles.html">Cancel</a>
+ <button type="button" class="btn primary" id="btn-create-2">Create role →</button>
+ </div>
+ </div>
+ </div>
+
+</form>
+</main>
+
+<div id="__shell_tweaks"></div></div>
+
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('users');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/role-edit.js?v=1"></script>
+</body></html>

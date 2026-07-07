@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New quotation · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="app">
+<div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="quotations.html">Quotations</a> <span class="sep">/</span> New</div>
+ <h1>Quotation builder</h1>
+ <div class="sub">Compare up to 6 banks side-by-sideDraft auto-saved<span class="font-mono">QT-2026-00148</span></div>
+ </div>
+ <div class="head-actions">
+ <button class="btn" data-action="toast" data-arg="Save draft">Save draft</button>
+ <button class="btn" data-action="toast" data-arg="Preview">Preview</button>
+ <button class="btn primary" data-action="submit" data-arg="Generate PDF →">Generate PDF →</button>
+ </div>
+ </div>
+</header>
+
+<main class="content">
+ <!-- Stepper -->
+ <div class="card" style="margin-bottom:18px;">
+ <div class="card-bd" style="padding:14px 18px;">
+ <div class="stepper" style="display:flex;align-items:center;gap:8px;">
+ <div class="step done"><span class="n">1</span><span class="t">Customer</span></div>
+ <div class="step-line done"></div>
+ <div class="step done"><span class="n">2</span><span class="t">Loan parameters</span></div>
+ <div class="step-line done"></div>
+ <div class="step current"><span class="n">3</span><span class="t">Bank comparison</span></div>
+ <div class="step-line"></div>
+ <div class="step"><span class="n">4</span><span class="t">Fees &amp; charges</span></div>
+ <div class="step-line"></div>
+ <div class="step"><span class="n">5</span><span class="t">Review &amp; generate</span></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="grid c-main">
+ <!-- LEFT: inputs -->
+ <div>
+ <!-- Customer summary -->
+ <div class="card">
+ <div class="card-hd"><div class="t"><span class="num">1</span>Customer</div><a class="btn sm ghost">Edit</a></div>
+ <div class="card-bd">
+ <div style="display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;">
+ <div class="avatar lg">PM</div>
+ <div>
+ <div style="font-family:'Jost';font-size:18px;font-weight:600;">Priya Mehta</div>
+ <div class="text-xs text-muted mt-1">SalariedAge 32Monthly in-hand ₹ 1,24,000 CIBIL 782</div>
+ <div class="text-xs text-muted">+91 98240 11122priya.mehta@example.comAhmedabad</div>
+ </div>
+ <div class="col-right">
+ <span class="badge green sq">Pre-qualified</span>
+ <div class="text-xs text-muted mt-1">Eligibility ≈ ₹ 65 L</div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Loan parameters -->
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t"><span class="num">2</span>Loan parameters</div></div>
+ <div class="card-bd">
+ <div class="form-grid">
+ <div class="field">
+ <label>Loan type</label>
+ <select class="select"><option>Home loan — Purchase</option><option>Home loan — Construction</option><option>Balance transfer</option><option>Top-up</option><option>LAP</option></select>
+ </div>
+ <div class="field">
+ <label>Property type</label>
+ <select class="select"><option>Apartment — Ready</option><option>Apartment — Under construction</option><option>Builder floor</option><option>Plot + construction</option></select>
+ </div>
+ <div class="field">
+ <label>Loan amount</label>
+ <div class="input-affix"><span class="pre">₹</span><input class="input" value="28,00,000"></div>
+ </div>
+ <div class="field">
+ <label>Property value</label>
+ <div class="input-affix"><span class="pre">₹</span><input class="input" value="38,00,000"></div>
+ </div>
+ <div class="field">
+ <label>Tenure (years)</label>
+ <div class="slider-row">
+ <input type="range" min="5" max="30" value="20" class="range">
+ <span class="tnum" style="font-family:'Jost';font-weight:600;min-width:34px;text-align:right;">20y</span>
+ </div>
+ </div>
+ <div class="field">
+ <label>LTV <span class="text-muted">(auto)</span></label>
+ <div class="input-affix"><input class="input" value="73.68" readonly><span class="post">%</span></div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Bank comparison -->
+ <div class="card mt-4">
+ <div class="card-hd">
+ <div class="t"><span class="num">3</span>Bank comparison <span class="sub">pick up to 6</span></div>
+ <div class="actions">
+ <button class="btn sm"><svg class="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 01.78 1.625l-6.28 7.85 V20a1 1 0 01-1.45.894l-4-2 A1 1 0 019 18v-5.525 L2.22 4.625 A1 1 0 013 4z"/></svg>Filter</button>
+ <button class="btn sm">Sort: lowest EMI ▾</button>
+ </div>
+ </div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl compare">
+ <thead><tr><th style="width:30px;"></th><th>Bank</th><th class="num">ROI (p.a.)</th><th class="num">EMI</th><th class="num">Processing fee</th><th class="num">Total interest</th><th class="num">Total outflow</th><th>Special</th></tr></thead>
+ <tbody>
+ <tr class="selected"><td><input type="checkbox" checked></td><td><div class="bank-logo">HDFC</div><div class="text-xs text-muted">HDFC Bank Ltd</div></td><td class="num tnum"><strong>8.40</strong>%</td><td class="num tnum"><strong>₹ 24,098</strong></td><td class="num tnum">₹ 14,000 <span class="text-xs text-muted">0.5%</span></td><td class="num tnum">₹ 29,83,525</td><td class="num tnum">₹ 57,97,525</td><td><span class="badge green sq">No prepay fee</span></td></tr>
+ <tr class="selected"><td><input type="checkbox" checked></td><td><div class="bank-logo" style="background:#1d4e89;">SBI</div><div class="text-xs text-muted">State Bank of India</div></td><td class="num tnum"><strong>8.50</strong>%</td><td class="num tnum">₹ 24,282</td><td class="num tnum">₹ 11,200 <span class="text-xs text-muted">0.4%</span></td><td class="num tnum">₹ 30,27,680</td><td class="num tnum">₹ 58,38,880</td><td><span class="badge blue sq">Women borrower -5 bps</span></td></tr>
+ <tr class="selected"><td><input type="checkbox" checked></td><td><div class="bank-logo" style="background:#b7791f;">BOB</div><div class="text-xs text-muted">Bank of Baroda</div></td><td class="num tnum"><strong>8.45</strong>%</td><td class="num tnum">₹ 24,190</td><td class="num tnum">₹ 8,400 <span class="text-xs text-muted">0.3%</span></td><td class="num tnum">₹ 30,05,600</td><td class="num tnum">₹ 58,14,000</td><td></td></tr>
+ <tr class="selected"><td><input type="checkbox" checked></td><td><div class="bank-logo" style="background:#107a4f;">ICICI</div><div class="text-xs text-muted">ICICI Bank</div></td><td class="num tnum">8.60%</td><td class="num tnum">₹ 24,467</td><td class="num tnum">₹ 14,000</td><td class="num tnum">₹ 30,72,080</td><td class="num tnum">₹ 58,86,080</td><td><span class="badge amber sq">Insurance bundled</span></td></tr>
+ <tr class="selected"><td><input type="checkbox" checked></td><td><div class="bank-logo" style="background:#3a3536;">Axis</div><div class="text-xs text-muted">Axis Bank</div></td><td class="num tnum">8.55%</td><td class="num tnum">₹ 24,374</td><td class="num tnum">₹ 11,200</td><td class="num tnum">₹ 30,49,760</td><td class="num tnum">₹ 58,60,960</td><td></td></tr>
+ <tr><td><input type="checkbox"></td><td><div class="bank-logo" style="background:#9c1f2e;">Kotak</div><div class="text-xs text-muted">Kotak Mahindra</div></td><td class="num tnum">8.65%</td><td class="num tnum">₹ 24,560</td><td class="num tnum">₹ 11,200</td><td class="num tnum">₹ 30,94,400</td><td class="num tnum">₹ 59,05,600</td><td></td></tr>
+ <tr><td><input type="checkbox"></td><td><div class="bank-logo" style="background:#053870;">PNB</div><div class="text-xs text-muted">Punjab National Bank</div></td><td class="num tnum">8.70%</td><td class="num tnum">₹ 24,653</td><td class="num tnum">₹ 8,400</td><td class="num tnum">₹ 31,16,720</td><td class="num tnum">₹ 59,25,120</td><td></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <!-- RIGHT: summary -->
+ <aside>
+ <div class="card summary-card">
+ <div class="card-hd"><div class="t">Quotation summary</div></div>
+ <div class="card-bd">
+ <div class="kv"><span>Customer</span><strong>Priya Mehta</strong></div>
+ <div class="kv"><span>Loan type</span><strong>Home — Purchase</strong></div>
+ <div class="kv"><span>Loan amount</span><strong class="tnum">₹ 28,00,000</strong></div>
+ <div class="kv"><span>Tenure</span><strong>20 years</strong></div>
+ <div class="kv"><span>Banks selected</span><strong>5 of 6</strong></div>
+ <hr style="border:none;border-top:1px dashed var(--line);margin:14px 0;">
+ <div class="kv"><span>Best EMI</span><strong class="tnum" style="color:var(--green);">₹ 24,098</strong></div>
+ <div class="kv"><span>Best ROI</span><strong>8.40% (HDFC)</strong></div>
+ <div class="kv"><span>Lowest PF</span><strong>₹ 8,400 (BOB)</strong></div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">PDF options</div></div>
+ <div class="card-bd">
+ <label class="chk"><input type="checkbox" checked> Include branch contact block</label>
+ <label class="chk"><input type="checkbox" checked> Include bilingual disclaimer (gu)</label>
+ <label class="chk"><input type="checkbox"> Include amortisation schedule</label>
+ <label class="chk"><input type="checkbox" checked> Stamp with loan advisor signature</label>
+ <label class="chk"><input type="checkbox"> Watermark as DRAFT</label>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Share</div></div>
+ <div class="card-bd">
+ <button class="btn w-full mb-2">Send to customer via WhatsApp</button>
+ <button class="btn w-full mb-2">Send via email</button>
+ <button class="btn w-full ghost">Copy public link</button>
+ </div>
+ </div>
+ </aside>
+ </div>
+</main>
+
+<div id="__shell_tweaks"></div>
+</div>
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('quotations');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/quotation-new.js?v=1"></script>
+</body>
+</html>

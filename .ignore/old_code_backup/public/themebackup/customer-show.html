@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Priya MehtaCustomer</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="app">
+<div id="__shell_topbar"></div>
+
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> <a href="customers.html">Customers</a> <span class="sep">/</span> Priya Mehta</div>
+ <h1 style="display:flex;align-items:center;gap:14px;">Priya Mehta <span class="badge green sq">Pre-qualified</span></h1>
+ <div class="sub">Customer since Mar 28, 2026Referred by walk-inAhmedabad — Vastrapur</div>
+ </div>
+ <div class="head-actions">
+ <button class="btn" data-action="toast" data-arg="WhatsApp">WhatsApp</button><button class="btn" data-action="toast" data-arg="Call">Call</button>
+ <a class="btn primary" href="quotation-new.html">New quotation</a>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="csh">
+ <a class="tab active" id="csh-tab-overview" data-panel="overview">Overview</a>
+ <a class="tab" id="csh-tab-loans" data-panel="loans">Loans (1)</a>
+ <a class="tab" id="csh-tab-quots" data-panel="quots">Quotations (3)</a>
+ <a class="tab" id="csh-tab-docs" data-panel="docs">Documents</a>
+ <a class="tab" id="csh-tab-activity" data-panel="activity">Activity</a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="csh">
+<div id="csh-panel-overview" data-panel-id="overview">
+ <div class="grid c-main">
+ <div>
+ <div class="card">
+ <div class="card-hd"><div class="t">Personal</div><a class="btn sm ghost" href="customer-edit.html">Edit</a></div>
+ <div class="card-bd">
+ <div class="kv-grid">
+ <div><div class="k">Full name</div><div class="v">Priya Narendra Mehta</div></div>
+ <div><div class="k">DOBAge</div><div class="v">14 Jul 199332 yr</div></div>
+ <div><div class="k">PAN</div><div class="v font-mono">ABCPM1234 · R</div></div>
+ <div><div class="k">Aadhaar</div><div class="v font-mono">xxxx-xxxx-2291</div></div>
+ <div><div class="k">Phone</div><div class="v">+91 98240 11122</div></div>
+ <div><div class="k">Email</div><div class="v">priya.mehta@example.com</div></div>
+ <div><div class="k">Marital status</div><div class="v">Married1 child</div></div>
+ <div><div class="k">Education</div><div class="v">MBAHR</div></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Employment &amp; income</div></div>
+ <div class="card-bd">
+ <div class="kv-grid">
+ <div><div class="k">Employer</div><div class="v">Torrent Pharma Ltd</div></div>
+ <div><div class="k">Designation</div><div class="v">HR Manager</div></div>
+ <div><div class="k">Years at company</div><div class="v">4.5 yr</div></div>
+ <div><div class="k">Total experience</div><div class="v">8 yr</div></div>
+ <div><div class="k">In-hand (mo.)</div><div class="v tnum">₹ 1,24,000</div></div>
+ <div><div class="k">Gross (mo.)</div><div class="v tnum">₹ 1,65,000</div></div>
+ <div><div class="k">Existing EMI</div><div class="v tnum">₹ 8,400</div></div>
+ <div><div class="k">FOIR</div><div class="v">6.8%</div></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Property (target)</div></div>
+ <div class="card-bd">
+ <div class="kv-grid">
+ <div><div class="k">Address</div><div class="v">B-403, Shilp Aaron, Sindhu Bhavan Rd, Ahmedabad</div></div>
+ <div><div class="k">Type</div><div class="v">Apartment3 BHKReady</div></div>
+ <div><div class="k">Area</div><div class="v">1,650 sq ft</div></div>
+ <div><div class="k">Agreement value</div><div class="v tnum">₹ 38,00,000</div></div>
+ <div><div class="k">Market value</div><div class="v tnum">₹ 42,00,000</div></div>
+ <div><div class="k">Builder</div><div class="v">Shilp Group</div></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Loans &amp; quotations</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Ref</th><th>Type</th><th class="num">Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+ <tbody>
+ <tr><td><span class="font-mono">SHF-2026-0482</span></td><td>Loan HDFC</td><td class="num tnum">₹ 28,00,000</td><td><span class="badge blue dot">Stage 3/12</span></td><td>Apr 06</td><td><a class="btn sm ghost" href="loan-show.html">Open</a></td></tr>
+ <tr><td><span class="font-mono">QT-2026-00148</span></td><td>Quotation v3</td><td class="num tnum">₹ 28,00,000</td><td><span class="badge sq">Draft</span></td><td>Apr 20</td><td><a class="btn sm ghost" href="quotation-new.html">Open</a></td></tr>
+ <tr><td><span class="font-mono">QT-2026-00142</span></td><td>Quotation v2</td><td class="num tnum">₹ 25,00,000</td><td><span class="badge blue sq">Sent</span></td><td>Apr 01</td><td><a class="btn sm ghost" href="loan-show.html">Open</a></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <aside>
+ <div class="card">
+ <div class="card-hd"><div class="t">Credit &amp; eligibility</div></div>
+ <div class="card-bd">
+ <div style="text-align:center;">
+ <div class="gauge">
+ <svg viewBox="0 0 120 70"><path d="M10 60 A50 50 0 0 1 110 60" stroke="var(--paper-2)" stroke-width="8" fill="none"/><path d="M10 60 A50 50 0 0 1 110 60" stroke="var(--green)" stroke-width="8" fill="none" stroke-dasharray="125 160" stroke-linecap="round"/></svg>
+ <div class="gauge-val"><div class="n">782</div><div class="l">CIBILExcellent</div></div>
+ </div>
+ </div>
+ <hr style="border:none;border-top:1px dashed var(--line);margin:16px 0 14px;">
+ <div class="kv-stack">
+ <div class="kv"><span>Eligibility</span><strong class="tnum">₹ 65,00,000</strong></div>
+ <div class="kv"><span>Max FOIR (60%)</span><strong class="tnum">₹ 99,000/mo</strong></div>
+ <div class="kv"><span>Active trades</span><strong>2</strong></div>
+ <div class="kv"><span>Overdue</span><strong>None</strong></div>
+ </div>
+ </div>
+ </div>
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Relationships</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Co-applicant</span><strong>Narendra Mehta (spouse)</strong></div>
+ <div class="kv"><span>Guarantor</span><strong>—</strong></div>
+ <div class="kv"><span>Referred by</span><strong>Walk-inbranch</strong></div>
+ <div class="kv"><span>Advisor</span><strong>Rahul Jadeja</strong></div>
+ </div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- LOANS -->
+<div id="csh-panel-loans" data-panel-id="loans" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Loan files1 active0 closed</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Ref</th><th>Bank</th><th>Type</th><th class="num">Sanction</th><th class="num">Outstanding</th><th>Stage</th><th>Rate</th><th>EMI</th><th>Opened</th><th></th></tr></thead>
+ <tbody>
+ <tr><td class="font-mono">SHF-2026-0482</td><td>HDFC</td><td>HomePurchase</td><td class="num tnum">₹ 28,00,000</td><td class="num tnum">—</td><td><span class="badge blue sq">Stage 3/12</span></td><td class="tnum">—</td><td class="tnum">—</td><td>Apr 06</td><td><a class="btn xs" href="loan-show.html">Open</a></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Past inquiries0</div></div>
+ <div class="card-bd" style="padding:40px 20px;text-align:center;color:var(--ink-3);">No past loansthis is Priya's first file with SHF.</div>
+ </div>
+</div>
+
+<!-- QUOTATIONS -->
+<div id="csh-panel-quots" data-panel-id="quots" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Quotations3</div><div class="actions"><a class="btn sm primary" href="quotation-new.html">+ New quotation</a></div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Ref</th><th>Version</th><th>Type</th><th class="num">Amount</th><th>Banks</th><th class="num">Best EMI</th><th>Status</th><th>Advisor</th><th>Updated</th><th></th></tr></thead>
+ <tbody>
+ <tr><td class="font-mono">QT-2026-00148</td><td>v3</td><td>Home purchase</td><td class="num tnum">₹ 28,00,000</td><td>HDFCSBIBo BICICIAxis</td><td class="num tnum">₹ 24,098</td><td><span class="badge sq" style="background:var(--paper-2);">Draft</span></td><td>Rahul J.</td><td>Today</td><td><a class="btn xs" href="quotation-new.html">Edit</a></td></tr>
+ <tr><td class="font-mono">QT-2026-00142</td><td>v2</td><td>Home purchase</td><td class="num tnum">₹ 25,00,000</td><td>HDFCSBIBo · B</td><td class="num tnum">₹ 21,516</td><td><span class="badge blue sq">Sent</span></td><td>Rahul J.</td><td>Apr 01</td><td><a class="btn xs" href="quotation-show.html">View</a></td></tr>
+ <tr><td class="font-mono">QT-2026-00128</td><td>v1</td><td>Home purchase</td><td class="num tnum">₹ 25,00,000</td><td>HDFCSBI</td><td class="num tnum">₹ 21,820</td><td><span class="badge sq" style="background:var(--paper-2);color:var(--ink-3);">Superseded</span></td><td>Rahul J.</td><td>Mar 29</td><td><a class="btn xs" href="quotation-show.html">View</a></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+</div>
+
+<!-- DOCUMENTS -->
+<div id="csh-panel-docs" data-panel-id="docs" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Customer documents</div><div class="actions"><button class="btn sm primary" data-action="toast" data-arg="Uploaded">Upload</button></div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Document</th><th>Category</th><th>File</th><th>Uploaded</th><th>Verified</th><th></th></tr></thead>
+ <tbody>
+ <tr><td>PAN card</td><td>KYC</td><td class="font-mono text-xs">pan-priya.pdf182 k · B</td><td>Mar 28</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Aadhaarfront</td><td>KYC</td><td class="font-mono text-xs">aadhaar-f.jpg2.1 MB</td><td>Mar 28</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Aadhaarback</td><td>KYC</td><td class="font-mono text-xs">aadhaar-b.jpg1.8 MB</td><td>Mar 28</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Passport size photo</td><td>KYC</td><td class="font-mono text-xs">photo.jpg420 k · B</td><td>Mar 28</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Salary slipMar 2026</td><td>Income</td><td class="font-mono text-xs">slip-mar.pdf148 k · B</td><td>Apr 02</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Salary slipFeb 2026</td><td>Income</td><td class="font-mono text-xs">slip-feb.pdf142 k · B</td><td>Apr 02</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Salary slipJan 2026</td><td>Income</td><td class="font-mono text-xs">slip-jan.pdf140 k · B</td><td>Apr 02</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Bank statement12 mo.</td><td>Income</td><td class="font-mono text-xs">hdfc-12mo.pdf3.4 MB</td><td>Apr 04</td><td>Neha S.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Form 16 FY24-25</td><td>Income</td><td class="font-mono text-xs">form16-fy2425.pdf220 k · B</td><td>Apr 05</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Employer ID card</td><td>Employment</td><td class="font-mono text-xs">id-torrent.jpg180 k · B</td><td>Apr 02</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Appointment letter</td><td>Employment</td><td class="font-mono text-xs">appt-letter.pdf85 k · B</td><td>Apr 02</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Agreement to sale</td><td>Property</td><td class="font-mono text-xs">ats-shilp.pdf4.2 MB</td><td>Apr 06</td><td>Mehul Adv.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Index-II</td><td>Property</td><td class="font-mono text-xs">index-2.pdf440 k · B</td><td>Apr 06</td><td>Mehul Adv.</td><td><a class="btn xs">View</a></td></tr>
+ <tr><td>Property tax receipt</td><td>Property</td><td class="font-mono text-xs">tax-2026.pdf210 k · B</td><td>Apr 06</td><td>Rahul J.</td><td><a class="btn xs">View</a></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+</div>
+
+<!-- ACTIVITY -->
+<div id="csh-panel-activity" data-panel-id="activity" style="display:none;">
+ <div class="card"><div class="card-hd"><div class="t">Customer activitypast 24 days</div></div>
+ <div class="card-bd" style="padding:4px 0;">
+ <div class="tl">
+ <div class="tl-day">Today20 Apr</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div><strong>Quotation v3 drafted</strong>₹ 28 L5 banks<div class="text-xs text-muted">By Rahul Jadeja10:22 AM</div></div></div>
+ <div class="tl-item"><div class="tl-dot"></div><div>WhatsApp sentrate card explainer<div class="text-xs text-muted">Deliveredread 10:48 AM</div></div></div>
+ <div class="tl-day">Apr 18</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div>Residence FI complete<div class="text-xs text-muted">PositiveNeha K.</div></div></div>
+ <div class="tl-day">Apr 06</div>
+ <div class="tl-item"><div class="tl-dot green"></div><div><strong>Loan file opened</strong>SHF-2026-0482<div class="text-xs text-muted">HDFC₹ 28,00,000</div></div></div>
+ <div class="tl-day">Apr 02</div>
+ <div class="tl-item"><div class="tl-dot"></div><div>Salary slips (3 mo.) collected<div class="text-xs text-muted">By Rahul J.</div></div></div>
+ <div class="tl-day">Mar 29</div>
+ <div class="tl-item"><div class="tl-dot blue"></div><div>Quotation v2 sent<div class="text-xs text-muted">₹ 25 LHDFC/SBI/Bo · B</div></div></div>
+ <div class="tl-day">Mar 28</div>
+ <div class="tl-item"><div class="tl-dot green"></div><div><strong>Customer onboarded</strong>walk-in<div class="text-xs text-muted">Initial conversation 42 mininterested in 3 BHK</div></div></div>
+ </div>
+ </div>
+ </div>
+</div>
+
+</div>
+</main>
+<div id="__shell_tweaks"></div>
+</div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('customers');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('csh', ["overview","loans","quots","docs","activity"]);</script>
+<script src="assets/customer-show.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+# Workflow — Developer Guide
+
+The loan workflow engine: stages, phases, transfers, queries, auto-assignment, and parallel orchestration. Core code is in `app/Services/LoanStageService.php` + `app/Http/Controllers/LoanStageController.php`.
+
+## Model primitives
+
+| Model                         | Role                                                                        |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `Stage`                       | master stage definition (name, sequence, parent, sub_actions, default_role) |
+| `BankStageConfig`             | per-bank override of `assigned_role` / `phase_roles`                        |
+| `ProductStage`                | per-product config (enabled, default user, per-phase overrides)             |
+| `ProductStageUser`            | per-product per-branch/location/phase user assignment                       |
+| `StageAssignment`             | **instance** — one per (loan, stage_key)                                    |
+| `StageTransfer`               | ledger row — every (re)assignment of an instance                            |
+| `StageQuery`, `QueryResponse` | two-way blocking queries on a stage                                         |
+| `LoanProgress`                | 1:1 with loan — total/completed counts, snapshot                            |
+
+## Stage layout
+
+```
+1. inquiry
+2. document_selection
+3. document_collection
+4. parallel_processing  (parent; is_parallel = true)
+   ├─ 4a. app_number       (sequential start-gate for 4b)
+   ├─ 4b. bsm_osv          (sequential start-gate for 4c/4d/4e)
+   ├─ 4c. legal_verification    (3-phase)
+   ├─ 4d. technical_valuation   (2-phase)
+   └─ 4e. sanction_decision     (decision: approve / escalate / reject)
+5. rate_pf                 (3-phase) — gate depends on feature flag (see below)
+6. sanction                (3-phase) — gate depends on feature flag (see below)
+7. docket                  (3-phase)
+8. kfs
+9. esign                   (4-phase)
+10. disbursement
+11. otc_clearance          (cheque only — skipped for fund_transfer)
+```
+
+Sub-stages of `parallel_processing` set `parent_stage_key = parallel_processing` and `is_parallel_stage = true` on their `StageAssignment`.
+
+## Feature flag: `app.open_rate_pf_parallel`
+
+Controlled by env `OPEN_RATE_PF_PARALLEL` (default `false`). Read via `config('app.open_rate_pf_parallel')` — never `env()` directly. Helper: `LoanStageService::usesParallelRatePf()`.
+
+| Flag | `rate_pf` opens when | `sanction` opens when |
+|---|---|---|
+| **off** (legacy) | `parallel_processing` completed AND `is_sanctioned = true` (any parallel sub completed gate) | `rate_pf` completed (generic prev-key + parallel-complete rule) |
+| **on** | `bsm_osv` completed (runs alongside legal / technical / sanction_decision) | BOTH `parallel_processing` AND `rate_pf` are completed/skipped |
+
+When on:
+- After `bsm_osv`, `handleStageCompletion` calls `openRatePfInParallel($loan)` in addition to `startRemainingParallelSubStages($loan)`.
+- Completion of either `rate_pf` or the last parallel sub calls `advanceToSanctionIfReady($loan)`, which opens `sanction` only when both gates pass.
+- Loose mode is deliberate — `rate_pf` may proceed before `sanction_decision` is approved. Rejection at `sanction_decision` closes rate_pf via the sibling-reject path in `sanctionDecisionAction`; reactivation restores it via `previous_status`. NO `is_sanctioned` guard in `LoanStageController::ratePfAction()`.
+
+Caveats:
+- Rejection at `sanction_decision` closes all pending/in_progress stages via `sanctionDecisionAction` reject — `rate_pf` is included.
+- In-flight loans past `bsm_osv` at flip-on time will NOT retro-open rate_pf. Backfill is supported: helpers `openRatePfInParallel` and `advanceToSanctionIfReady` are `public` on `LoanStageService`. Use tinker (`app(LoanStageService::class)->openRatePfInParallel($loan)`) or a dedicated seed command if you need a cohort backfill.
+- The workflow snapshot (`loan_details.workflow_config`) is unaffected — the flag only changes flow gates, not roles/users.
+
+### Reactivation (flag-on)
+
+When a loan is rejected at `sanction_decision` with `rate_pf` in progress, the bulk-reject in `LoanStageController::sanctionDecisionAction` closes `rate_pf` and saves `previous_status='in_progress'`. `LoanController::updateStatus` restores all rejected stages from `previous_status` on reactivation and clears `is_sanctioned`, forcing the user to re-decide sanction_decision. `rate_pf` picks up exactly where it left off. No special parallel-mode handling required.
+
+## Multi-phase stages
+
+A stage with multiple phases uses `Stage.sub_actions` (JSON array) — each entry defines a `name` and `role`:
+
+```json
+[
+    { "name": "send_for_sanction", "role": "loan_advisor" },
+    { "name": "sanction_generated", "role": "bank_employee" },
+    { "name": "sanction_details", "role": "loan_advisor" }
+]
+```
+
+Per-bank override: `BankStageConfig.phase_roles = {"0": "office_employee", "1": ..., "2": ...}`.
+
+Per-product override: `ProductStage.sub_actions_override = [{...}]`.
+
+Phase state machine lives inside `StageAssignment.notes` — a JSON blob with keys like `{stage}_phase: 2`, `{stage}_original_assignee: {userId}`, plus form data.
+
+Phase transitions are performed by dedicated action endpoints (e.g., `POST /loans/{loan}/stages/sanction/action`) implemented in `LoanStageController`. Each action:
+
+1. Reads current phase from notes
+2. Validates the requested action against the phase
+3. Transfers the stage to the next phase's role (via `LoanStageService::transferStage`)
+4. Updates notes (`sanction_phase`, `sanction_original_assignee`, etc.)
+5. On final-phase completion, calls `updateStageStatus(..., 'completed')`
+
+## Role resolution (summary)
+
+Full detail in `user-assignment.md` and `.claude/services-reference.md`. Recap:
+
+- `resolveStageRole(stageKey, bankId)`: bank override → Stage.assigned_role → `task_owner`
+- `resolvePhaseRole(stageKey, phaseIndex, bankId)`: bank override → Stage.sub_actions[i].role → `task_owner`
+- `findUserForRole(role, loan, stageKey, ?phaseIndex)`: snapshot default → role resolver (bank_employee / office_employee / task_owner)
+
+The **workflow snapshot** is built at loan creation via `buildWorkflowSnapshot()` and stored on `loan_details.workflow_config`. It freezes `role` + `default_user_id` per stage/phase so admin reconfig doesn't disrupt in-flight loans.
+
+## Initialization
+
+`LoanStageService::initializeStages($loan)`:
+
+1. Define all base stage keys (14 total incl. sub-stages)
+2. Fetch enabled `Stage` rows matching keys
+3. Bulk-insert `StageAssignment` for each (status=pending, priority=normal)
+4. Count main (non-parallel) stages, create `LoanProgress` (total_stages, completed_stages=0)
+
+`autoCompleteStages($loan, array $keys)` — for quotation conversion, marks `inquiry` + `document_selection` completed immediately.
+
+## State machine — `StageAssignment::canTransitionTo`
+
+Valid transitions:
+
+| From        | To                            |
+| ----------- | ----------------------------- |
+| pending     | in_progress, skipped          |
+| in_progress | completed, rejected           |
+| rejected    | in_progress (reactivate flow) |
+| completed   | in_progress (soft-revert)     |
+| skipped     | (no transitions)              |
+
+Enforced inside `LoanStageService::updateStageStatus()`. Additionally:
+
+- Block completion if stage has active queries (`hasPendingQueries()`)
+- On completion: run `handleStageCompletion()` for post-completion orchestration
+
+## Completion orchestration — `handleStageCompletion`
+
+This is the heart of the engine. Behaviour per completed stage:
+
+### `app_number`
+
+→ `startSingleParallelSubStage('bsm_osv')` — starts only bsm_osv; other parallel subs wait.
+
+**DME field.** The app_number in-progress form captures a **DME** (a user) alongside the application number. Required to complete the sub-stage (`isStageDataComplete` checks `notes.dme_user_id`); the select defaults to the loan's `assigned_advisor`. Dropdown = `$allActiveUsers` (active, excludes super_admin/admin). On save (`LoanStageController::saveNotes`, while not yet completed) it mirrors to the `loan_details.dme_user_id` column (the source of truth) — and once the sub-stage is **completed** the field is locked: it's omitted from the completed-edit form and `saveNotes` strips any `dme_user_id` from the payload. After lock, only **super_admin / admin / bdh** can change it via `POST loans.dme.update` (`LoanController@updateDme`), exposed as a "Set/Change DME" button on the loan show page (visible only once app_number is complete). Existing loans whose app_number was already complete were backfilled to `assigned_advisor` (fallback `created_by`) by the `add_dme_user_id_to_loan_details` migration. Locked by `tests/Feature/LoanDmeTest.php`.
+
+### `bsm_osv`
+
+→ `startRemainingParallelSubStages()` — marks `legal_verification`, `technical_valuation`, `sanction_decision` as in_progress and auto-assigns each.
+
+If `config('app.open_rate_pf_parallel')` is truthy, also calls `openRatePfInParallel()` to mark `rate_pf` in_progress and auto-assign it alongside the parallel subs.
+
+### `rate_pf` (parallel mode only)
+
+When the flag is on, completion of `rate_pf` is intercepted at the top of `handleStageCompletion` and routed to `advanceToSanctionIfReady()` instead of the default sequential advance. Sanction opens only when both `parallel_processing` and `rate_pf` are complete (in either order).
+
+### Any parallel sub-stage
+
+→ `checkParallelCompletion()` — if all sub-stages of `parallel_processing` are done (completed/skipped/rejected), mark parent `parallel_processing` completed. Flag-off path: advance to next main stage (`rate_pf`). Flag-on path: call `advanceToSanctionIfReady()`, which opens `sanction` only when `rate_pf` is also complete; otherwise waits for rate_pf's completion to trigger the same check.
+
+### `sanction`
+
+Read `app_number` stage notes for:
+
+- `custom_docket_date` — explicit override
+- `docket_days_offset` — days from sanction date
+
+Write `loan.expected_docket_date` accordingly.
+
+### `disbursement`
+
+**Multi-entry tranches**: the disbursement form saves `disbursement_details.entries` (per-tranche date/method/product/account/amount) over multiple visits. The stage is completed by `DisbursementService`, **not** on every save — auto-complete fires when the entry total reaches the target (`sanctioned_amount` → docket/sanction notes → `loan_amount`), or manually via "Mark as Fully Disbursed" (`loans.disbursement.complete`) for intentional under-disbursement. `disbursement_type` is derived: 'cheque' when ANY entry is a cheque, else 'fund_transfer'.
+
+On stage completion (`handleStageCompletion`):
+- If `disbursement_details.disbursement_type === 'fund_transfer'` (i.e. no cheque entries):
+    - Mark `otc_clearance` as skipped
+    - Mark loan `status = completed`
+    - Notify creator + advisor
+    - **Return early** (skip sequential advance)
+- Else (any cheque entry): advance to `otc_clearance` normally. OTC lists only the cheque entries.
+
+### `otc_clearance`
+
+→ Mark loan `status = completed`, notify users.
+
+### Default path
+
+Sequential advance: find next main stage, call `assignNextStage()` which auto-assigns using the snapshot.
+
+## Soft revert
+
+`revertStageIfIncomplete($loan, $stageKey, $isStillComplete)` — e.g., when documents are marked received then unmarked:
+
+1. If `isStillComplete` — no-op
+2. Revert current stage from completed → in_progress
+3. Revert all subsequent pending stages back to pending (they shouldn't have progressed without the prior being complete)
+4. For `parallel_processing` parent: also revert each sub-stage to pending
+5. Update `loan.current_stage`
+6. Recalculate progress
+
+Called by `saveNotes` in `LoanStageController` and by `LoanDocumentController@updateStatus`.
+
+## Transfer
+
+`transferStage($loan, $stageKey, int $toUserId, ?string $reason)`:
+
+1. Update `stage_assignments.assigned_to`
+2. Insert `stage_transfers` (manual type)
+3. Reassign all active queries (pending/responded) to the new stage_assignment context
+4. Log activity
+5. Touch `loan.updated_at`
+
+Requires both `manage_loan_stages` + `transfer_loan_stages`.
+
+## Rejection
+
+`rejectLoan($loan, $stageKey, $reason, ?int $userId)`:
+
+1. Set `loan.status = rejected`, `rejected_at`, `rejected_by`, `rejected_stage`, `rejection_reason`
+2. Mark current stage assignment `status = rejected`
+3. Log activity
+
+Restricted to super_admin / admin / branch_manager / bdh in the controller. Elsewhere, the `sanction_decision` stage has its own rejection path (`sanctionDecisionAction` action=`reject`), which also rejects **all pending/in_progress stages** at once.
+
+## Queries (blocking)
+
+From the stage context, any assigned user can raise a query (usually back to the advisor). The query:
+
+- Creates `stage_queries` row (status=pending)
+- Notifies the stage assignee
+- **Blocks stage completion** — `updateStageStatus()` checks `hasPendingQueries()` before allowing completion
+
+Flow:
+
+- `POST /loans/{loan}/stages/{stageKey}/query` — raise
+- `POST /loans/queries/{query}/respond` — response (status → responded; notifies raiser)
+- `POST /loans/queries/{query}/resolve` — status → resolved; allowed for the **raiser**, the **current stage assignee**, or **admin/super_admin**, on any non-resolved query (a response is not required). 422 if already resolved. Logs `resolve_query` activity; the raiser is notified when someone else resolves.
+
+Only `resolved` queries stop blocking. UI shows active queries count on the stage card.
+
+The `sanction_decision` Approve action pre-checks unresolved queries and the completed-transition guard and returns 422 `{error}` before mutating anything — previously the service exception left the loan half-approved (`is_sanctioned` set, stage in_progress) and surfaced as a blank 500 in the Swal.
+
+Escalation note: stage transfers/escalations move `StageAssignment.assigned_to` but never a query's `raised_by` — the assignee-can-resolve rule exists so an escalated-away query can still be closed by whoever now holds the stage. On transfer, open queries whose recipient (`assigned_to_user_id`) was the outgoing assignee are re-pointed to the new assignee.
+
+## Controller action endpoints (multi-phase)
+
+Defined in `LoanStageController`. Each is an idempotent HTTP POST that advances phase state:
+
+| Endpoint                     | Actions                                                              | Phases                                                     |
+| ---------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `sanction-action`            | send_for_sanction, sanction_generated                                | 3 phases, plus `saveNotes` handles Phase-3 form completion |
+| `legal-action`               | send_to_bank, initiate_legal                                         | 3 phases (optional advisor handoff)                        |
+| `technical-valuation-action` | send_to_office                                                       | 2 phases                                                   |
+| `docket-action`              | send_to_office                                                       | 3 phases                                                   |
+| `rate-pf-action`             | send_to_bank, return_to_owner, complete                              | 3 phases                                                   |
+| `esign-action`               | send_for_esign, esign_generated, esign_customer_done, esign_complete | 4 phases (Phase 4 = completion)                            |
+| `sanction-decision-action`   | approve, escalate_to_bm, escalate_to_bdh, reject                     | decision gate (delegates to `decisionAction`)              |
+| `technical-valuation-decision` | escalate_to_bm, escalate_to_bdh, reject (NO approve)               | escalation ladder on top of the 2-phase valuation          |
+
+### Escalation ladder (`decisionAction`, shared by sanction_decision + technical_valuation)
+
+`LoanStageController::decisionAction($req, $loan, $stageKey)` drives a base→BM→BDH ladder. **Level** is derived from the stage's `escalation_history` (last `to_role`): none → `base`, `branch_manager` → `bm`, `bdh` → `bdh` — independent of the dynamic base role assigned via product-stage config. Guards (super_admin/admin bypass all):
+
+- `escalate_to_bm` — only at `base` level (remarks required); records history + `transferStage` to a branch-matched `branch_manager`.
+- `escalate_to_bdh` — only at `bm` level **and** actor is `branch_manager` → transfers to `bdh`. Enforces "only BM → BDH".
+- `approve` — **sanction_decision only** (sets `is_sanctioned` + completes). technical_valuation has **no approve**: filling/saving the valuation form (`LoanValuationController::store`) auto-completes it, and the escalated-to BM/BDH gets that same form.
+- `reject` — only at `bm`/`bdh` level by BM/BDH (reason ≥10) → rejects the loan + all pending stages.
+
+UI: buttons render only for the current sub-task holder (`$isSubAssignee`), gated by level; admin sees all. Generic blade classes `.shf-decision-action` (`data-stage`) + `.shf-decision-remarks`. Locked by `tests/Feature/StageEscalationTest.php`.
+
+Validation, notes updates, and transfer target calculations are specific to each. Read the controller for specifics; the pattern is the same throughout.
+
+## Save notes
+
+`POST /loans/{loan}/stages/{stageKey}/notes` (`saveNotes`) persists per-stage form data into `StageAssignment.notes` JSON. Logic:
+
+1. Validate `notes_data` array present
+2. Per-stage validation of required fields via `getFieldErrors($stageKey, $data)`. Examples:
+    - `app_number`: requires `application_number`, `dme_user_id`, `docket_days_offset` (with optional `custom_docket_date` if offset = 0)
+    - `sanction`: requires only `sanction_date` (Phase 3). Loan financials moved to docket.
+    - `docket`: requires `login_date`, `sanctioned_amount`, `sanctioned_rate`, `tenure_months`, `emi_amount` (Phase 2 only). Office employee captures the financials here after receiving the sanction letter.
+    - `otc_clearance`: `handover_date`
+3. Domain-specific checks:
+    - Docket: EMI ≤ sanctioned_amount sanity (checked at docket save, not sanction)
+    - Application number: also write to `loan_details.application_number`
+    - Sanction date with offset: recompute `expected_docket_date`
+4. If stage is pending/in_progress AND data now complete (`isStageDataComplete`), auto-advance to in_progress then completed
+5. If stage is completed AND data no longer complete, soft-revert
+
+## Eligible users picker
+
+`GET /loans/{loan}/stages/{stageKey}/eligible-users?role=`:
+
+Returns a JSON list of users who could be assigned to the stage, filtered by:
+
+- `bank_employee`: by loan's `bank_id`
+- `office_employee`: by loan's `bank_id` (via bank_employees pivot) and branch
+- Branch-based roles: by `loan.branch_id`
+
+Response: `{ users: [{id, name, badge}], default_user_id }` — UI uses this for the transfer dropdown.
+
+## Progress recalculation
+
+`recalculateProgress($loan)`:
+
+- Count completed main stages
+- Overall percentage = completed / total × 100
+- `workflow_snapshot` = current `{stage_key: {status, assigned_to}}` map for all stages
+
+Called after every completion / revert / status change.
+
+## Notifications
+
+Integrated via `NotificationService`:
+
+- On stage assignment → `notifyStageAssignment()`
+- On stage completion → `notifyStageCompleted()` (fanned out to creator + advisor, excluding current user)
+- On loan completion → `notifyLoanCompleted()`
+
+Queries add separate notifications on raise + respond.
+
+## Gotchas
+
+- Always assign stages via `assignStage()` or `transferStage()`, not direct updates — they write the `stage_transfers` ledger and reassign queries.
+- `initializeStages` seeds `priority = 'normal'` for all. There's no UI to bump priority; add one if that matters.
+- `workflow_config` snapshot is frozen. If business rules change role assignments mid-flight, you'd need to rebuild the snapshot (not implemented yet).
+- Skip is permission-gated (`skip_loan_stages`); the default assignment is **disabled for all roles** (migration `2026_04_13_124552`). Re-enable deliberately.
+- `EnsureUserIsActive` middleware is global — deactivated assignees lose access on next request but their assignments don't move. You must transfer manually.
+
+## See also
+
+- `.claude/services-reference.md` — full `LoanStageService` method list
+- `user-assignment.md` — role → user resolution details
+- `loans.md` — CRUD, docs, valuation, disbursement
+- `workflow-guide.md` — user-facing narrative

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loans · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=3">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body><div class="app"><div id="__shell_topbar"></div>
+
+<header class="page-header">
+  <div class="head-row">
+    <div>
+      <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Loans</div>
+      <h1>Loans</h1>
+      <div class="sub" id="loansSub">Loading summary…</div>
+    </div>
+    <div class="head-actions">
+      <button class="btn" data-action="toast" data-arg="CSV export queued">Export</button>
+      <a class="btn primary" href="loan-create.html">+ New loan</a>
+    </div>
+  </div>
+  <div class="tabs" data-tab-panel-group="loans">
+    <a class="tab active" id="loans-tab-all" data-panel="all">All <span class="count" id="cnt-all">0</span></a>
+    <a class="tab" id="loans-tab-active" data-panel="active">Active <span class="count" id="cnt-active">0</span></a>
+    <a class="tab" id="loans-tab-disbursed" data-panel="disbursed">Disbursed <span class="count" id="cnt-disbursed">0</span></a>
+    <a class="tab" id="loans-tab-otc" data-panel="otc">OTC pending <span class="count" id="cnt-otc">0</span></a>
+    <a class="tab" id="loans-tab-closed" data-panel="closed">Closed <span class="count" id="cnt-closed">0</span></a>
+  </div>
+</header>
+
+<main class="content">
+
+  <div class="filter-panel" id="loanFilterPanel">
+    <div class="filter-panel-hd" id="loanFilterHead">
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg>
+      <span class="title">Filters</span>
+      <span class="count" id="loanFilterCount" style="display:none;">0</span>
+      <span style="margin-left:auto;" class="text-xs text-muted">Click to toggle</span>
+    </div>
+    <div class="filter-panel-bd">
+      <div class="filter-grid" id="filterGrid"></div>
+      <div class="filter-actions">
+        <button class="btn primary sm" id="btnLoanFilter">Apply</button>
+        <button class="btn sm" id="btnLoanClear">Clear</button>
+        <span style="margin-left:auto;" class="text-xs text-muted">Showing <span id="rowCount">0</span> of <span id="totalCount">0</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div data-tab-panel-group="loans">
+    <div id="loans-panel-all" data-panel-id="all">
+      <div class="card d-desktop-only"><div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-all"></div>
+        <div class="tbl-footbar"><div id="footInfo-all">Showing 0 of 0</div><div class="pager"><span class="pg">‹</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">›</span></div></div>
+      </div></div>
+      <div class="d-mobile-only" id="mrows-all"></div>
+    </div>
+    <div id="loans-panel-active" data-panel-id="active" style="display:none;">
+      <div class="card d-desktop-only"><div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-active"></div></div></div>
+      <div class="d-mobile-only" id="mrows-active"></div>
+    </div>
+    <div id="loans-panel-disbursed" data-panel-id="disbursed" style="display:none;">
+      <div class="card d-desktop-only"><div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-disbursed"></div></div></div>
+      <div class="d-mobile-only" id="mrows-disbursed"></div>
+    </div>
+    <div id="loans-panel-otc" data-panel-id="otc" style="display:none;">
+      <div class="card d-desktop-only"><div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-otc"></div></div></div>
+      <div class="d-mobile-only" id="mrows-otc"></div>
+    </div>
+    <div id="loans-panel-closed" data-panel-id="closed" style="display:none;">
+      <div class="card d-desktop-only"><div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-closed"></div></div></div>
+      <div class="d-mobile-only" id="mrows-closed"></div>
+    </div>
+  </div>
+</main>
+
+<div id="__shell_tweaks"></div></div>
+
+<script src="assets/menu.js?v=1"></script>
+<script src="assets/page.js"></script>
+<script>shfMount('loans');</script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=3"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/shf-interactive.js?v=3"></script>
+<script src="assets/tabs.js"></script>
+<script>wireTabs('loans', ["all","active","disbursed","otc","closed"]);</script>
+
+<script>
+/* Build demo loan data + render using SHF_DATA */
+(function () {
+  var D = window.SHF_DATA;
+  function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function pick(arr){ return arr[rand(0,arr.length-1)]; }
+  function randName(){ return pick(D.names.first) + ' ' + pick(D.names.last); }
+  function emi(amt, rate, yrs){ var m = rate/12/100, n = yrs*12; return Math.round(amt*m*Math.pow(1+m,n)/(Math.pow(1+m,n)-1)); }
+
+  var DIST = [
+    { stage: 3,  key: 'document_collection', count: 8,  statusKey: 'active',    bucket: 'active' },
+    { stage: 4,  key: 'parallel_processing', count: 6,  statusKey: 'active',    bucket: 'active' },
+    { stage: 5,  key: 'rate_pf',             count: 7,  statusKey: 'active',    bucket: 'active' },
+    { stage: 6,  key: 'sanction',            count: 5,  statusKey: 'active',    bucket: 'active' },
+    { stage: 7,  key: 'docket',              count: 4,  statusKey: 'active',    bucket: 'active' },
+    { stage: 8,  key: 'kfs',                 count: 3,  statusKey: 'active',    bucket: 'active' },
+    { stage: 9,  key: 'esign',               count: 3,  statusKey: 'active',    bucket: 'active' },
+    { stage: 10, key: 'disbursement',        count: 4,  statusKey: 'active',    bucket: 'disbursed' },
+    { stage: 11, key: 'otc_clearance',       count: 3,  statusKey: 'active',    bucket: 'otc' },
+    { stage: 12, key: 'completed',           count: 5,  statusKey: 'completed', bucket: 'closed' },
+  ];
+  var PROGRESS = { 3:25, 4:33, 5:42, 6:50, 7:58, 8:66, 9:75, 10:83, 11:91, 12:100 };
+  var BAR = { 3:'var(--blue)', 4:'var(--blue)', 5:'var(--amber)', 6:'var(--accent)', 7:'var(--accent)', 8:'var(--violet)', 9:'var(--violet)', 10:'var(--green)', 11:'var(--ink-3)', 12:'var(--green)' };
+  // Map each stage to a badge color class (matches the progress bar color)
+  var STAGE_BADGE = { 1:'', 2:'', 3:'blue', 4:'blue', 5:'amber', 6:'orange', 7:'orange', 8:'violet', 9:'violet', 10:'green', 11:'dark', 12:'green' };
+
+  var seq = 480;
+  var LOANS = [];
+  DIST.forEach(function (d) {
+    for (var i = 0; i < d.count; i++) {
+      var bank = pick(D.banks);
+      var ct = pick(D.customerTypes);
+      // Pick a product that actually belongs to this bank (matches products.bank_id FK)
+      var bankProducts = D.productsForBank(bank.id);
+      var prod = pick(bankProducts);
+      var amt = rand(6, 110) * 100000;
+      var rate = 8 + Math.random()*2;
+      var yrs = pick(D.tenures);
+      var stageObj = D.stages.find(function (s) { return s.key === d.key; }) || { label_en: 'Completed' };
+      var daysAgo = rand(1, 45);
+      var dateStr = new Date(Date.now() - daysAgo*86400000).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+      LOANS.push({
+        loanNo: 'SHF-2026-' + String(seq--).padStart(4,'0'),
+        customer: randName(),
+        customerType: ct,
+        bank: bank,
+        product: prod,
+        stageN: d.stage,
+        stageKey: d.key,
+        stageLabel: stageObj.label_en,
+        stageBadge: STAGE_BADGE[d.stage] || '',
+        progress: PROGRESS[d.stage] || 100,
+        bar: BAR[d.stage] || 'var(--green)',
+        amount: amt,
+        emi: emi(amt, rate, yrs),
+        owner: randName(),
+        ownerRole: pick(['loan_advisor','bank_employee','office_employee','branch_manager']),
+        status: d.statusKey,
+        branch: pick(D.branches),
+        dateStr: dateStr,
+        daysAgo: daysAgo,
+        bucket: d.bucket,
+      });
+    }
+  });
+
+  var activeCount    = LOANS.filter(function (l) { return l.bucket === 'active'; }).length;
+  var disbursedCount = LOANS.filter(function (l) { return l.bucket === 'disbursed'; }).length;
+  var otcCount       = LOANS.filter(function (l) { return l.bucket === 'otc'; }).length;
+
+  document.getElementById('loansSub').textContent =
+    activeCount + ' active · ' +
+    disbursedCount + ' ready to disburse · ' +
+    otcCount + ' OTC pending';
+
+  /* ---------------- Filter grid ---------------- */
+  function mkOpt(v, l){ return '<option value="' + v + '">' + l + '</option>'; }
+  function mkSelect(id, lbl, opts) {
+    return '<div class="field"><label>' + lbl + '</label><select class="input" id="' + id + '">' + opts + '</select></div>';
+  }
+  var statusOpts = mkOpt('', 'All Status') + D.loanStatuses.map(function (s) { return mkOpt(s.key, s.label_en); }).join('');
+  var typeOpts   = mkOpt('', 'All Types')  + D.customerTypes.map(function (t) { return mkOpt(t.key, t.label_en); }).join('');
+  var bankOpts   = mkOpt('', 'All Banks')  + D.banks.map(function (b) { return mkOpt(b.id, b.name); }).join('');
+  var branchOpts = mkOpt('', 'All Branches') + D.branches.map(function (b) { return mkOpt(b.id, b.name); }).join('');
+  var stageOpts  = mkOpt('', 'All Stages') + D.stages.filter(function (s) { return !s.parent; }).map(function (s) { return mkOpt(s.key, s.n + '. ' + s.label_en); }).join('');
+  var roleOpts   = mkOpt('', 'All Roles')  + D.roles.filter(function (r) { return r.can_be_advisor || r.slug === 'bank_employee' || r.slug === 'office_employee'; }).map(function (r) { return mkOpt(r.slug, r.label_en); }).join('');
+  var docketOpts = mkOpt('', 'All')
+    + mkOpt('overdue',   'Overdue')
+    + mkOpt('due_today', 'Due Today')
+    + mkOpt('due_soon',  'Due Soon (7 days)')
+    + mkOpt('due_15',    'Due in 15 days')
+    + mkOpt('due_month', 'Due in 1 month')
+    + mkOpt('custom',    'Custom Date…');
+
+  document.getElementById('filterGrid').innerHTML =
+      '<div class="field"><label>Show</label><div class="per-page"><select id="loanPageLength"><option>10</option><option>25</option><option selected>50</option><option>100</option></select><span>rows</span></div></div>'
+    + mkSelect('filterStatus','Status', statusOpts)
+    + mkSelect('filterType','Customer Type', typeOpts)
+    + mkSelect('filterBank','Bank', bankOpts)
+    + mkSelect('filterBranch','Branch', branchOpts)
+    + mkSelect('filterStage','Stage', stageOpts)
+    + mkSelect('filterRole','Owner Role', roleOpts)
+    + mkSelect('filterDocket','Docket', docketOpts)
+    + '<div class="field hidden" id="docketCustomDateWrap"><label>Docket By</label><input type="text" class="input shf-datepicker" id="filterDocketDate" placeholder="dd/mm/yyyy" autocomplete="off"></div>'
+    + '<div class="field"><label>Date From</label><input type="text" class="input shf-datepicker" id="filterDateFrom" placeholder="dd/mm/yyyy" autocomplete="off"></div>'
+    + '<div class="field"><label>Date To</label><input type="text" class="input shf-datepicker" id="filterDateTo" placeholder="dd/mm/yyyy" autocomplete="off"></div>';
+
+  /* ---------------- Badges / templates ---------------- */
+  function statusPill(key) {
+    var s = D.loanStatuses.find(function (x) { return x.key === key; }) || { label_en: key, color: 'gray' };
+    var map = { green: ['var(--green-soft)','var(--green)'], amber: ['var(--amber-soft)','var(--amber)'], red: ['var(--red-soft)','var(--red)'], gray: ['var(--paper-2)','var(--ink-3)'], blue: ['var(--blue-soft)','var(--blue)'] };
+    var c = map[s.color] || map.gray;
+    return '<span class="pill" style="background:' + c[0] + ';color:' + c[1] + ';font-weight:600;white-space:nowrap;">' + s.label_en + '</span>';
+  }
+  function roleChip(slug) {
+    var r = D.roles.find(function (x) { return x.slug === slug; }) || { label_en: slug, chip: 'task-owner' };
+    return '<span class="role-chip role-chip--' + r.chip + '"><span class="dot"></span>' + r.label_en + '</span>';
+  }
+  function fmtAmount(v) { return '₹ ' + (window.SHF && window.SHF.formatIndianNumber ? SHF.formatIndianNumber(v) : v.toLocaleString('en-IN')); }
+
+  function rowHtml(l) {
+    return '<tr onclick="location=\'loan-show.html\'" class="clickable">'
+      + '<td><span class="font-mono" style="font-weight:600;">' + l.loanNo + '</span></td>'
+      + '<td><strong>' + l.customer + '</strong><div class="text-xs text-muted">' + l.customerType.label_en + '</div></td>'
+      + '<td><span class="bank-chip" style="background:' + l.bank.bg + ';color:' + l.bank.fg + ';">' + l.bank.name + '</span><div class="text-xs text-muted mt-1">' + l.product.name + '</div></td>'
+      + '<td class="num tnum"><strong>' + fmtAmount(l.amount) + '</strong><div class="text-xs text-muted">EMI ' + fmtAmount(l.emi) + '</div></td>'
+      + '<td><span class="badge sq ' + l.stageBadge + '">' + l.stageLabel + '</span><div class="progress thin mt-1"><div class="fill" style="width:' + l.progress + '%;background:' + l.bar + ';"></div></div></td>'
+      + '<td><div>' + l.owner + '</div>' + roleChip(l.ownerRole) + '<div class="text-xs text-muted mt-1">' + l.branch.name + '</div></td>'
+      + '<td>' + statusPill(l.status) + '</td>'
+      + '<td><div class="text-xs">' + l.dateStr + '</div><div class="text-xs text-muted">' + l.daysAgo + 'd ago</div></td>'
+      + '<td style="text-align:right;" onclick="event.stopPropagation();"><div class="row-actions">'
+      + '<button class="btn-ghost btn-sm" data-row-actions aria-label="Actions">⋯</button>'
+      + '<div class="row-actions-menu">'
+      +   '<a href="loan-show.html">View details</a>'
+      +   '<a href="loan-stages.html">Stages</a>'
+      +   '<a href="loan-documents.html">Documents</a>'
+      +   '<a href="loan-edit.html">Edit</a>'
+      +   '<hr>'
+      +   '<a href="#" class="danger" data-confirm-delete="Loan">Delete</a>'
+      + '</div>'
+      + '</div></td>'
+      + '</tr>';
+  }
+  function cardHtml(l) {
+    return '<div class="m-card" onclick="location=\'loan-show.html\'">'
+      + '<div class="m-hd"><div><strong>' + l.customer + '</strong><div class="text-xs text-muted font-mono">' + l.loanNo + '</div></div>' + statusPill(l.status) + '</div>'
+      + '<div class="m-row"><span class="k">Amount</span><span class="v tnum">' + fmtAmount(l.amount) + '</span></div>'
+      + '<div class="m-row"><span class="k">EMI</span><span class="v tnum">' + fmtAmount(l.emi) + '</span></div>'
+      + '<div class="m-row"><span class="k">Bank</span><span class="v"><span class="bank-chip" style="background:' + l.bank.bg + ';color:' + l.bank.fg + ';">' + l.bank.name + '</span><div class="text-xs text-muted mt-1">' + l.product.name + '</div></span></div>'
+      + '<div class="m-row"><span class="k">Stage</span><span class="v"><span class="badge sq ' + l.stageBadge + '" style="font-size:10.5px;">' + l.stageLabel + '</span></span></div>'
+      + '<div class="m-row"><span class="k">Owner</span><span class="v">' + l.owner + '<br>' + roleChip(l.ownerRole) + '</span></div>'
+      + '<div class="m-row"><span class="k">Branch</span><span class="v">' + l.branch.name + '</span></div>'
+      + '<div class="m-row"><span class="k">Date</span><span class="v">' + l.dateStr + '</span></div>'
+      + '<div class="progress thin mt-2"><div class="fill" style="width:' + l.progress + '%;background:' + l.bar + ';"></div></div>'
+      + '</div>';
+  }
+  function tableOf(rows) {
+    if (!rows.length) return '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);"><div style="font-size:30px;margin-bottom:8px;">📭</div><div style="font-weight:600;">No loans in this view</div></div>';
+    return '<table class="tbl"><thead><tr>'
+      + '<th>Loan #</th>'
+      + '<th>Customer</th>'
+      + '<th>Bank / Product</th>'
+      + '<th class="num">Amount</th>'
+      + '<th style="min-width:200px;">Stage</th>'
+      + '<th>Owner</th>'
+      + '<th>Status</th>'
+      + '<th>Date</th>'
+      + '<th class="th-actions" style="width:48px;"></th>'
+      + '</tr></thead><tbody>' + rows.map(rowHtml).join('') + '</tbody></table>';
+  }
+  function cardsOf(rows) { return rows.length ? rows.map(cardHtml).join('') : '<div class="empty" style="padding:30px 12px;text-align:center;color:var(--ink-3);">📭 No loans</div>'; }
+
+  var panels = {
+    all:       LOANS.slice(0),
+    active:    LOANS.filter(function (l) { return l.bucket === 'active'; }),
+    disbursed: LOANS.filter(function (l) { return l.bucket === 'disbursed'; }),
+    otc:       LOANS.filter(function (l) { return l.bucket === 'otc'; }),
+    closed:    LOANS.filter(function (l) { return l.bucket === 'closed'; }),
+  };
+  Object.keys(panels).forEach(function (k) {
+    var rows = panels[k];
+    var t = document.getElementById('rows-' + k);
+    var m = document.getElementById('mrows-' + k);
+    if (t) t.innerHTML = tableOf(rows);
+    if (m) m.innerHTML = cardsOf(rows);
+    var c = document.getElementById('cnt-' + k); if (c) c.textContent = rows.length;
+  });
+  document.getElementById('rowCount').textContent = Math.min(50, LOANS.length);
+  document.getElementById('totalCount').textContent = LOANS.length;
+  document.getElementById('footInfo-all').textContent = 'Showing ' + Math.min(50, LOANS.length) + ' of ' + LOANS.length;
+
+  /* Init datepickers on the dynamically-built filter grid */
+  if (window.SHF && window.SHF.initDatepickers) {
+    window.SHF.initDatepickers(document.getElementById('filterGrid'));
+  } else if (window.jQuery && window.jQuery.fn && window.jQuery.fn.datepicker) {
+    window.jQuery('.shf-datepicker').datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true, clearBtn: true, orientation: 'bottom auto', container: 'body' });
+  }
+
+  /* ---------------- Filter interactions ---------------- */
+  var filterIds = ['filterStatus','filterType','filterBank','filterBranch','filterStage','filterRole','filterDocket','filterDateFrom','filterDateTo'];
+  var countEl = document.getElementById('loanFilterCount');
+  var panel   = document.getElementById('loanFilterPanel');
+  var headEl  = document.getElementById('loanFilterHead');
+  headEl.addEventListener('click', function () { panel.classList.toggle('open'); });
+
+  function updateCount() {
+    var c = 0;
+    filterIds.forEach(function (id) { var el = document.getElementById(id); if (el && el.value) c++; });
+    if (c > 0) { countEl.textContent = c; countEl.style.display = 'inline-flex'; }
+    else countEl.style.display = 'none';
+  }
+  filterIds.forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener('change', updateCount); });
+  document.getElementById('filterDocket').addEventListener('change', function () {
+    document.getElementById('docketCustomDateWrap').classList.toggle('hidden', this.value !== 'custom');
+  });
+  document.getElementById('btnLoanClear').addEventListener('click', function () {
+    filterIds.forEach(function (id) {
+      var el = document.getElementById(id); if (!el) return;
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else if (window.jQuery && window.jQuery(el).data('datepicker')) window.jQuery(el).datepicker('clearDates');
+      else el.value = '';
+    });
+    document.getElementById('docketCustomDateWrap').classList.add('hidden');
+    updateCount();
+    if (window.shfToast) window.shfToast('Filters cleared');
+  });
+  document.getElementById('btnLoanFilter').addEventListener('click', function () { if (window.shfToast) window.shfToast('Filters applied'); });
+
+  // Keep the filter panel open by default on all viewports — user can collapse via header.
+})();
+</script>
+<script src="assets/loans.js?v=1"></script>
+</body></html>

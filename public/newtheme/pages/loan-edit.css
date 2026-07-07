@@ -1,0 +1,89 @@
+/* Newtheme loan edit — resources/views/newtheme/loans/edit.blade.php */
+
+.le-card { margin-bottom: 14px; }
+.le-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+@media (max-width: 700px) {
+    .le-grid { grid-template-columns: 1fr; }
+}
+
+.le-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 0;
+}
+.le-field .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Amount field */
+.le-amount-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.le-amount-wrap .le-rupee {
+    position: absolute;
+    left: 10px;
+    font-size: 13px;
+    color: var(--ink-3);
+    pointer-events: none;
+}
+.le-amount-wrap .le-amount-input {
+    padding-left: 24px;
+    flex: 1 1 auto;
+}
+.le-amount-words {
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    min-height: 14px;
+    line-height: 1.4;
+}
+
+/* Textarea: field-sizing fallback + stacking */
+.le-field textarea.input { field-sizing: content; resize: vertical; }
+
+/* Error alert */
+.le-alert {
+    margin-bottom: 14px;
+    border-left: 3px solid var(--red, #c0392b);
+    background: var(--red-soft, rgba(192,57,43,0.06));
+}
+.le-alert ul {
+    margin: 6px 0 0 18px;
+    font-size: 12.5px;
+    color: var(--red, #c0392b);
+}
+
+/* Actions bar */
+.le-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+/* Invalid state */
+.input.is-invalid {
+    border-color: var(--red, #c0392b) !important;
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+}
+.le-client-error {
+    font-size: 11.5px;
+    color: var(--red, #c0392b);
+    margin-top: 4px;
+}
+
+/* Datepicker z-index above card */
+.datepicker-dropdown { z-index: 10050; }

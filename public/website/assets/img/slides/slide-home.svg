@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sHbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c1918"/>
+      <stop offset="55%" stop-color="#2b2526"/>
+      <stop offset="100%" stop-color="#181515"/>
+    </linearGradient>
+    <radialGradient id="sHGlow" cx="78%" cy="22%" r="58%">
+      <stop offset="0%" stop-color="#f15a29" stop-opacity="0.7"/>
+      <stop offset="60%" stop-color="#f15a29" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#f15a29" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sHCoin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffb066"/>
+      <stop offset="100%" stop-color="#f15a29"/>
+    </linearGradient>
+    <linearGradient id="sHHouse" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f99d3e"/>
+      <stop offset="100%" stop-color="#d04316"/>
+    </linearGradient>
+  </defs>
+
+  <!-- base + radial glow -->
+  <rect width="1600" height="900" fill="url(#sHbg)"/>
+  <rect width="1600" height="900" fill="url(#sHGlow)"/>
+
+  <!-- Giant watermark rupee symbol (background) -->
+  <text x="1280" y="720" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="720"
+        font-weight="700"
+        fill="#f15a29"
+        opacity="0.06">₹</text>
+
+  <!-- Decorative grid -->
+  <g stroke="#ffffff" stroke-opacity="0.035" stroke-width="1">
+    <path d="M0 200 H1600 M0 400 H1600 M0 600 H1600"/>
+    <path d="M300 0 V900 M600 0 V900 M900 0 V900 M1200 0 V900"/>
+  </g>
+
+  <!-- Soft diagonal accent line -->
+  <path d="M-80 600 L900 100" stroke="#f15a29" stroke-opacity="0.18" stroke-width="1.5" fill="none"/>
+
+  <!-- Main house illustration (right side) -->
+  <g transform="translate(1120, 260)">
+    <!-- glow behind house -->
+    <circle cx="135" cy="150" r="200" fill="#f15a29" opacity="0.08"/>
+    <!-- roof -->
+    <path d="M20 120 L135 25 L250 120 L230 120 L230 250 L40 250 L40 120 Z" fill="url(#sHHouse)" opacity="0.85"/>
+    <!-- chimney -->
+    <rect x="175" y="55" width="24" height="50" fill="#f15a29" opacity="0.9"/>
+    <!-- door -->
+    <rect x="115" y="170" width="40" height="80" fill="#1c1918" rx="3"/>
+    <circle cx="149" cy="210" r="2.5" fill="#f99d3e"/>
+    <!-- windows -->
+    <rect x="55" y="155" width="38" height="38" fill="#1c1918" rx="2"/>
+    <line x1="74" y1="155" x2="74" y2="193" stroke="#f15a29" stroke-width="1.5"/>
+    <line x1="55" y1="174" x2="93" y2="174" stroke="#f15a29" stroke-width="1.5"/>
+    <rect x="175" y="155" width="38" height="38" fill="#1c1918" rx="2"/>
+    <line x1="194" y1="155" x2="194" y2="193" stroke="#f15a29" stroke-width="1.5"/>
+    <line x1="175" y1="174" x2="213" y2="174" stroke="#f15a29" stroke-width="1.5"/>
+    <!-- ground line -->
+    <line x1="10" y1="252" x2="260" y2="252" stroke="#f99d3e" stroke-width="2" opacity="0.6"/>
+  </g>
+
+  <!-- Stack of coins (bottom left) -->
+  <g transform="translate(200, 620)" opacity="0.55">
+    <ellipse cx="0"  cy="120" rx="65" ry="14" fill="#1c1918" opacity="0.5"/>
+    <!-- coin 1 -->
+    <ellipse cx="0" cy="100" rx="60" ry="13" fill="url(#sHCoin)"/>
+    <rect x="-60" y="92" width="120" height="8" fill="url(#sHCoin)"/>
+    <ellipse cx="0" cy="92" rx="60" ry="13" fill="#ffa35a"/>
+    <text x="0" y="98" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#9e3a0e">₹</text>
+    <!-- coin 2 -->
+    <ellipse cx="0" cy="72" rx="60" ry="13" fill="url(#sHCoin)"/>
+    <rect x="-60" y="64" width="120" height="8" fill="url(#sHCoin)"/>
+    <ellipse cx="0" cy="64" rx="60" ry="13" fill="#ffa35a"/>
+    <text x="0" y="70" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#9e3a0e">₹</text>
+    <!-- coin 3 -->
+    <ellipse cx="0" cy="44" rx="60" ry="13" fill="url(#sHCoin)"/>
+    <rect x="-60" y="36" width="120" height="8" fill="url(#sHCoin)"/>
+    <ellipse cx="0" cy="36" rx="60" ry="13" fill="#ffb066"/>
+    <text x="0" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#9e3a0e">₹</text>
+  </g>
+
+  <!-- Floating small rupee badge -->
+  <g transform="translate(980, 140)">
+    <circle r="32" fill="#f15a29" opacity="0.22"/>
+    <circle r="22" fill="none" stroke="#f99d3e" stroke-width="1.5" opacity="0.7"/>
+    <text y="8" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#f99d3e">₹</text>
+  </g>
+
+  <!-- Subtle floating dots -->
+  <g fill="#f15a29" opacity="0.35">
+    <circle cx="1420" cy="180" r="3"/>
+    <circle cx="1480" cy="260" r="2"/>
+    <circle cx="1500" cy="500" r="3"/>
+    <circle cx="850" cy="120" r="2"/>
+    <circle cx="120" cy="260" r="3"/>
+  </g>
+</svg>

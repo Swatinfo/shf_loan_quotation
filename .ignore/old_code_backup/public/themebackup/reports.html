@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reports · SHF World</title>
+<link rel="stylesheet" href="assets/shf.css">
+<link rel="stylesheet" href="assets/shf-extras.css?v=3">
+<link rel="stylesheet" href="assets/shf-workflow.css?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- SHF-VENDOR-START -->
+<link rel="stylesheet" href="vendor/datepicker/css/bootstrap-datepicker3.min.css">
+<link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+<script src="vendor/jquery/jquery-3.7.1.min.js"></script>
+<script src="vendor/datepicker/js/bootstrap-datepicker.min.js"></script>
+<script src="vendor/sortablejs/Sortable.min.js"></script>
+<script src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<!-- SHF-VENDOR-END -->
+</head>
+<body>
+<div class="app">
+<div id="__shell_topbar"></div>
+<header class="page-header">
+ <div class="head-row">
+ <div>
+ <div class="crumbs"><a href="dashboard.html">Dashboard</a> <span class="sep">/</span> Reports</div>
+ <h1>Reports &amp; KPIs</h1>
+ <div class="sub">Ahmedabad — Maninagar branch FY 2025-26updated 5 min ago</div>
+ </div>
+ <div class="head-actions">
+ <div class="btn-group"><button class="btn" data-action="toast" data-arg="MTD">MTD</button><button class="btn active">QTD</button><button class="btn" data-action="toast" data-arg="FY">FY</button><button class="btn" data-action="toast" data-arg="Custom ▾">Custom ▾</button></div>
+ <button class="btn" data-action="toast" data-arg="Export XLSX">Export XLSX</button>
+ </div>
+ </div>
+ <div class="tabs" data-tab-panel-group="rep">
+ <a class="tab active" id="rep-tab-business" data-panel="business">Business</a>
+ <a class="tab" id="rep-tab-funnel" data-panel="funnel">Funnel</a>
+ <a class="tab" id="rep-tab-bank" data-panel="bank">Bank-wise</a>
+ <a class="tab" id="rep-tab-advisor" data-panel="advisor">Advisor</a>
+ <a class="tab" id="rep-tab-ops" data-panel="ops">Operations</a>
+ </div>
+</header>
+
+<main class="content">
+<div data-tab-panel-group="rep">
+<div id="rep-panel-business" data-panel-id="business">
+ <div class="grid c4">
+ <div class="kpi"><div class="lbl">Sanctioned QTD</div><div class="val tnum"><span class="cur">₹</span>14.2<span style="font-size:14px;color:var(--ink-4);margin-left:2px;">Cr</span></div><div class="delta up">▲ 22% Yo · Y</div></div>
+ <div class="kpi"><div class="lbl">Disbursed QTD</div><div class="val tnum"><span class="cur">₹</span>9.86<span style="font-size:14px;color:var(--ink-4);margin-left:2px;">Cr</span></div><div class="delta up">▲ 14% Yo · Y</div></div>
+ <div class="kpi"><div class="lbl">Avg ticket size</div><div class="val tnum"><span class="cur">₹</span>41.2<span style="font-size:14px;color:var(--ink-4);margin-left:2px;">L</span></div><div class="delta up">▲ 8%</div></div>
+ <div class="kpi dark"><div class="lbl">Conversion</div><div class="val tnum">38<span style="font-size:18px;">%</span></div><div class="delta up" style="color:#86efac;">▲ 2.1 pts</div></div>
+ </div>
+
+ <div class="grid c-main mt-4">
+ <div>
+ <div class="card">
+ <div class="card-hd"><div class="t">Funnelthis quarter</div></div>
+ <div class="card-bd">
+ <div class="funnel">
+ <div class="fn-row"><div class="fn-l">Inquiries</div><div class="fn-bar" style="width:100%;"><span>364</span></div></div>
+ <div class="fn-row"><div class="fn-l">Quotations sent</div><div class="fn-bar" style="width:82%;"><span>298</span></div><div class="fn-r">82%</div></div>
+ <div class="fn-row"><div class="fn-l">Doc collection</div><div class="fn-bar" style="width:54%;background:var(--blue);"><span>196</span></div><div class="fn-r">54%</div></div>
+ <div class="fn-row"><div class="fn-l">Sanctioned</div><div class="fn-bar" style="width:42%;background:var(--amber);"><span>152</span></div><div class="fn-r">42%</div></div>
+ <div class="fn-row"><div class="fn-l">Disbursed</div><div class="fn-bar" style="width:38%;background:var(--green);"><span>138</span></div><div class="fn-r">38%</div></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Disbursementsmonthly trend</div></div>
+ <div class="card-bd">
+ <div class="bars" style="height:200px;">
+ <div class="bar" style="height:50%;"><span class="v">2.1Cr</span></div>
+ <div class="bar alt" style="height:60%;"></div>
+ <div class="bar" style="height:65%;"></div>
+ <div class="bar alt" style="height:72%;"></div>
+ <div class="bar" style="height:58%;"></div>
+ <div class="bar alt" style="height:68%;"></div>
+ <div class="bar" style="height:76%;"></div>
+ <div class="bar alt" style="height:82%;"></div>
+ <div class="bar" style="height:88%;"></div>
+ <div class="bar alt" style="height:95%;"></div>
+ <div class="bar" style="height:90%;"></div>
+ <div class="bar alt" style="height:100%;"><span class="v">₹4.82Cr</span></div>
+ </div>
+ <div class="bar-lbls" style="margin-top:8px;"><div>Apr</div><div>May</div><div>Jun</div><div>Jul</div><div>Aug</div><div>Sep</div><div>Oct</div><div>Nov</div><div>Dec</div><div>Jan</div><div>Feb</div><div>Mar</div></div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Advisor leaderboard QTD</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>#</th><th>Advisor</th><th class="num">Inquiries</th><th class="num">Quotations</th><th class="num">Sanctioned</th><th class="num">Disbursed (₹)</th><th>Conv.</th></tr></thead>
+ <tbody>
+ <tr><td><strong>1</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">RJ</div>Rahul Jadeja</div></td><td class="num tnum">112</td><td class="num tnum">96</td><td class="num tnum">52</td><td class="num tnum">₹ 3.8 Cr</td><td><span class="badge green sq">46%</span></td></tr>
+ <tr><td><strong>2</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">AP</div>Anita Patel</div></td><td class="num tnum">98</td><td class="num tnum">78</td><td class="num tnum">38</td><td class="num tnum">₹ 2.9 Cr</td><td><span class="badge green sq">39%</span></td></tr>
+ <tr><td><strong>3</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">VM</div>Vipul Mehta</div></td><td class="num tnum">86</td><td class="num tnum">64</td><td class="num tnum">31</td><td class="num tnum">₹ 2.4 Cr</td><td><span class="badge amber sq">36%</span></td></tr>
+ <tr><td><strong>4</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">DK</div>Dipti Kaul</div></td><td class="num tnum">68</td><td class="num tnum">60</td><td class="num tnum">17</td><td class="num tnum">₹ 76 L</td><td><span class="badge amber sq">25%</span></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <aside>
+ <div class="card">
+ <div class="card-hd"><div class="t">Bank mix QTD</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span><span class="dotc" style="background:#f15a29;"></span>HDFC</span><strong class="tnum">₹ 4.6 Cr32%</strong></div>
+ <div class="kv"><span><span class="dotc" style="background:#3a3536;"></span>SBI</span><strong class="tnum">₹ 3.4 Cr24%</strong></div>
+ <div class="kv"><span><span class="dotc" style="background:#1d4e89;"></span>Bank of Baroda</span><strong class="tnum">₹ 2.6 Cr18%</strong></div>
+ <div class="kv"><span><span class="dotc" style="background:#107a4f;"></span>ICICI</span><strong class="tnum">₹ 2.0 Cr14%</strong></div>
+ <div class="kv"><span><span class="dotc" style="background:#b7791f;"></span>Others (5)</span><strong class="tnum">₹ 1.6 Cr12%</strong></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Operational health</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Avg stage-to-disburse time</span><strong>21 days</strong></div>
+ <div class="kv"><span>Doc collection SLA</span><strong style="color:var(--green);">On track</strong></div>
+ <div class="kv"><span>OTC backlog</span><strong style="color:var(--amber);">3 files</strong></div>
+ <div class="kv"><span>Open queries (2w+)</span><strong style="color:var(--red);">2</strong></div>
+ <div class="kv"><span>NPS (alumni)</span><strong>72</strong></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Source mix</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>DSA partners</span><strong>38%</strong></div>
+ <div class="kv"><span>Walk-in</span><strong>24%</strong></div>
+ <div class="kv"><span>Referrals</span><strong>22%</strong></div>
+ <div class="kv"><span>Digital ads</span><strong>12%</strong></div>
+ <div class="kv"><span>Alumni top-ups</span><strong>4%</strong></div>
+ </div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- FUNNEL panel -->
+<div id="rep-panel-funnel" data-panel-id="funnel" style="display:none;">
+ <div class="grid c4">
+ <div class="kpi"><div class="lbl">Inquiries QTD</div><div class="val tnum">364</div><div class="delta up">▲ 18% Yo · Y</div></div>
+ <div class="kpi"><div class="lbl">Lead→Quote rate</div><div class="val tnum">82%</div><div class="delta up">▲ 3 pts</div></div>
+ <div class="kpi"><div class="lbl">Quote→Sanction</div><div class="val tnum">51%</div><div class="delta down">▼ 2 pts</div></div>
+ <div class="kpi dark"><div class="lbl">Sanction→Disb.</div><div class="val tnum">91%</div><div class="delta up" style="color:#86efac;">▲ 1.5 pts</div></div>
+ </div>
+
+ <div class="grid c-main mt-4">
+ <div>
+ <div class="card">
+ <div class="card-hd"><div class="t">Conversion funnel QTD</div><div class="sub">Count at each stagedrop-off between stages</div></div>
+ <div class="card-bd" style="padding:24px;">
+ <div class="funnel" style="gap:14px;">
+ <div class="fn-row"><div class="fn-l">Inquiries</div><div class="fn-bar" style="width:100%;"><span>364</span></div><div class="fn-r">100%</div></div>
+ <div class="fn-row"><div class="fn-l">Qualified leads</div><div class="fn-bar" style="width:88%;"><span>320</span></div><div class="fn-r">88% <span class="text-xs text-muted">↓ 12%</span></div></div>
+ <div class="fn-row"><div class="fn-l">Quotations sent</div><div class="fn-bar" style="width:82%;"><span>298</span></div><div class="fn-r">82% <span class="text-xs text-muted">↓ 7%</span></div></div>
+ <div class="fn-row"><div class="fn-l">Docs collected</div><div class="fn-bar" style="width:54%;background:var(--blue);"><span>196</span></div><div class="fn-r">54% <span class="text-xs" style="color:var(--red);">↓ 34%</span></div></div>
+ <div class="fn-row"><div class="fn-l">Logged in bank</div><div class="fn-bar" style="width:48%;background:var(--blue);"><span>175</span></div><div class="fn-r">48% <span class="text-xs text-muted">↓ 11%</span></div></div>
+ <div class="fn-row"><div class="fn-l">Sanctioned</div><div class="fn-bar" style="width:42%;background:var(--amber);"><span>152</span></div><div class="fn-r">42% <span class="text-xs text-muted">↓ 13%</span></div></div>
+ <div class="fn-row"><div class="fn-l">Disbursed</div><div class="fn-bar" style="width:38%;background:var(--green);"><span>138</span></div><div class="fn-r">38% <span class="text-xs text-muted">↓ 9%</span></div></div>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Drop-off reasons</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Stage</th><th>Reason</th><th class="num">Files</th><th>Share</th></tr></thead>
+ <tbody>
+ <tr><td>Docs collection</td><td>Customer stopped responding</td><td class="num tnum">42</td><td><div class="bar" style="--p:34%;"></div></td></tr>
+ <tr><td>Docs collection</td><td>CIBIL too lowcouldn't proceed</td><td class="num tnum">28</td><td><div class="bar amber" style="--p:22%;"></div></td></tr>
+ <tr><td>Quote → Sanction</td><td>Rate not competitive</td><td class="num tnum">18</td><td><div class="bar blue" style="--p:14%;"></div></td></tr>
+ <tr><td>Sanction → Disb.</td><td>OTC pending &gt; 15d</td><td class="num tnum">9</td><td><div class="bar red" style="--p:7%;"></div></td></tr>
+ <tr><td>Docs collection</td><td>Went to competitor</td><td class="num tnum">15</td><td><div class="bar" style="--p:12%;"></div></td></tr>
+ <tr><td>Logged in bank</td><td>Bank rejectionpolicy</td><td class="num tnum">14</td><td><div class="bar amber" style="--p:11%;"></div></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <aside>
+ <div class="card"><div class="card-hd"><div class="t">Average time in stage</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Inquiry → Quote</span><strong>1.8 days</strong></div>
+ <div class="kv"><span>Quote → Doc collection</span><strong>3.2 days</strong></div>
+ <div class="kv"><span>Docs → Login</span><strong>5.6 days</strong></div>
+ <div class="kv"><span>Login → Sanction</span><strong>4.8 days</strong></div>
+ <div class="kv"><span>Sanction → Disbursement</span><strong>6.4 days</strong></div>
+ <div class="kv" style="border-top:1px dashed var(--line);padding-top:10px;"><span><strong>End-to-end</strong></span><strong>21 days</strong></div>
+ </div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Funnel by loan type</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>HomePurchase</span><strong>41% conv</strong></div>
+ <div class="kv"><span>HomeConstruction</span><strong>34%</strong></div>
+ <div class="kv"><span>LAP</span><strong>36%</strong></div>
+ <div class="kv"><span>Balance transfer</span><strong>52%</strong></div>
+ <div class="kv"><span>Top-up</span><strong>68%</strong></div>
+ </div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+<!-- BANK panel -->
+<div id="rep-panel-bank" data-panel-id="bank" style="display:none;">
+ <div class="grid c4">
+ <div class="kpi"><div class="lbl">Banks active</div><div class="val tnum">9</div><div class="delta up">▲ 1 (BOB added)</div></div>
+ <div class="kpi"><div class="lbl">Top share</div><div class="val tnum">HDFC</div><div class="text-xs text-muted">32%₹ 4.6 Cr</div></div>
+ <div class="kpi"><div class="lbl">Best ratehome</div><div class="val tnum">8.35%</div><div class="text-xs text-muted">HDFC salaried</div></div>
+ <div class="kpi dark"><div class="lbl">Avg. sanction TAT</div><div class="val tnum">9.4d</div><div class="delta down" style="color:#fecaca;">▼ 0.6 vs Q3</div></div>
+ </div>
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Bank-wise performance QTD</div><div class="sub">Sanctioned and disbursed volumes, conversion, and TAT</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Bank</th><th class="num">Logged</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th class="num">Sanction → Disb.</th><th>Share</th><th class="num">Avg. TAT</th><th>Reject %</th></tr></thead>
+ <tbody>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#f15a29;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">H</span>HDFC Bank</div></td><td class="num tnum">58</td><td class="num tnum">44</td><td class="num tnum">41</td><td class="num tnum">₹ 4.6 Cr</td><td><div class="bar" style="--p:32%;"></div></td><td class="num tnum">8.2 d</td><td>8%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#3a3536;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">S</span>State Bank of India</div></td><td class="num tnum">42</td><td class="num tnum">32</td><td class="num tnum">30</td><td class="num tnum">₹ 3.4 Cr</td><td><div class="bar" style="--p:24%;"></div></td><td class="num tnum">12.4 d</td><td>12%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#1d4e89;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">B</span>Bank of Baroda</div></td><td class="num tnum">34</td><td class="num tnum">26</td><td class="num tnum">24</td><td class="num tnum">₹ 2.6 Cr</td><td><div class="bar" style="--p:18%;"></div></td><td class="num tnum">10.1 d</td><td>14%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#107a4f;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">I</span>ICICI Bank</div></td><td class="num tnum">28</td><td class="num tnum">22</td><td class="num tnum">18</td><td class="num tnum">₹ 2.0 Cr</td><td><div class="bar" style="--p:14%;"></div></td><td class="num tnum">7.6 d</td><td>11%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#b7791f;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">A</span>Axis Bank</div></td><td class="num tnum">18</td><td class="num tnum">14</td><td class="num tnum">12</td><td class="num tnum">₹ 1.1 Cr</td><td><div class="bar amber" style="--p:8%;"></div></td><td class="num tnum">9.2 d</td><td>10%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#9c1f2e;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">K</span>Kotak Mahindra</div></td><td class="num tnum">8</td><td class="num tnum">5</td><td class="num tnum">4</td><td class="num tnum">₹ 38 L</td><td><div class="bar amber" style="--p:3%;"></div></td><td class="num tnum">11.3 d</td><td>26%</td></tr>
+ <tr><td><div style="display:flex;gap:8px;align-items:center;"><span style="width:22px;height:22px;border-radius:4px;background:#053870;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">P</span>PNB</div></td><td class="num tnum">5</td><td class="num tnum">3</td><td class="num tnum">3</td><td class="num tnum">₹ 22 L</td><td><div class="bar amber" style="--p:2%;"></div></td><td class="num tnum">14.1 d</td><td>32%</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+</div>
+
+<!-- ADVISOR panel -->
+<div id="rep-panel-advisor" data-panel-id="advisor" style="display:none;">
+ <div class="grid c4">
+ <div class="kpi"><div class="lbl">Team size</div><div class="val tnum">6</div><div class="text-xs text-muted">4 advisors2 field</div></div>
+ <div class="kpi"><div class="lbl">Top performer QTD</div><div class="val tnum" style="font-size:20px;">Rahul J.</div><div class="text-xs text-muted">₹ 3.8 Cr disbursed</div></div>
+ <div class="kpi"><div class="lbl">Team conv. rate</div><div class="val tnum">38%</div><div class="delta up">▲ 2.1 pts</div></div>
+ <div class="kpi dark"><div class="lbl">Avg revenue/advisor</div><div class="val tnum" style="font-size:22px;">₹ 2.37 Cr</div><div class="delta up" style="color:#86efac;">▲ 12%</div></div>
+ </div>
+
+ <div class="card mt-4">
+ <div class="card-hd"><div class="t">Advisor leaderboard QTD</div><div class="sub">Pipeline, conversion, ticket size, TAT</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>#</th><th>Advisor</th><th class="num">Inquiries</th><th class="num">Quotations</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th>Conv.</th><th>Avg ticket</th><th>TAT</th><th>Rating</th></tr></thead>
+ <tbody>
+ <tr><td><strong>1</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">RJ</div>Rahul Jadeja</div></td><td class="num tnum">112</td><td class="num tnum">96</td><td class="num tnum">52</td><td class="num tnum">₹ 3.8 Cr</td><td><span class="badge green sq">46%</span></td><td class="num tnum">₹ 42.8 L</td><td>18 d</td><td>★★★★★</td></tr>
+ <tr><td><strong>2</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs" style="background:#efd3c0;color:#8a3a10;">AP</div>Anita Patel</div></td><td class="num tnum">98</td><td class="num tnum">78</td><td class="num tnum">38</td><td class="num tnum">₹ 2.9 Cr</td><td><span class="badge green sq">39%</span></td><td class="num tnum">₹ 38.2 L</td><td>20 d</td><td>★★★★★</td></tr>
+ <tr><td><strong>3</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs" style="background:#d4e4f2;color:#1d4e89;">VM</div>Vipul Mehta</div></td><td class="num tnum">86</td><td class="num tnum">64</td><td class="num tnum">31</td><td class="num tnum">₹ 2.4 Cr</td><td><span class="badge amber sq">36%</span></td><td class="num tnum">₹ 41.2 L</td><td>23 d</td><td>★★★★</td></tr>
+ <tr><td><strong>4</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs" style="background:#d9eed9;color:#107a4f;">DK</div>Dipti Kaul</div></td><td class="num tnum">68</td><td class="num tnum">60</td><td class="num tnum">17</td><td class="num tnum">₹ 76 L</td><td><span class="badge amber sq">25%</span></td><td class="num tnum">₹ 28.6 L</td><td>26 d</td><td>★★★★</td></tr>
+ <tr><td><strong>5</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs" style="background:#fae3e3;color:#9c1f2e;">SD</div>Sneha Desai</div></td><td class="num tnum">52</td><td class="num tnum">42</td><td class="num tnum">12</td><td class="num tnum">₹ 48 L</td><td><span class="badge amber sq">23%</span></td><td class="num tnum">₹ 26.4 L</td><td>28 d</td><td>★★★</td></tr>
+ <tr><td><strong>6</strong></td><td><div style="display:flex;gap:8px;align-items:center;"><div class="avatar xs">KP</div>Karan Patel</div></td><td class="num tnum">34</td><td class="num tnum">26</td><td class="num tnum">8</td><td class="num tnum">₹ 32 L</td><td><span class="badge red sq">24%</span></td><td class="num tnum">₹ 22.8 L</td><td>31 d</td><td>★★★</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <div class="grid c2 mt-4" style="gap:18px;">
+ <div class="card"><div class="card-hd"><div class="t">Team mixsource of business</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>DSA partners</span><strong>38%₹ 5.4 Cr</strong></div>
+ <div class="kv"><span>Walk-in</span><strong>24%</strong></div>
+ <div class="kv"><span>Referrals</span><strong>22%</strong></div>
+ <div class="kv"><span>Digital ads</span><strong>12%</strong></div>
+ <div class="kv"><span>Alumni top-ups</span><strong>4%</strong></div>
+ </div>
+ </div>
+ </div>
+ <div class="card"><div class="card-hd"><div class="t">Incentives payable QTD</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Advisor</th><th class="num">Base</th><th class="num">Variable</th><th class="num">Bonus</th><th class="num">Payable</th></tr></thead>
+ <tbody>
+ <tr><td>Rahul J.</td><td class="num tnum">₹ 42,000</td><td class="num tnum">₹ 58,000</td><td class="num tnum">₹ 15,000</td><td class="num tnum" style="font-weight:600;">₹ 1,15,000</td></tr>
+ <tr><td>Anita P.</td><td class="num tnum">₹ 42,000</td><td class="num tnum">₹ 46,000</td><td class="num tnum">₹ 10,000</td><td class="num tnum" style="font-weight:600;">₹ 98,000</td></tr>
+ <tr><td>Vipul M.</td><td class="num tnum">₹ 38,000</td><td class="num tnum">₹ 38,000</td><td class="num tnum">—</td><td class="num tnum" style="font-weight:600;">₹ 76,000</td></tr>
+ <tr><td>Dipti K.</td><td class="num tnum">₹ 32,000</td><td class="num tnum">₹ 12,000</td><td class="num tnum">—</td><td class="num tnum" style="font-weight:600;">₹ 44,000</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- OPERATIONS panel -->
+<div id="rep-panel-ops" data-panel-id="ops" style="display:none;">
+ <div class="grid c4">
+ <div class="kpi"><div class="lbl">Stage-to-disb TAT</div><div class="val tnum">21 d</div><div class="delta up">▼ 2 d vs Q3</div></div>
+ <div class="kpi"><div class="lbl">Doc collection SLA</div><div class="val tnum" style="color:var(--green);">94%</div><div class="text-xs text-muted">target 90%</div></div>
+ <div class="kpi"><div class="lbl">Open OTC</div><div class="val tnum">3</div><div class="text-xs" style="color:var(--red);">1 over 15d</div></div>
+ <div class="kpi dark"><div class="lbl">NPS (alumni)</div><div class="val tnum">72</div><div class="delta up" style="color:#86efac;">▲ 4</div></div>
+ </div>
+ <div class="grid c-main mt-4">
+ <div>
+ <div class="card"><div class="card-hd"><div class="t">SLA health by stage</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Stage</th><th class="num">Files</th><th class="num">Within SLA</th><th class="num">Breached</th><th>On-time %</th><th class="num">Avg age</th></tr></thead>
+ <tbody>
+ <tr><td>Doc collection</td><td class="num tnum">48</td><td class="num tnum">45</td><td class="num tnum">3</td><td><div class="bar green" style="--p:94%;"></div></td><td class="num tnum">3.2 d</td></tr>
+ <tr><td>Login at bank</td><td class="num tnum">32</td><td class="num tnum">31</td><td class="num tnum">1</td><td><div class="bar green" style="--p:97%;"></div></td><td class="num tnum">5.6 d</td></tr>
+ <tr><td>Sanction</td><td class="num tnum">28</td><td class="num tnum">24</td><td class="num tnum">4</td><td><div class="bar amber" style="--p:86%;"></div></td><td class="num tnum">4.8 d</td></tr>
+ <tr><td>OTC clearance</td><td class="num tnum">6</td><td class="num tnum">3</td><td class="num tnum">3</td><td><div class="bar red" style="--p:50%;"></div></td><td class="num tnum">11.4 d</td></tr>
+ <tr><td>Disbursement</td><td class="num tnum">12</td><td class="num tnum">11</td><td class="num tnum">1</td><td><div class="bar green" style="--p:92%;"></div></td><td class="num tnum">6.4 d</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <div class="card mt-4"><div class="card-hd"><div class="t">Queries &amp; objections SLA 24h</div></div>
+ <div class="card-bd" style="padding:0;">
+ <table class="tbl">
+ <thead><tr><th>Raised by</th><th class="num">Total</th><th class="num">Closed</th><th class="num">Avg response</th><th>Breach</th></tr></thead>
+ <tbody>
+ <tr><td>HDFCcredit desk</td><td class="num tnum">22</td><td class="num tnum">20</td><td class="num tnum">6.4 h</td><td><span class="badge green sq">9%</span></td></tr>
+ <tr><td>SBIOTC</td><td class="num tnum">16</td><td class="num tnum">12</td><td class="num tnum">18.2 h</td><td><span class="badge amber sq">25%</span></td></tr>
+ <tr><td>ICICIcredit</td><td class="num tnum">14</td><td class="num tnum">11</td><td class="num tnum">14.8 h</td><td><span class="badge amber sq">21%</span></td></tr>
+ <tr><td>BoBlegal</td><td class="num tnum">9</td><td class="num tnum">7</td><td class="num tnum">22.6 h</td><td><span class="badge red sq">33%</span></td></tr>
+ <tr><td>Axisvaluation</td><td class="num tnum">6</td><td class="num tnum">6</td><td class="num tnum">4.2 h</td><td><span class="badge green sq">0%</span></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ <aside>
+ <div class="card"><div class="card-hd"><div class="t">Volume this quarter</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>Files opened</span><strong>152</strong></div>
+ <div class="kv"><span>Docs processed</span><strong>2,140</strong></div>
+ <div class="kv"><span>Queries raised</span><strong>67</strong></div>
+ <div class="kv"><span>Site visits (DVR)</span><strong>486</strong></div>
+ <div class="kv"><span>Bank visits</span><strong>182</strong></div>
+ <div class="kv"><span>Cheques collected</span><strong>128</strong></div>
+ </div>
+ </div>
+ </div>
+ <div class="card mt-4"><div class="card-hd"><div class="t">Compliance</div></div>
+ <div class="card-bd">
+ <div class="kv-stack">
+ <div class="kv"><span>KYC completion</span><strong style="color:var(--green);">100%</strong></div>
+ <div class="kv"><span>Data room audits</span><strong>Q1: Pass</strong></div>
+ <div class="kv"><span>Customer complaints</span><strong>2both closed</strong></div>
+ <div class="kv"><span>Cheque returns</span><strong>0</strong></div>
+ <div class="kv"><span>RBI guideline v3.4</span><strong style="color:var(--green);">Adopted</strong></div>
+ </div>
+ </div>
+ </div>
+ </aside>
+ </div>
+</div>
+
+</div>
+</main>
+<div id="__shell_tweaks"></div>
+</div>
+<script src="assets/menu.js?v=1"></script><script src="assets/page.js"></script>
+<script>shfMount('reports');</script>
+<script src="assets/shf-interactive.js?v=3"></script>
+<!-- SHF-DATA-START -->
+<script src="assets/shf-data.js?v=2"></script>
+<!-- SHF-DATA-END -->
+<!-- SHF-FORMS-START -->
+<script src="assets/shf-forms.js?v=2"></script>
+<!-- SHF-FORMS-END -->
+<script src="assets/tabs.js"></script>
+<script>wireTabs('rep', ["business","funnel","bank","advisor","ops"]);</script>
+<script src="assets/reports.js?v=1"></script>
+</body>
+</html>
