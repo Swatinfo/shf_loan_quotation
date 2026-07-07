@@ -4,9 +4,16 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Pipeline/Management reports — patterns (2026-07-07)
+
+- **Aggregate report math in PHP/Carbon, not raw SQL, when row counts allow** — the Phase-2 rewrite dropped the driver-aware `DATEDIFF` helpers entirely by fetching rows and computing diffs/groupings in PHP. Portable across MySQL/SQLite (testable) and avoids the affinity/dialect traps below. Only reach for SQL aggregation when the row volume actually demands it.
+- **Tests that exercise queries joining `stages` must seed `stages` rows** — an inner join silently returns nothing (cost a debug cycle in ManagementReportTest, same failure shape as the LegalSkipBankAndOdv lesson). Likewise `created_at` is not fillable on models like `StageTransfer`: backdate via `DB::table(...)->update()` after create.
+- **"Pending in parallel" rule**: a pending stage line is only meaningful when its parent parallel block is `in_progress`; pending future MAIN stages are noise, and the parallel container itself (`stages.stage_type='parallel'`) must be excluded from work-line queries.
+- **Forged-filter scoping pattern**: BM scope + a foreign `branch_id` filter must intersect to EMPTY (both constraints apply), not fall back to the scope — assert `count === 0` with the forged param and visibility without it.
+
 ## Report SQL — driver portability + SQLite affinity (2026-07-07)
 
-- **`DATEDIFF`/`TIMESTAMPDIFF` are MySQL-only** — any report SQL using them is untestable on the SQLite test connection. Pattern now in `ReportController::dayDiffSql()/hourDiffSql()`: branch on `DB::connection()->getDriverName()`, SQLite equivalent via `julianday()`. Any future raw date math must go through such helpers or tests can't cover it.
+- **`DATEDIFF`/`TIMESTAMPDIFF` are MySQL-only** — any report SQL using them is untestable on the SQLite test connection. If raw SQL date math is unavoidable, branch on `DB::connection()->getDriverName()` with a `julianday()` SQLite equivalent. (The Phase-2 report rewrite removed the interim `dayDiffSql/hourDiffSql` helpers by moving all date math to PHP/Carbon — the preferred approach.)
 - **SQLite drops column affinity on expressions**: `WHERE COALESCE(ld.assigned_advisor, ld.created_by) IN ('2')` matches NOTHING on SQLite (integer 2 ≠ text '2' without column affinity), while the same filter on a bare column works. Cast request-sourced ids with `array_map('intval', ...)` before binding them against expressions. Cost 1 test-debug cycle.
 - **Never use `loan_details.updated_at` as a completion timestamp** — it bumps on any later touch (bulk backfills, `$loan->touch()` in transferStage, edits). The turnaround report did and inflated TAT 3-4× (35 vs 8 days). Real completion = `MAX(stage_assignments.completed_at)` where status=completed (joinSub). `status_changed_at` is NULL on historic rows — don't rely on it.
 

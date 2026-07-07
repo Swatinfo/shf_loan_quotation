@@ -117,7 +117,7 @@ All list pages use DataTables server-side mode. Endpoints return the standard Da
 - `GET /dvr/data`
 - `GET /general-tasks/data`
 - `GET /activity-log/data`
-- `GET /reports/turnaround/data`
+- `GET /reports/pipeline/data`, `/reports/loans/data`, `/reports/management/data`
 - `GET /dashboard/quotation-data`, `/dashboard/task-data`, `/dashboard/loan-data`, `/dashboard/dvr-data`
 
 Controllers apply scope filters, permissions gates, and build row HTML on the server.

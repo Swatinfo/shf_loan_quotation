@@ -4,6 +4,17 @@ Current and completed tasks. Updated as work progresses.
 
 ---
 
+## DONE: Phase 2 — remove TAT, add Pipeline + Management reports (2026-07-07)
+
+- [x] 1. `ReportController`: TAT methods + getUserScope/applyRoleScope deleted; authorizeReports()/reportScope() shared; pipeline()/pipelineData() (summary chips, status-adaptive rows, stage lines incl. pending-in-parallel + queued days, container excluded, workload tab) + management()/managementData() (funnel, 12-mo trend, scoreboard, exceptions). All date math PHP/Carbon (driver-portable); SQL diff helpers removed as dead code.
+- [x] 2. Routes: turnaround pair removed; reports.pipeline[.data] + reports.management[.data] added (6 report routes total).
+- [x] 3. Blades: pipeline.blade.php + management.blade.php created; turnaround.blade.php DELETED.
+- [x] 4. Assets: pages/pipeline.{css,js} + pages/management.{css,js} created; pages/turnaround.{css,js} DELETED.
+- [x] 5. Nav: header Reports nav-dd = Pipeline/Loan Report/Management (4 roles, hidden otherwise); bottom-nav same 3 entries.
+- [x] 6. Tests: TurnaroundReportTest DELETED (user-approved; salvageable tests re-homed); PipelineReportTest (11) + ManagementReportTest (6) + LoanReportTest (8) — 32/32 with listing regressions. MySQL sanity: loan 104 stage lines correct (legal/technical/rate_pf in-progress + ODV pending-queued; container excluded).
+- [x] 7. Pint pass; `node --check` both JS; compiled blades lint clean; docs synced (routes-reference, .docs/loans.md, .docs/api.md, .docs/views.md, report_plan.md).
+- [ ] **PENDING (server)**: deploy `ReportController.php`, `routes/web.php`, `reports/{pipeline,management,loan-report}.blade.php`, `partials/{header,bottom-nav}.blade.php`, `pages/{pipeline,management,loan-report}.{css,js}`, tests; DELETE `reports/turnaround.blade.php` + `pages/turnaround.{css,js}` on the server; `php artisan view:clear && php artisan route:clear`. No version bump (deleted + brand-new assets only). Prerequisite: migration `2026_06_23_185610` on prod.
+
 ## DONE: report_plan.md — Turnaround fixes + Loan Report (2026-07-07)
 
 - [x] P0.1 `ReportController::overallTatData()` — TAT from MAX(stage completed_at) join, not `ld.updated_at`; advisor via COALESCE(assigned_advisor, created_by); driver-aware day/hour diff (SQLite julianday vs MySQL DATEDIFF). MySQL sanity: 38→11, 35→8, 38→21 days.

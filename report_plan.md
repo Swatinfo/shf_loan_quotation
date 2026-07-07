@@ -1,8 +1,106 @@
-# Loan Report — Implementation Plan (IMPLEMENTED 2026-07-07)
+# Reports — Implementation Plans
 
-> Status: **IMPLEMENTED** (planned 2026-07-04; verified + extended with Turnaround-report
-> fixes 2026-07-07; built the same day). Tests: `TurnaroundReportTest` (5) +
-> `LoanReportTest` (7) green. Kept for reference — deploy notes at the bottom.
+> Historical: the Loan Report (Parts 0–1 below) is **IMPLEMENTED** (2026-07-07,
+> `LoanReportTest` 8 green). The Turnaround fixes of Part 0 were implemented but the TAT
+> report is now **scheduled for REMOVAL** — superseded by Phase 2 below (the corrected
+> TAT math survives as the Completed-view TAT column in the Pipeline report).
+
+---
+
+# Phase 2 (IMPLEMENTED 2026-07-07): Remove TAT report → Loan Pipeline + Management Summary
+
+> Status: **IMPLEMENTED** same day. Tests: `PipelineReportTest` (11) +
+> `ManagementReportTest` (6) + `LoanReportTest` (8) green (32/32 with listing regressions).
+> TAT report deleted (blade + css/js + routes + nav + `TurnaroundReportTest`). All report
+> pages share the 4-role gate. Implementation notes: all date math is PHP/Carbon-side
+> (driver-portable — the SQL diff helpers were removed as dead code); the parallel
+> container stage is excluded from pipeline stage lines; management exceptions ignore the
+> period filter (current-state).
+
+## Final report suite
+
+| Page | Route | Purpose |
+|---|---|---|
+| Loan Pipeline (new) | `/reports/pipeline` | Current status of every loan: stage, owner, aging, blockers |
+| Loan Report (exists) | `/reports/loans` | Sanctioned/disbursed milestone listing — unchanged |
+| Management Summary (new) | `/reports/management` | Funnel, trends, scoreboard, exceptions |
+
+## 2A — Loan Pipeline
+
+- **Status summary strip**: clickable chips All/Active/On Hold/Completed/Rejected/Cancelled
+  with count + ₹ total; Active chip shows "N stages queued in parallel" sub-count.
+- **Main table** (columns adapt to status; default Active; loan # links to stages page;
+  most-stuck-first sort; aging colors ≤7 green / 8–14 amber / >14 red):
+  - **Active**: stage lines per loan —
+    (a) in-progress: stage — owner — days in stage — days with owner — ⚠ open-query flag.
+        Days-with-owner = now − GREATEST(sa.started_at, last `stage_transfers` handoff to
+        the current assignee). Driver-aware diff helpers already exist.
+    (b) **pending sub-stages inside an active parallel block**: "⏳ pending (unassigned or
+        pre-assigned name) — queued Nd" where N = days since the parent block's started_at.
+        Pending future MAIN stages are excluded (noise). Rule keys off "pending + parent
+        assignment in_progress", so `OPEN_RATE_PF_PARALLEL` layouts work automatically.
+  - **On Hold**: status_reason + status_changed_at. **Completed**: sanctioned/disbursed ₹ +
+    corrected end-to-end TAT (MAX completed stage). **Rejected**: rejected_stage/reason/by/at.
+    **Cancelled**: reason/date.
+- **Workload tab**: in-progress stages of active loans grouped by current holder — held
+  count, oldest days, avg days, stuck>7d count, per-stage breakdown.
+- **Filters**: status, bank, product, branch, user (COALESCE advisor/creator), period on
+  created_at, stage, "stuck ≥ N days".
+
+## 2B — Management Summary (one page, four sections; branch + period filters)
+
+1. **Funnel**: Quotations → Converted → Sanctioned → Disbursed (count + ₹ + step
+   conversion % + avg days between milestones). Sources: `quotations.is_converted`,
+   loan created_at, completed `sanction`/`disbursement` stage assignments.
+2. **Monthly trend (12 months)**: per month created / sanctioned / disbursed (count + ₹),
+   CSS mini-bars (no chart lib — no-build-step stack).
+3. **Branch & advisor scoreboard**: created, active, completed, rejection %, avg TAT,
+   disbursed ₹, currently-stuck count; branch rows expandable to advisors.
+4. **Exceptions digest**: stages in-progress >14d; queries unresolved >7d; on-hold >30d —
+   each row linking to the loan.
+
+## Backend
+
+- `ReportController`: DELETE `turnaround()`, `turnaroundData()`, `overallTatData()`,
+  `stageTatData()`, `getUserScope()`, `applyRoleScope()`. ADD `pipeline()/pipelineData()`,
+  `management()/managementData()`. Rename `authorizeLoanReport()` → `authorizeReports()`
+  (same gate); reuse `loanReportScope()` (rename → `reportScope()`), `applyFilters()`,
+  `dayDiffSql()/hourDiffSql()`. Aggregates = single grouped queries, no N+1.
+- Routes: remove turnaround pair; add pipeline + management pairs (names
+  `reports.pipeline[.data]`, `reports.management[.data]`).
+
+## Frontend
+
+- NEW: `newtheme/reports/pipeline.blade.php` + `public/newtheme/pages/pipeline.{css,js}`;
+  `newtheme/reports/management.blade.php` + `public/newtheme/pages/management.{css,js}`.
+  Clone loan-report structure: fetch + inline `Loading…` (NOT the global SHF.loader).
+- DELETE: `newtheme/reports/turnaround.blade.php`, `public/newtheme/pages/turnaround.{css,js}`.
+- Nav: header Reports dropdown = Loan Pipeline / Loan Report / Management Summary (all
+  gated to the 4 roles — dropdown hidden entirely for other roles); bottom-nav same three
+  entries replacing the `view_reports`-gated Turnaround link.
+
+## Tests
+
+- DELETE `tests/Feature/TurnaroundReportTest.php` (user-approved via TAT removal).
+- NEW `PipelineReportTest`: access matrix (both endpoints), per-status column payloads,
+  owner + days-with-owner after a transfer, pending-sub-stage-in-parallel appears with
+  queued days, pending MAIN stage does not appear, open-query flag, workload grouping,
+  BM forged-branch scoping, summary chip counts, re-homed Part-0 tests (stage-based TAT
+  on Completed view, COALESCE advisor attribution).
+- NEW `ManagementReportTest`: funnel math on a seeded quotation→loan→sanction→disbursement
+  chain, monthly bucketing, scoreboard rejection %, exception thresholds, BM scope.
+- Re-run `LoanReportTest` (+ listing suites) for regressions. SQLite ext flags per lessons.
+
+## Docs / deploy
+
+- `.claude/routes-reference.md` (swap turnaround→pipeline/management), `.docs/loans.md`
+  report section, `.docs/README.md` if it indexes reports, `tasks/todo.md`, lessons.
+- No migration. No version bump (old public assets deleted, new URLs added).
+- Server deploy: changed/new files + DELETE the three turnaround files +
+  `view:clear` + `route:clear`. Prerequisite unchanged: migration `2026_06_23_185610`
+  must exist on prod.
+
+---
 
 ## Part 0 — Fix the existing Turnaround Time report FIRST (bugs confirmed 2026-07-07)
 

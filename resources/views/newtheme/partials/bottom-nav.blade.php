@@ -73,11 +73,10 @@
         @if ($u->hasPermission('view_activity_log'))
             <a class="shf-more-item" href="{{ route('activity-log') }}">Activity Log</a>
         @endif
-        @if ($u->hasPermission('view_reports'))
-            <a class="shf-more-item" href="{{ route('reports.turnaround') }}">Turnaround Report</a>
-        @endif
         @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh', 'branch_manager']))
+            <a class="shf-more-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
             <a class="shf-more-item" href="{{ route('reports.loans') }}">Loan Report</a>
+            <a class="shf-more-item" href="{{ route('reports.management') }}">Management Summary</a>
         @endif
         <a class="shf-more-item" href="{{ route('profile.edit') }}">Profile</a>
         <form method="POST" action="{{ route('logout') }}" class="m-0">

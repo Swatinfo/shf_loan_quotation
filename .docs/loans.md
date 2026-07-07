@@ -248,7 +248,41 @@ Results include formatted amount, docket urgency badges, stage badge (with role 
 - `view_all_loans` is **not** the default for BM/BDH. They see branch loans via the `scopeVisibleTo` OR-union (user_branches pivot).
 - Only **super_admin** or users explicitly granted `view_all_loans` see cross-branch data.
 
-## Loan Report (`/reports/loans`, 2026-07-07)
+## Reports (2026-07-07)
+
+Three report pages, all role-gated (no permission slug) to super_admin/admin/**bdh** (all
+branches) and branch_manager (own branches, re-applied server-side); other roles 403.
+The old Turnaround Time report was removed — its corrected TAT math lives on as the
+Completed-view TAT column in the Pipeline report.
+
+### Loan Pipeline (`/reports/pipeline`)
+
+`ReportController::pipeline/pipelineData`. Clickable status chips (All/Active/On Hold/
+Completed/Rejected/Cancelled, count + ₹). Status-adaptive table (default Active):
+
+- **Active**: per-loan stage lines — in-progress (owner, days in stage, days with owner
+  from `stage_transfers`, ⚠ open-query count) + **pending sub-stages inside an active
+  parallel block** ("queued Nd" from the parent block's `started_at`; unassigned or
+  pre-assigned name). Pending future MAIN stages and the parallel container itself are
+  excluded. Sorted most-stuck first; aging colors ≤7 / 8–14 / >14 days.
+- **On Hold**: reason + since. **Completed**: sanctioned/disbursed ₹ + stage-based TAT.
+  **Rejected**: stage/reason/by/date. **Cancelled**: reason/date.
+- **Workload tab** (`?tab=workload`): in-progress stages of active loans grouped by
+  holder — held, oldest, avg, stuck>7d, stage breakdown.
+- Filters: status, bank, product, branch, user (COALESCE advisor/creator), period on
+  `created_at`, stage (incl. sub-stages), stuck ≥ N days.
+
+### Management Summary (`/reports/management`)
+
+`ReportController::management/managementData`. Branch + period filters. Four sections:
+funnel (quotations → converted → sanctioned → disbursed; counts, ₹, step %, avg days
+between milestones), 12-month trend (created/sanctioned/disbursed with CSS mini-bars),
+branch & advisor scoreboard (created/active/completed/rejection %/avg TAT/disbursed ₹/
+stuck>14d; branch rows expand to advisors), exceptions digest (stages >14d, queries >7d,
+holds >30d — thresholds are `ReportController` constants; exceptions ignore the period
+filter deliberately: they are current-state).
+
+### Loan Report (`/reports/loans`)
 
 Standalone report of sanctioned/disbursed loans (`ReportController::loanReport/loanReportData`).
 
@@ -258,7 +292,7 @@ Standalone report of sanctioned/disbursed loans (`ReportController::loanReport/l
 - **Status select** (required, default `Sanctioned`, no "All"): `sanctioned` →
   `loan_details.sanctioned_amount IS NOT NULL`; `disbursed` → `disbursed_amount IS NOT NULL`.
 - **Filters**: bank, product, branch, user (`COALESCE(assigned_advisor, created_by)`),
-  period/date range on loan `created_at` (same presets as turnaround).
+  period/date range on loan `created_at` (same presets as the other report pages).
 - **Columns**: Loan #, Customer, Bank/Product, Branch, Advisor, Loan Amount, Sanctioned ₹,
   Disbursed ₹, Sanctioned On / Disbursed On (completed `sanction`/`disbursement`
   stage-assignment `completed_at`), Status badge. Totals strip: count + ₹ sums (Indian format).

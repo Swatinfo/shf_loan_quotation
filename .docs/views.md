@@ -130,7 +130,9 @@ resources/views/
 │   ├── index.blade.php
 │   └── show.blade.php
 ├── reports/
-│   └── turnaround.blade.php
+│   ├── pipeline.blade.php
+│   ├── loan-report.blade.php
+│   └── management.blade.php
 └── notifications/
     └── index.blade.php
 ```

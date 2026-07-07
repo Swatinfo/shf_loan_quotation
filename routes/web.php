@@ -213,12 +213,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/roles/check-name', [RoleManagementController::class, 'checkName'])->name('roles.check-name');
     });
 
-    // Reports (all logged-in users, data scoped by role in controller)
-    Route::get('/reports/turnaround', [ReportController::class, 'turnaround'])->name('reports.turnaround');
-    Route::get('/reports/turnaround/data', [ReportController::class, 'turnaroundData'])->name('reports.turnaround.data');
-    // Loan report — role-gated in the controller (super_admin/admin/bdh/branch_manager)
+    // Reports — role-gated in the controller (super_admin/admin/bdh/branch_manager)
+    Route::get('/reports/pipeline', [ReportController::class, 'pipeline'])->name('reports.pipeline');
+    Route::get('/reports/pipeline/data', [ReportController::class, 'pipelineData'])->name('reports.pipeline.data');
     Route::get('/reports/loans', [ReportController::class, 'loanReport'])->name('reports.loans');
     Route::get('/reports/loans/data', [ReportController::class, 'loanReportData'])->name('reports.loans.data');
+    Route::get('/reports/management', [ReportController::class, 'management'])->name('reports.management');
+    Route::get('/reports/management/data', [ReportController::class, 'managementData'])->name('reports.management.data');
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

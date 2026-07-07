@@ -71,19 +71,20 @@
             </a>
         @endif
 
-        <div class="nav-dd-wrap">
-            <a class="nav-item {{ $is('reports') ? 'active' : '' }}" href="#">
-                <svg class="i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>Reports</span>
-                <svg class="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"/></svg>
-            </a>
-            <div class="nav-dd">
-                <a class="nav-dd-item" href="{{ route('reports.turnaround') }}">Turnaround Time</a>
-                @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh', 'branch_manager']))
+        @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh', 'branch_manager']))
+            <div class="nav-dd-wrap">
+                <a class="nav-item {{ $is('reports') ? 'active' : '' }}" href="#">
+                    <svg class="i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <span>Reports</span>
+                    <svg class="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"/></svg>
+                </a>
+                <div class="nav-dd">
+                    <a class="nav-dd-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
                     <a class="nav-dd-item" href="{{ route('reports.loans') }}">Loan Report</a>
-                @endif
+                    <a class="nav-dd-item" href="{{ route('reports.management') }}">Management Summary</a>
+                </div>
             </div>
-        </div>
+        @endif
 
         @if ($canSettings)
             <div class="nav-dd-wrap">

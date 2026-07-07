@@ -333,14 +333,16 @@ Authorization handled inside the controller via `User::canImpersonate()` + `User
 
 | Method | URI | Name | Controller |
 |---|---|---|---|
-| GET | `/reports/turnaround` | `reports.turnaround` | ReportController@turnaround |
-| GET | `/reports/turnaround/data` | `reports.turnaround.data` | ReportController@turnaroundData |
+| GET | `/reports/pipeline` | `reports.pipeline` | ReportController@pipeline |
+| GET | `/reports/pipeline/data` | `reports.pipeline.data` | ReportController@pipelineData |
 | GET | `/reports/loans` | `reports.loans` | ReportController@loanReport |
 | GET | `/reports/loans/data` | `reports.loans.data` | ReportController@loanReportData |
+| GET | `/reports/management` | `reports.management` | ReportController@management |
+| GET | `/reports/management/data` | `reports.management.data` | ReportController@managementData |
 
-Turnaround: data scope filtered inside controller by role (all / branch / self).
-Loan report: role-gated in controller (no permission slug) — super_admin/admin/**bdh** see all
-branches, branch_manager sees own branches, all other roles 403 on both endpoints.
+All report pages: role-gated in controller (no permission slug) — super_admin/admin/**bdh**
+see all branches, branch_manager sees own branches, all other roles 403 on both endpoints.
+The Turnaround Time report was REMOVED 2026-07-07 (replaced by pipeline + management).
 
 ## API endpoints
 
