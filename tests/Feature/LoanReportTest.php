@@ -199,4 +199,20 @@ class LoanReportTest extends TestCase
 
         $this->assertSame('10/02/2026', $rows->firstWhere('loan_number', $loan->loan_number)['sanctioned_on']);
     }
+
+    public function test_rows_carry_a_link_to_the_loan_stages_page(): void
+    {
+        $admin = $this->makeUser('admin');
+        $advisor = $this->makeUser('loan_advisor');
+        $loan = $this->makeLoan($advisor, ['sanctioned_amount' => 100000]);
+
+        $rows = collect($this->actingAs($admin)
+            ->getJson(route('reports.loans.data'))
+            ->assertOk()->json('data'));
+
+        $this->assertSame(
+            route('loans.stages', $loan->id),
+            $rows->firstWhere('loan_number', $loan->loan_number)['stages_url']
+        );
+    }
 }

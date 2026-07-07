@@ -329,6 +329,7 @@ class ReportController extends Controller
 
         $data = $rows->map(fn ($r) => [
             'loan_number' => $r->loan_number,
+            'stages_url' => route('loans.stages', $r->id),
             'customer_name' => $r->customer_name,
             'bank_product' => trim(($r->bank_name ?? '—').($r->product_name ? ' / '.$r->product_name : '')),
             'branch_name' => $r->branch_name ?? '—',

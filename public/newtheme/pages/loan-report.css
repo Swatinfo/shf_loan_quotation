@@ -101,6 +101,8 @@
 .lr-panel .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .lr-loan { font-weight: 600; }
+.lr-loan a { color: var(--accent-deep); text-decoration: none; }
+.lr-loan a:hover { color: var(--accent); text-decoration: underline; }
 .lr-muted { color: var(--ink-3); }
 
 .lr-status {

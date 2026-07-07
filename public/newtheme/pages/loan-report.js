@@ -119,8 +119,11 @@
             '<th>Status</th>' +
             '</tr></thead><tbody>';
         var body = rows.map(function (r) {
+            var loanCell = r.stages_url
+                ? '<a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number || '—') + '</a>'
+                : escapeHtml(r.loan_number || '—');
             return '<tr>' +
-                '<td class="lr-loan">' + escapeHtml(r.loan_number || '—') + '</td>' +
+                '<td class="lr-loan">' + loanCell + '</td>' +
                 '<td>' + escapeHtml(r.customer_name || '—') + '</td>' +
                 '<td class="lr-muted">' + escapeHtml(r.bank_product || '—') + '</td>' +
                 '<td class="lr-muted">' + escapeHtml(r.branch_name || '—') + '</td>' +
