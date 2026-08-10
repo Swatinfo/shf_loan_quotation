@@ -49,6 +49,23 @@ return [
     'allow_impersonate_all' => (bool) env('ALLOW_IMPERSONATE_ALL', false),
 
     'show_stage_impersonate' => (bool) env('SHOW_STAGE_IMPERSONATE', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Loan Stage Reset — Allowed Accounts
+    |--------------------------------------------------------------------------
+    |
+    | Rewinding a loan to an earlier stage is destructive and irreversible, so
+    | the in-app "Reset to Stage" action is restricted to these specific email
+    | accounts — NOT to a role or permission (a super_admin whose email is not
+    | listed is still denied). Override via STAGE_RESET_EMAILS (comma-separated).
+    |
+    */
+
+    'stage_reset_emails' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', env('STAGE_RESET_EMAILS', 'superadmin@shfworld.com,admin@shfworld.com'))
+    ))),
     'open_rate_pf_parallel' => (bool) env('OPEN_RATE_PF_PARALLEL', false),
 
     /*

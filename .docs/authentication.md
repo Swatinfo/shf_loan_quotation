@@ -70,6 +70,23 @@ Custom routes (`ImpersonateController`), not Lab404 package UI. See `users.md`.
 - All POST/PUT/PATCH/DELETE requests require `@csrf` or `X-CSRF-TOKEN` header
 - Offline / PWA AJAX reads the meta and sends header
 
+### Expired-session 419 handling
+
+When a session has expired, the stale CSRF token makes any POST (including the
+logout form) throw `TokenMismatchException` → HTTP **419**. `bootstrap/app.php`
+registers a render callback that turns this into a graceful redirect:
+
+- `POST /logout` (route named `logout`) → redirect to `login` (silent — the user
+  wanted to log out anyway)
+- Any other web POST → redirect to `login` with a `status` flash ("Your session expired…")
+- JSON/AJAX request → `419` JSON `{"message": "Session expired. Please log in again."}`
+
+**Gotcha:** the callback is type-hinted on `Symfony\...\HttpException` and gates on
+`getStatusCode() === 419`, **not** on `TokenMismatchException`. The framework's
+`Handler::render()` runs `prepareException()` (which maps `TokenMismatchException`
+→ `HttpException(419)`) *before* render callbacks fire, so a callback typed on
+`TokenMismatchException` never matches. Test: `tests/Feature/LogoutSessionExpiredTest.php`.
+
 ## Known test quirks
 
 Some Breeze-default auth and profile feature tests fail because:

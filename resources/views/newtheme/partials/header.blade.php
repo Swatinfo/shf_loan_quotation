@@ -71,7 +71,7 @@
             </a>
         @endif
 
-        @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh', 'branch_manager']))
+        @if ($u->hasPermission('view_reports'))
             <div class="nav-dd-wrap">
                 <a class="nav-item {{ $is('reports') ? 'active' : '' }}" href="#">
                     <svg class="i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -81,7 +81,9 @@
                 <div class="nav-dd">
                     <a class="nav-dd-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
                     <a class="nav-dd-item" href="{{ route('reports.loans') }}">Loan Report</a>
-                    <a class="nav-dd-item" href="{{ route('reports.management') }}">Management Summary</a>
+                    @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh']))
+                        <a class="nav-dd-item" href="{{ route('reports.management') }}">Management Summary</a>
+                    @endif
                 </div>
             </div>
         @endif

@@ -507,9 +507,10 @@
             return;
         }
         var f = readFilters();
-        // Defaults: status=active is the pre-selected baseline; others are empty.
+        // Defaults: all filters empty (the list now shows every status by
+        // default so loans don't "disappear" when they leave the active state).
         var defaults = {
-            status: "active",
+            status: "",
             customer_type: "",
             bank_id: "",
             product_id: "",

@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\LoanDetail;
 use App\Models\Permission;
 use App\Models\Product;
+use App\Models\Quotation;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
@@ -364,9 +365,14 @@ class UserController extends Controller
             return response()->json(['message' => 'Cannot delete a Super Admin account.'], 403);
         }
 
-        // Prevent deleting users who have loans
+        // Prevent deleting users who created loans or quotations — deleting the
+        // user hard-cascades and would permanently destroy those records
+        // (SoftDeletes is bypassed by the DB-level cascade). Deactivate instead.
         if (LoanDetail::where('created_by', $user->id)->exists()) {
             return response()->json(['message' => 'Cannot delete this user because they have associated loans. Deactivate the user instead.'], 422);
+        }
+        if (Quotation::where('user_id', $user->id)->exists()) {
+            return response()->json(['message' => 'Cannot delete this user because they have created quotations. Deactivate the user instead.'], 422);
         }
 
         ActivityLog::log('user_deleted', $user, ['name' => $user->name, 'email' => $user->email]);

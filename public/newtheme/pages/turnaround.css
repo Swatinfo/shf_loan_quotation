@@ -1,0 +1,99 @@
+/* Page-specific styles for resources/views/newtheme/reports/turnaround.blade.php */
+
+.tat-ic {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--accent); margin-right: 6px;
+}
+.tat-ic svg { width: 18px; height: 18px; }
+
+/* Filters */
+.tat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 14px;
+}
+@media (max-width: 1100px) {
+    .tat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 820px) {
+    .tat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+    .tat-grid { grid-template-columns: 1fr; }
+}
+
+.tat-field { display: flex; flex-direction: column; min-width: 0; }
+.tat-lbl {
+    font-size: 11px; font-weight: 600; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+.tat-input { width: 100%; }
+select.tat-input { height: 36px; }
+
+/* Tabs — tighten gap to the panel */
+.tabs.mt-4 { margin-bottom: 0; }
+
+.tat-panel {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.tat-panel .card-hd .sub { color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
+
+/* Table */
+.tat-panel .tbl { width: 100%; border-collapse: collapse; }
+.tat-panel .tbl thead th {
+    background: var(--paper-2);
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+.tat-panel .tbl tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink);
+    vertical-align: middle;
+}
+.tat-panel .tbl tbody tr:last-child td { border-bottom: none; }
+.tat-panel .tbl tbody tr:hover { background: var(--paper-2); }
+.tat-panel .tbl .num { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* TAT color tiers */
+.tat-good { color: var(--green); font-weight: 600; }
+.tat-mid  { color: var(--amber, #d97706); font-weight: 600; }
+.tat-bad  { color: var(--red); font-weight: 600; }
+
+.tat-user { font-weight: 600; }
+.tat-bank { color: var(--ink-3); }
+
+.tat-loader {
+    padding: 36px 20px;
+    text-align: center;
+    color: var(--ink-4);
+    font-size: 13px;
+}
+
+.tat-empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-3);
+}
+.tat-empty .tat-empty-ic {
+    width: 48px; height: 48px;
+    margin: 0 auto 10px;
+    color: var(--ink-4);
+}
+.tat-empty .tat-empty-t {
+    font-weight: 600;
+    color: var(--ink-2, var(--ink));
+    margin-bottom: 4px;
+}
+.tat-empty .tat-empty-s {
+    font-size: 12.5px;
+    color: var(--ink-3);
+}

@@ -176,6 +176,16 @@ class User extends Authenticatable
         return app(PermissionService::class)->userHasPermission($this, $slug);
     }
 
+    /**
+     * Whether this account may reset a loan back to an earlier stage. Gated by
+     * an explicit email allowlist (config/app.php `stage_reset_emails`), NOT by
+     * role or permission — even super_admin is denied unless listed.
+     */
+    public function canResetLoanStages(): bool
+    {
+        return in_array($this->email, config('app.stage_reset_emails', []), true);
+    }
+
     // ── Display Helpers ──
 
     public function getRoleLabelAttribute(): string

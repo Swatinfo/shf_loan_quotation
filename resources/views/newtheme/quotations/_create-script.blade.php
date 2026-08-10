@@ -917,33 +917,13 @@
                     }
                 } catch (e) {
                     console.error(e);
-                    // Offline fallback: generate PDF client-side
-                    var pdfMethod = null;
-                    if (typeof PdfRenderer !== 'undefined') {
-                        pdfMethod = PdfRenderer.generateOfflinePdf(payload, CONFIG, LOGO_BASE64);
-                    }
-                    // Queue to IndexedDB for server-quality PDF sync later
-                    if (typeof OfflineManager !== 'undefined') {
-                        try {
-                            await OfflineManager.queueQuotation(payload);
-                            updatePendingBadge();
-                        } catch (queueErr) {
-                            console.error('Failed to queue offline:', queueErr);
-                        }
-                    }
-                    if (pdfMethod === 'download') {
-                        showToast(
-                            'PDF downloaded — open the file and use Print > Save as PDF. Data will sync when online / PDF ડાઉનલોડ થયો — ફાઇલ ખોલો અને Print > Save as PDF વાપરો. ઑનલાઇન થતા સિંક થશે',
-                            'success');
-                    } else if (pdfMethod === 'print') {
-                        showToast(
-                            'PDF opened for printing — high-quality version will sync when online / PDF પ્રિન્ટ માટે ખોલ્યો — ઑનલાઇન થતા ઉચ્ચ ગુણવત્તાનો PDF સિંક થશે',
-                            'success');
-                    } else {
-                        showToast(
-                            'Saved offline — PDF will generate when back online / ઑફલાઇન સેવ થયું — ઑનલાઇન થતા PDF બનશે',
-                            'success');
-                    }
+                    // The request failed (network drop or a non-JSON error
+                    // response). Offline queueing is disabled, so nothing was
+                    // saved — tell the user honestly instead of claiming a
+                    // false "saved offline" success that silently loses data.
+                    showToast(
+                        'Could not save the quotation — please check your connection and try again. Nothing was saved. / ક્વોટેશન સાચવી શકાયું નથી — કૃપા કરી કનેક્શન તપાસો અને ફરી પ્રયાસ કરો. કંઈ સાચવ્યું નથી.',
+                        'error');
                 }
 
                 btn.innerHTML = originalContent;

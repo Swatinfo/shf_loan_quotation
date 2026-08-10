@@ -156,6 +156,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/loans/{loan}/stages', [LoanStageController::class, 'index'])->name('loans.stages');
         Route::get('/loans/{loan}/transfers', [LoanStageController::class, 'transferHistory'])->name('loans.transfers');
     });
+    // Loan stage reset — email-gated inside the controller (config app.stage_reset_emails),
+    // NOT by role/permission. Destructive: rewinds the loan to an earlier stage.
+    Route::post('/loans/{loan}/stages/reset', [LoanStageController::class, 'resetStage'])->name('loans.stages.reset');
     Route::middleware('permission:manage_loan_stages')->group(function () {
         Route::post('/loans/{loan}/stages/{stageKey}/status', [LoanStageController::class, 'updateStatus'])->name('loans.stages.status');
         Route::post('/loans/{loan}/stages/{stageKey}/assign', [LoanStageController::class, 'assign'])->name('loans.stages.assign');
@@ -213,11 +216,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/roles/check-name', [RoleManagementController::class, 'checkName'])->name('roles.check-name');
     });
 
-    // Reports — role-gated in the controller (super_admin/admin/bdh/branch_manager)
+    // Reports — gated in the controller. Pipeline + Loan Report: any user with
+    // view_reports (data scoped by role: all / branch / own-touched-loans).
+    // Management Summary: super_admin / admin / bdh only.
     Route::get('/reports/pipeline', [ReportController::class, 'pipeline'])->name('reports.pipeline');
     Route::get('/reports/pipeline/data', [ReportController::class, 'pipelineData'])->name('reports.pipeline.data');
+    Route::get('/reports/pipeline/export', [ReportController::class, 'pipelineExport'])->name('reports.pipeline.export');
     Route::get('/reports/loans', [ReportController::class, 'loanReport'])->name('reports.loans');
     Route::get('/reports/loans/data', [ReportController::class, 'loanReportData'])->name('reports.loans.data');
+    Route::get('/reports/loans/export', [ReportController::class, 'loanReportExport'])->name('reports.loans.export');
     Route::get('/reports/management', [ReportController::class, 'management'])->name('reports.management');
     Route::get('/reports/management/data', [ReportController::class, 'managementData'])->name('reports.management.data');
 

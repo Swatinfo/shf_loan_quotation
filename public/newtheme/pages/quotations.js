@@ -43,10 +43,10 @@
                 (document.getElementById("qxType") || {}).value || "",
             status:
                 (document.getElementById("qxStatus") || {}).value ||
-                "not_cancelled",
+                "all",
             loan_status:
                 (document.getElementById("qxLoanStatus") || {}).value ||
-                "not_converted",
+                "all",
             date_from:
                 (document.getElementById("qxDateFrom") || {}).value || "",
             date_to: (document.getElementById("qxDateTo") || {}).value || "",
@@ -498,8 +498,8 @@
     document.getElementById("qxClear").addEventListener("click", function () {
         document.getElementById("qxSearch").value = "";
         document.getElementById("qxType").value = "";
-        document.getElementById("qxStatus").value = "not_cancelled";
-        document.getElementById("qxLoanStatus").value = "not_converted";
+        document.getElementById("qxStatus").value = "all";
+        document.getElementById("qxLoanStatus").value = "all";
         document.getElementById("qxDateFrom").value = "";
         document.getElementById("qxDateTo").value = "";
         if (canViewAll && document.getElementById("qxCreatedBy")) {

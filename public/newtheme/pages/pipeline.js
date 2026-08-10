@@ -74,8 +74,8 @@
             date_to: ddmmyyyyToISO(dates.to),
             bank_id: document.getElementById('filterBank').value || '',
             product_id: document.getElementById('filterProduct').value || '',
-            branch_id: document.getElementById('filterBranch').value || '',
-            user_id: document.getElementById('filterUser').value || '',
+            branch_id: (document.getElementById('filterBranch') || {}).value || '',
+            user_id: (document.getElementById('filterUser') || {}).value || '',
             stage_key: document.getElementById('filterStage').value || '',
             stuck_days: document.getElementById('filterStuck').value || '',
         };
@@ -323,6 +323,14 @@
         });
 
         document.getElementById('plApply').addEventListener('click', refresh);
+        var exportBtn = document.getElementById('plExport');
+        if (exportBtn) {
+            // Server re-applies the same filters/scope and exports ALL
+            // matching rows (never just the rendered page).
+            exportBtn.addEventListener('click', function () {
+                window.location = URLS.exportUrl + '?' + buildQuery(getFilters());
+            });
+        }
         document.getElementById('plClear').addEventListener('click', function () {
             document.getElementById('filterPeriod').value = 'all_time';
             document.querySelectorAll('.pl-custom-dates').forEach(function (el) { el.style.display = 'none'; });

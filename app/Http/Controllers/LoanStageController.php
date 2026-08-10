@@ -15,6 +15,7 @@ use App\Services\StageQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LoanStageController extends Controller
 {
@@ -54,6 +55,53 @@ class LoanStageController extends Controller
         $template = 'newtheme.loans.stages';
 
         return view($template, compact('loan', 'mainStages', 'subStages', 'progress', 'allActiveUsers', 'stageRoleEligibility', 'skipAllowed') + ['pageKey' => 'loans']);
+    }
+
+    /**
+     * Rewind a loan to an earlier stage. Restricted to the specific email
+     * accounts in config('app.stage_reset_emails') — NOT a role/permission.
+     * Destructive: clears all following stages + dependent data.
+     */
+    public function resetStage(Request $request, LoanDetail $loan): JsonResponse
+    {
+        abort_unless(auth()->user()->canResetLoanStages(), 403, 'You are not permitted to reset loan stages.');
+
+        $validated = $request->validate([
+            'stage_key' => ['required', 'string', Rule::exists('stages', 'stage_key')->where(fn ($q) => $q->where('is_enabled', true))],
+            'phase' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'variant' => ['nullable', 'in:escalated_bm,escalated_bdh,transferred_oe'],
+        ]);
+
+        // The loan must actually include the selected stage in its workflow.
+        abort_unless(
+            $loan->stageAssignments()->where('stage_key', $validated['stage_key'])->exists(),
+            422,
+            'This loan does not include the selected stage.'
+        );
+
+        $fromStage = $loan->current_stage;
+
+        $log = $this->stageService->resetToStage(
+            $loan,
+            $validated['stage_key'],
+            $validated['phase'] ?? null,
+            $validated['variant'] ?? null,
+        );
+
+        ActivityLog::log('reset_loan_stage', $loan, [
+            'loan_number' => $loan->loan_number,
+            'from_stage' => $fromStage,
+            'to_stage' => $validated['stage_key'],
+            'phase' => $validated['phase'] ?? null,
+            'variant' => $validated['variant'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Loan reset to '.$validated['stage_key'].'.',
+            'redirect' => route('loans.stages', $loan),
+            'log' => $log,
+        ]);
     }
 
     public function updateStatus(Request $request, LoanDetail $loan, string $stageKey): JsonResponse

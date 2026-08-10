@@ -244,6 +244,7 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property string|null $pan_active
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CustomerKycDetail> $kycDetails
  * @property-read int|null $kyc_details_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\LoanDetail> $loans
@@ -262,6 +263,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereMobile($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer wherePanActive($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer wherePanNumber($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer whereUpdatedBy($value)
@@ -414,6 +416,7 @@ namespace App\Models{
  * @property string|null $cheque_number
  * @property string|null $cheque_date
  * @property array<array-key, mixed>|null $cheques
+ * @property array<array-key, mixed>|null $entries
  * @property string|null $dd_number
  * @property string|null $dd_date
  * @property int $is_otc
@@ -426,6 +429,8 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int|null $updated_by
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DisbursementEntry> $entryRows
+ * @property-read int|null $entry_rows_count
  * @property-read \App\Models\LoanDetail|null $loan
  * @property-read \App\Models\User|null $otcClearedByUser
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail newModelQuery()
@@ -441,6 +446,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereDdNumber($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereDisbursementDate($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereDisbursementType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereEntries($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereIfscCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereIsOtc($value)
@@ -455,6 +461,63 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementDetail whereUpdatedBy($value)
  */
 	class DisbursementDetail extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * Normalized mirror of one tranche from `disbursement_details.entries` (json).
+ *
+ * The JSON is the form's source of truth; these rows exist for querying
+ * (future payout calculation) and audit (updated_by / deleted_by / is_active).
+ *
+ * @property int $id
+ * @property int $loan_id
+ * @property int $disbursement_detail_id
+ * @property \Illuminate\Support\Carbon|null $disbursement_date
+ * @property string $method
+ * @property int|null $product_id
+ * @property string|null $product_name
+ * @property string|null $loan_account_number
+ * @property int $amount
+ * @property string|null $cheque_name
+ * @property string|null $cheque_number
+ * @property string|null $cheque_date
+ * @property bool $is_active
+ * @property int|null $updated_by
+ * @property int|null $deleted_by
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $deletedByUser
+ * @property-read \App\Models\DisbursementDetail $disbursement
+ * @property-read \App\Models\LoanDetail|null $loan
+ * @property-read \App\Models\Product|null $product
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereChequeDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereChequeName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereChequeNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereDeletedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereDisbursementDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereDisbursementDetailId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereLoanAccountNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereLoanId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereMethod($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereProductName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry whereUpdatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DisbursementEntry withoutTrashed()
+ */
+	class DisbursementEntry extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -545,6 +608,8 @@ namespace App\Models{
  * @property \Illuminate\Support\Carbon|null $date_of_birth
  * @property string|null $pan_number
  * @property int $loan_amount
+ * @property int|null $sanctioned_amount
+ * @property int|null $disbursed_amount
  * @property string $status
  * @property bool $is_sanctioned
  * @property string $current_stage
@@ -563,7 +628,7 @@ namespace App\Models{
  * @property string|null $status_reason
  * @property \Illuminate\Support\Carbon|null $status_changed_at
  * @property int|null $status_changed_by
- * @property int $created_by
+ * @property int|null $created_by
  * @property int|null $assigned_advisor
  * @property int|null $dme_user_id
  * @property string|null $notes
@@ -577,10 +642,12 @@ namespace App\Models{
  * @property-read \App\Models\Bank|null $bank
  * @property-read \App\Models\User|null $bankEmployee
  * @property-read \App\Models\Branch|null $branch
- * @property-read \App\Models\User $creator
+ * @property-read \App\Models\User|null $creator
  * @property-read \App\Models\Customer|null $customer
  * @property-read \App\Models\CustomerKycDetail|null $customerKycDetails
  * @property-read \App\Models\DisbursementDetail|null $disbursement
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DisbursementEntry> $disbursementEntries
+ * @property-read int|null $disbursement_entries_count
  * @property-read \App\Models\User|null $dme
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\LoanDocument> $documents
  * @property-read int|null $documents_count
@@ -637,6 +704,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDateOfBirth($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDeletedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDeletedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDisbursedAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDmeUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereDueDate($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereExpectedDocketDate($value)
@@ -655,6 +723,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereRejectionReason($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereRoiMax($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereRoiMin($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereSanctionedAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereStatusChangedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|LoanDetail whereStatusChangedBy($value)
@@ -825,6 +894,8 @@ namespace App\Models{
  * @property int $bank_id
  * @property string $name
  * @property string|null $code
+ * @property bool $is_pf_based
+ * @property numeric|null $max_payout_amount
  * @property bool $is_active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -834,6 +905,8 @@ namespace App\Models{
  * @property-read \App\Models\Bank|null $bank
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Location> $locations
  * @property-read int|null $locations_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductPayoutSlab> $payoutSlabs
+ * @property-read int|null $payout_slabs_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductStage> $productStages
  * @property-read int|null $product_stages_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Stage> $stages
@@ -850,6 +923,8 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereDeletedBy($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereIsPfBased($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereMaxPayoutAmount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedBy($value)
@@ -857,6 +932,32 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Product withoutTrashed()
  */
 	class Product extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property int $low_amount
+ * @property int $high_amount
+ * @property string $payout_type
+ * @property float $payout_value
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Product|null $product
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereHighAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereLowAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab wherePayoutType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab wherePayoutValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ProductPayoutSlab whereUpdatedAt($value)
+ */
+	class ProductPayoutSlab extends \Eloquent {}
 }
 
 namespace App\Models{
@@ -966,7 +1067,7 @@ namespace App\Models{
  * @property int|null $cancelled_by
  * @property int|null $location_id
  * @property int|null $branch_id
- * @property int $user_id
+ * @property int|null $user_id
  * @property string $customer_name
  * @property string $customer_type
  * @property string|null $referral_name
@@ -1000,7 +1101,7 @@ namespace App\Models{
  * @property-read \App\Models\User|null $heldBy
  * @property-read \App\Models\LoanDetail|null $loan
  * @property-read \App\Models\Location|null $location
- * @property-read \App\Models\User $user
+ * @property-read \App\Models\User|null $user
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Quotation active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Quotation cancelled()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Quotation newModelQuery()

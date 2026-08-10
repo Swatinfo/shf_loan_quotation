@@ -35,6 +35,13 @@ Several modules scope reads by the user's `user_branches` assignments rather tha
 | Quotations | `Quotation::scopeVisibleTo` | `view_all_quotations` | `branch_manager` / `bdh` → quotations in user branches |
 | DVR | `DailyVisitReport::scopeVisibleTo` | `view_all_dvr` | `branch_manager` / `bdh` → visits by any user in their branches |
 | Customers | `Customer::scopeVisibleTo` | `view_all_loans` | `branch_manager` / `bdh` → customers with loans in user branches |
+| Reports (Pipeline + Loan Report) | `ReportController::reportScope` | role: `super_admin`/`admin`/`bdh` see all | `branch_manager` → own branches; all others → only loans they touched (via `LoanDetail::scopeVisibleTo`) |
+
+**`view_reports`** is a live permission (granted to all roles by
+`2026_07_07_180137_grant_view_reports_to_all_roles`). It gates the **Loan
+Pipeline** and **Loan Report** pages (data then narrowed by `reportScope`).
+The **Management Summary** is not permission-gated — it is role-restricted to
+`super_admin` / `admin` / `bdh` in the controller (`authorizeManagement`).
 
 In the default seeder (`DefaultDataSeeder`), `branch_manager` and `bdh` **do not** receive `view_all_loans` or `view_all_quotations` so branch scope applies. `admin` keeps both bypasses; `admin`'s DVR defaults were pared down to `view_dvr + create_dvr + edit_dvr` (admin creates their own DVRs, no supervisor bypass). Customer CRUD is gated on `view_customers` / `manage_customers` — these slugs are now live (previously orphaned).
 

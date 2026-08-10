@@ -35,6 +35,10 @@
                     Filters
                 </div>
                 <div class="actions">
+                    <button type="button" class="btn" id="lrExport">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/></svg>
+                        Export
+                    </button>
                     <button type="button" class="btn" id="lrClear">Clear</button>
                     <button type="button" class="btn primary" id="lrApply">
                         <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
@@ -54,7 +58,7 @@
                     </div>
 
                     <div class="lr-field">
-                        <label for="filterPeriod" class="lr-lbl">Period</label>
+                        <label for="filterPeriod" class="lr-lbl">Period <span id="lrPeriodHint">(sanction date)</span></label>
                         <select id="filterPeriod" class="input lr-input">
                             <option value="current_month" selected>Current Month</option>
                             <option value="last_month">Last Month</option>
@@ -97,25 +101,27 @@
                         </select>
                     </div>
 
-                    <div class="lr-field">
-                        <label for="filterBranch" class="lr-lbl">Branch</label>
-                        <select id="filterBranch" class="input lr-input">
-                            <option value="">All Branches</option>
-                            @foreach ($branches as $branch)
-                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @if ($scope['type'] !== 'own')
+                        <div class="lr-field">
+                            <label for="filterBranch" class="lr-lbl">Branch</label>
+                            <select id="filterBranch" class="input lr-input">
+                                <option value="">All Branches</option>
+                                @foreach ($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                    <div class="lr-field">
-                        <label for="filterUser" class="lr-lbl">User</label>
-                        <select id="filterUser" class="input lr-input">
-                            <option value="">All Users</option>
-                            @foreach ($users as $reportUser)
-                                <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                        <div class="lr-field">
+                            <label for="filterUser" class="lr-lbl">User</label>
+                            <select id="filterUser" class="input lr-input">
+                                <option value="">All Users</option>
+                                @foreach ($users as $reportUser)
+                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
 
                 </div>
             </div>
@@ -128,11 +134,11 @@
                 <div class="lr-total-val" id="lrTotalCount">—</div>
             </div>
             <div class="lr-total-card">
-                <div class="lr-total-lbl">Total Sanctioned</div>
+                <div class="lr-total-lbl" id="lrTotalSanctionedLbl">Total Sanctioned</div>
                 <div class="lr-total-val" id="lrTotalSanctioned">—</div>
             </div>
             <div class="lr-total-card">
-                <div class="lr-total-lbl">Total Disbursed</div>
+                <div class="lr-total-lbl" id="lrTotalDisbursedLbl">Total Disbursed</div>
                 <div class="lr-total-val" id="lrTotalDisbursed">—</div>
             </div>
         </div>
@@ -155,6 +161,7 @@
     <script>
         window.__LR = {
             dataUrl: @json(route('reports.loans.data')),
+            exportUrl: @json(route('reports.loans.export')),
         };
     </script>
     <script src="{{ asset('newtheme/pages/loan-report.js') }}?v={{ config('app.shf_version') }}"></script>

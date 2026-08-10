@@ -1536,4 +1536,390 @@ class LoanStageService
             ->get()
             ->sortBy(fn ($sa) => ($sa->stage?->sequence_order ?? 999) * 1000 + ($sa->stage?->id ?? 999));
     }
+
+    // ── Stage Reset (admin/CLI only) ──
+    //
+    // Rewinds a loan to a chosen stage/phase: the target becomes in_progress
+    // (assignee resolved by role), every following stage is reset to pending,
+    // dependent data (disbursement, valuation, app number, sanction/docket
+    // fields) is cleared, and progress is recalculated. Shared by the
+    // email-gated web action (LoanStageController@resetStage) and the
+    // `loan:set-stage` console command. This is destructive and irreversible.
+
+    /** Parallel sub-stage keys, in flow order. */
+    private const RESET_PARALLEL_SUBS = ['app_number', 'bsm_osv', 'legal_verification', 'original_document_verification', 'technical_valuation', 'sanction_decision'];
+
+    /** Full stage flow order including parallel subs in sequence. */
+    private const RESET_STAGE_ORDER = [
+        'inquiry', 'document_selection', 'document_collection',
+        'app_number', 'bsm_osv', 'legal_verification', 'original_document_verification', 'technical_valuation', 'sanction_decision',
+        'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement', 'otc_clearance',
+    ];
+
+    /**
+     * Reset a loan back to a specific stage (optionally a specific phase/variant).
+     *
+     * @return array<int, string> Human-readable log lines describing what changed.
+     */
+    public function resetToStage(LoanDetail $loan, string $stageKey, ?int $phase = null, ?string $variant = null): array
+    {
+        if (! in_array($stageKey, self::RESET_STAGE_ORDER, true)) {
+            throw new \InvalidArgumentException("Unknown stage key for reset: {$stageKey}");
+        }
+
+        $loan->loadMissing('stageAssignments');
+
+        // Phased stages default to their entry phase when none is given.
+        if ($phase === null && $this->resetGetPhaseNoteKey($stageKey) !== null) {
+            $phase = 1;
+        }
+
+        $users = $this->resolveResetUsers($loan);
+        $role = $this->resetTargetRole($stageKey, $phase, $variant);
+        $userId = $users[$role] ?? ($loan->assigned_advisor ?? $loan->created_by);
+
+        $log = [];
+        $stageName = self::RESET_STAGE_ORDER[array_search($stageKey, self::RESET_STAGE_ORDER, true)];
+
+        // 1. Target stage → in_progress with correct phase notes + assignee.
+        $assignment = $loan->stageAssignments->firstWhere('stage_key', $stageKey);
+        if ($assignment) {
+            $notesData = $this->resetBuildTargetNotes($stageKey, $phase, $variant, $assignment);
+            $assignment->update([
+                'status' => 'in_progress',
+                'assigned_to' => $userId,
+                'started_at' => now(),
+                'completed_at' => null,
+                'completed_by' => null,
+                'notes' => ! empty($notesData) ? json_encode($notesData) : null,
+            ]);
+            $log[] = "{$stageName}: in_progress (phase ".($phase ?? '—').'), assigned to user #'.($userId ?? '—');
+        }
+
+        // 2. Loan status + stage-dependent fields.
+        $currentStage = in_array($stageKey, self::RESET_PARALLEL_SUBS, true) ? 'parallel_processing' : $stageKey;
+        $loanUpdate = [
+            'current_stage' => $currentStage,
+            'status' => 'active',
+            'rejected_at' => null,
+            'rejected_by' => null,
+            'rejected_stage' => null,
+            'rejection_reason' => null,
+        ];
+        $targetIdx = array_search($stageKey, self::RESET_STAGE_ORDER, true);
+        if ($targetIdx <= array_search('sanction_decision', self::RESET_STAGE_ORDER, true)) {
+            $loanUpdate['is_sanctioned'] = false;
+        }
+        if ($targetIdx <= array_search('app_number', self::RESET_STAGE_ORDER, true)) {
+            $loanUpdate['application_number'] = null;
+        }
+        if ($targetIdx <= array_search('sanction', self::RESET_STAGE_ORDER, true)) {
+            $loanUpdate['expected_docket_date'] = null;
+        }
+        $loan->update($loanUpdate);
+        $log[] = "Loan set to active, current_stage: {$currentStage}";
+
+        // 3. Clear dependent records.
+        $log = array_merge($log, $this->resetClearRelatedData($loan, $targetIdx));
+
+        // 4. Parallel-processing parent + later parallel subs.
+        if (in_array($stageKey, self::RESET_PARALLEL_SUBS, true)) {
+            $ppAssignment = $loan->stageAssignments->firstWhere('stage_key', 'parallel_processing');
+            if ($ppAssignment) {
+                $ppAssignment->update([
+                    'status' => 'in_progress',
+                    'started_at' => $ppAssignment->started_at ?? now(),
+                    'completed_at' => null,
+                    'completed_by' => null,
+                ]);
+            }
+            $log = array_merge($log, $this->resetParallelSubsAfter($loan, $stageKey));
+        }
+
+        // 5. Reset all stages after the target.
+        $log = array_merge($log, $this->resetStagesAfter($loan, $stageKey));
+
+        // 6. Recalculate progress.
+        $this->recalculateProgress($loan);
+        $log[] = 'Loan progress recalculated';
+
+        return $log;
+    }
+
+    /**
+     * Resolve the default user IDs (by role) for a loan's reset targets.
+     *
+     * @return array{task_owner: ?int, bank_employee: ?int, office_employee: ?int, branch_manager: ?int, bdh: ?int}
+     */
+    public function resolveResetUsers(LoanDetail $loan): array
+    {
+        return [
+            'task_owner' => $loan->assigned_advisor ?? $loan->created_by,
+            'bank_employee' => $this->resetFindBankEmployee($loan),
+            'office_employee' => $this->resetFindOfficeEmployee($loan),
+            'branch_manager' => $this->resetFindUserByRoleInBranch($loan, 'branch_manager'),
+            'bdh' => $this->resetFindUserByRoleInBranch($loan, 'bdh'),
+        ];
+    }
+
+    /** Role that owns the target stage/phase (mirrors the loan:set-stage menu). */
+    private function resetTargetRole(string $stageKey, ?int $phase, ?string $variant): string
+    {
+        return match ($stageKey) {
+            'bsm_osv' => in_array($phase, [2, 3], true) ? 'bank_employee' : 'task_owner',
+            'legal_verification' => $phase === 2 ? 'bank_employee' : 'task_owner',
+            'technical_valuation' => $phase === 2 ? 'office_employee' : 'task_owner',
+            'rate_pf' => $phase === 2 ? 'bank_employee' : 'task_owner',
+            'sanction' => $phase === 2 ? 'bank_employee' : 'task_owner',
+            'docket' => $phase === 2 ? 'office_employee' : 'task_owner',
+            'esign' => in_array($phase, [2, 3], true) ? 'bank_employee' : 'task_owner',
+            'disbursement' => 'office_employee',
+            'otc_clearance' => $variant === 'transferred_oe' ? 'office_employee' : 'task_owner',
+            'sanction_decision' => match ($variant) {
+                'escalated_bm' => 'branch_manager',
+                'escalated_bdh' => 'bdh',
+                default => 'task_owner',
+            },
+            default => 'task_owner',
+        };
+    }
+
+    private function resetFindBankEmployee(LoanDetail $loan): ?int
+    {
+        if ($loan->product_id) {
+            $stages = ProductStage::where('product_id', $loan->product_id)
+                ->whereHas('stage', fn ($q) => $q->where('stage_key', 'bsm_osv'))
+                ->first();
+            if ($stages) {
+                $branch = $loan->branch_id ? Branch::with('location.parent')->find($loan->branch_id) : null;
+                $userId = $stages->getUserForLocation($loan->branch_id, $branch?->location_id, $branch?->location?->parent_id);
+                if ($userId && User::where('id', $userId)->where('is_active', true)->exists()) {
+                    return $userId;
+                }
+            }
+        }
+
+        if ($loan->bank_id) {
+            $cityId = $loan->branch_id ? Branch::find($loan->branch_id)?->location_id : null;
+            $bank = Bank::find($loan->bank_id);
+            if ($bank) {
+                $defaultBEId = $bank->getDefaultEmployeeForCity($cityId);
+                if ($defaultBEId && User::where('id', $defaultBEId)->where('is_active', true)->exists()) {
+                    return $defaultBEId;
+                }
+            }
+        }
+
+        return User::whereHas('roles', fn ($q) => $q->where('slug', 'bank_employee'))
+            ->where('is_active', true)
+            ->first()?->id;
+    }
+
+    private function resetFindOfficeEmployee(LoanDetail $loan): ?int
+    {
+        if ($loan->branch_id) {
+            $defaultOE = User::whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id)
+                ->where('user_branches.is_default_office_employee', true))
+                ->where('is_active', true)->first();
+            if ($defaultOE) {
+                return $defaultOE->id;
+            }
+
+            $branchOE = User::whereHas('roles', fn ($q) => $q->where('slug', 'office_employee'))
+                ->whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id))
+                ->where('is_active', true)->first();
+            if ($branchOE) {
+                return $branchOE->id;
+            }
+        }
+
+        return User::whereHas('roles', fn ($q) => $q->where('slug', 'office_employee'))
+            ->where('is_active', true)->first()?->id;
+    }
+
+    private function resetFindUserByRoleInBranch(LoanDetail $loan, string $role): ?int
+    {
+        if (! $loan->branch_id) {
+            return User::whereHas('roles', fn ($q) => $q->where('slug', $role))
+                ->where('is_active', true)->first()?->id;
+        }
+
+        return User::whereHas('roles', fn ($q) => $q->where('slug', $role))
+            ->whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id))
+            ->where('is_active', true)->first()?->id;
+    }
+
+    private function resetClearRelatedData(LoanDetail $loan, int $targetIdx): array
+    {
+        $log = [];
+
+        if ($targetIdx <= array_search('disbursement', self::RESET_STAGE_ORDER, true)) {
+            if ($loan->disbursement()->delete()) {
+                $log[] = 'Disbursement record cleared';
+            }
+        }
+
+        if ($targetIdx <= array_search('technical_valuation', self::RESET_STAGE_ORDER, true)) {
+            if ($loan->valuationDetails()->delete()) {
+                $log[] = 'Valuation details cleared';
+            }
+        }
+
+        return $log;
+    }
+
+    private function resetBuildTargetNotes(string $stageKey, ?int $phase, ?string $variant, StageAssignment $assignment): array
+    {
+        $existing = $assignment->getNotesData();
+        $phaseKey = $this->resetGetPhaseNoteKey($stageKey);
+
+        if ($phaseKey && $phase) {
+            $existing[$phaseKey] = (string) $phase;
+            foreach ($this->resetGetPhaseFieldsToClear($stageKey, $phase) as $field) {
+                unset($existing[$field]);
+            }
+
+            return $existing;
+        }
+
+        if ($stageKey === 'sanction_decision') {
+            unset($existing['decision_action'], $existing['decision_remarks'], $existing['rejection_reason'], $existing['decided_by']);
+            if ($variant === 'escalated_bm') {
+                $existing['escalated_to'] = 'branch_manager';
+            } elseif ($variant === 'escalated_bdh') {
+                $existing['escalated_to'] = 'bdh';
+            }
+
+            return $existing;
+        }
+
+        if ($stageKey === 'otc_clearance') {
+            unset($existing['handover_date']);
+
+            return $existing;
+        }
+
+        return [];
+    }
+
+    private function resetGetPhaseNoteKey(string $stageKey): ?string
+    {
+        return match ($stageKey) {
+            'bsm_osv' => 'bsm_osv_phase',
+            'legal_verification' => 'legal_phase',
+            'rate_pf' => 'rate_pf_phase',
+            'sanction' => 'sanction_phase',
+            'docket' => 'docket_phase',
+            'esign' => 'esign_phase',
+            default => null,
+        };
+    }
+
+    private function resetGetPhaseFieldsToClear(string $stageKey, int $phase): array
+    {
+        return match ($stageKey) {
+            'bsm_osv' => match ($phase) {
+                2, 3 => ['bsm_status', 'bsm_remarks'],
+                4 => ['stageRemarks'],
+                default => [],
+            },
+            'legal_verification' => match ($phase) {
+                2 => ['legal_status', 'legal_remarks'],
+                3 => ['stageRemarks'],
+                default => [],
+            },
+            'rate_pf' => match ($phase) {
+                2 => ['interest_rate', 'repo_rate', 'bank_rate', 'rate_valid_until'],
+                3 => ['pf_type', 'pf_percentage', 'pf_amount', 'gst_percentage', 'total_pf', 'total_admin_charges'],
+                default => [],
+            },
+            'sanction' => match ($phase) {
+                3 => ['sanction_date', 'sanction_conditions'],
+                default => [],
+            },
+            'docket' => match ($phase) {
+                2 => ['login_date', 'sanctioned_amount', 'sanctioned_rate', 'tenure_months', 'emi_amount'],
+                default => [],
+            },
+            'esign' => match ($phase) {
+                4 => ['stageRemarks'],
+                default => [],
+            },
+            default => [],
+        };
+    }
+
+    private function resetParallelSubsAfter(LoanDetail $loan, string $stageKey): array
+    {
+        $log = [];
+        $idx = array_search($stageKey, self::RESET_PARALLEL_SUBS, true);
+        if ($idx === false) {
+            return $log;
+        }
+
+        foreach (array_slice(self::RESET_PARALLEL_SUBS, $idx + 1) as $subKey) {
+            $subAssignment = $loan->stageAssignments->firstWhere('stage_key', $subKey);
+            if ($subAssignment) {
+                $subAssignment->update([
+                    'status' => 'pending',
+                    'assigned_to' => null,
+                    'started_at' => null,
+                    'completed_at' => null,
+                    'completed_by' => null,
+                    'notes' => null,
+                ]);
+                $log[] = ($subKey).': reset to pending';
+            }
+        }
+
+        return $log;
+    }
+
+    private function resetStagesAfter(LoanDetail $loan, string $stageKey): array
+    {
+        $log = [];
+        $idx = array_search($stageKey, self::RESET_STAGE_ORDER, true);
+        if ($idx === false) {
+            return $log;
+        }
+
+        // For parallel subs, reset everything from after sanction_decision onward.
+        $resetFrom = $idx + 1;
+        if (in_array($stageKey, self::RESET_PARALLEL_SUBS, true)) {
+            $resetFrom = array_search('sanction_decision', self::RESET_STAGE_ORDER, true) + 1;
+        }
+
+        foreach (array_slice(self::RESET_STAGE_ORDER, $resetFrom) as $resetKey) {
+            $resetAssignment = $loan->stageAssignments->firstWhere('stage_key', $resetKey);
+            if ($resetAssignment) {
+                $resetAssignment->update([
+                    'status' => 'pending',
+                    'assigned_to' => null,
+                    'started_at' => null,
+                    'completed_at' => null,
+                    'completed_by' => null,
+                    'notes' => null,
+                ]);
+                $log[] = ($resetKey).': reset to pending';
+            }
+        }
+
+        // If the target is before parallel processing, reset the parent too.
+        if ($idx < array_search('app_number', self::RESET_STAGE_ORDER, true)) {
+            $ppAssignment = $loan->stageAssignments->firstWhere('stage_key', 'parallel_processing');
+            if ($ppAssignment) {
+                $ppAssignment->update([
+                    'status' => 'pending',
+                    'assigned_to' => null,
+                    'started_at' => null,
+                    'completed_at' => null,
+                    'completed_by' => null,
+                    'notes' => null,
+                ]);
+                $log[] = 'parallel_processing: reset to pending';
+            }
+        }
+
+        return $log;
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\Bank;
 use App\Models\Customer;
 use App\Models\LoanDetail;
 use App\Models\Quotation;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class LoanConversionService
@@ -29,7 +30,14 @@ class LoanConversionService
         $quotationBank = $quotation->banks[$bankIndex]
             ?? throw new \RuntimeException('Invalid bank index');
 
-        return DB::transaction(function () use ($quotation, $quotationBank, $extra) {
+        return $this->runWithLoanNumberRetry(function () use ($quotation, $quotationBank, $extra) {
+            // Re-check the already-converted guard under a row lock so two
+            // concurrent submissions can't both convert the same quotation.
+            $locked = Quotation::whereKey($quotation->id)->lockForUpdate()->first();
+            if ($locked->loan_id !== null) {
+                throw new \RuntimeException('Quotation already converted to loan #'.$locked->loan->loan_number);
+            }
+
             $bank = Bank::where('name', $quotationBank->bank_name)->first();
 
             // Resolve the customer identity by PAN (reuse master or create once,
@@ -112,7 +120,7 @@ class LoanConversionService
      */
     public function createDirectLoan(array $data): LoanDetail
     {
-        return DB::transaction(function () use ($data) {
+        return $this->runWithLoanNumberRetry(function () use ($data) {
             $bankName = isset($data['bank_id'])
                 ? Bank::find($data['bank_id'])?->name
                 : null;
@@ -176,5 +184,39 @@ class LoanConversionService
 
             return $loan;
         });
+    }
+
+    /**
+     * Run a creation transaction, retrying a few times if the generated
+     * loan_number collides with a concurrent insert (unique-constraint
+     * violation). Each attempt regenerates the number inside the closure, so
+     * two simultaneous conversions both succeed instead of one 500-ing.
+     *
+     * @param  callable(): LoanDetail  $callback
+     */
+    private function runWithLoanNumberRetry(callable $callback): LoanDetail
+    {
+        $maxAttempts = 3;
+
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return DB::transaction($callback);
+            } catch (QueryException $e) {
+                if ($attempt >= $maxAttempts || ! $this->isDuplicateLoanNumber($e)) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether a query exception is a duplicate-key violation on loan_number
+     * (MySQL 1062 / SQLite "UNIQUE constraint failed"). Other integrity errors
+     * must not be swallowed as retryable.
+     */
+    private function isDuplicateLoanNumber(QueryException $e): bool
+    {
+        return $e->getCode() === '23000'
+            && str_contains($e->getMessage(), 'loan_number');
     }
 }

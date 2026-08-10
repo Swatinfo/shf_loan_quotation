@@ -52,7 +52,12 @@
             $('#ufSingleBankField').toggle(role === 'bank_employee');
             $('#ufMultiBankField').toggle(role === 'office_employee');
 
-            // Disable hidden bank inputs so they don't post stray/empty values
+            // Disable hidden conditional inputs so they don't post stray/empty
+            // values — and because assigned_locations[]/assigned_banks[] each
+            // exist twice (select + checkbox variants), SHF.validateForm must
+            // only see the active one (it skips disabled fields).
+            $('#ufSingleCity').prop('disabled', !inList(SINGLE_CITY_ROLES, role));
+            $('#ufMultiLocationField input').prop('disabled', !inList(MULTI_LOC_ROLES, role));
             $('#ufSingleBankField select').prop('disabled', role !== 'bank_employee');
             $('#ufMultiBankField input').prop('disabled', role !== 'office_employee');
             $('#ufMultiBranchField').toggle(inList(BRANCH_REQUIRED_ROLES, role));
@@ -183,6 +188,8 @@
         // Initial pass — respects the server-rendered visibility
         (function () {
             var role = currentRole();
+            $('#ufSingleCity').prop('disabled', !inList(SINGLE_CITY_ROLES, role));
+            $('#ufMultiLocationField input').prop('disabled', !inList(MULTI_LOC_ROLES, role));
             $('#ufSingleBankField select').prop('disabled', role !== 'bank_employee');
             $('#ufMultiBankField input').prop('disabled', role !== 'office_employee');
         })();

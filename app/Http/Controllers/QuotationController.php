@@ -153,26 +153,28 @@ class QuotationController extends Controller
 
         $result = $this->quotationService->generate($input, $targetUserId);
 
-        if (isset($result['error']) && empty($result['filename'])) {
-            return response()->json(['error' => $result['error']], 422);
+        // Any failure — validation, PDF, or DB save — is a hard error. Never
+        // report success for a quotation that was not persisted, otherwise the
+        // user believes a quotation was saved when it never reached the database
+        // (the "my quotation is missing" complaint). A rendered PDF alone is not
+        // a saved quotation.
+        $quotation = $result['quotation'] ?? null;
+        if (empty($result['success']) || ! $quotation) {
+            return response()->json([
+                'error' => $result['error'] ?? 'Quotation could not be saved. Please try again.',
+            ], 422);
         }
 
-        $quotation = $result['quotation'] ?? null;
-        $filename = $quotation?->pdf_filename ?? ($result['filename'] ?? '');
-
-        // Log activity
         ActivityLog::log('create_quotation', $quotation, [
             'customer_name' => $input['customerName'] ?? '',
             'loan_amount' => $input['loanAmount'] ?? 0,
-            'filename' => $filename,
+            'filename' => $quotation->pdf_filename,
         ]);
 
-        // PDF generated even if DB save failed — user still gets their file
         return response()->json([
             'success' => true,
-            'filename' => $filename,
-            'id' => $quotation?->id,
-            'warning' => $result['error'] ?? null,
+            'filename' => $quotation->pdf_filename,
+            'id' => $quotation->id,
         ]);
     }
 

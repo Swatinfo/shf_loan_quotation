@@ -300,6 +300,15 @@ Response: `{ users: [{id, name, badge}], default_user_id }` — UI uses this for
 
 Called after every completion / revert / status change.
 
+## Stage reset (rewind)
+
+`LoanStageService::resetToStage(LoanDetail $loan, string $stageKey, ?int $phase = null, ?string $variant = null): array` rewinds a loan to an earlier stage. It sets the target stage to `in_progress` (assignee resolved by role via `resolveResetUsers()`), resets every following stage to `pending`, re-opens the `parallel_processing` parent when the target is a sub-stage, clears dependent data (disbursement + valuation records, `application_number`, `expected_docket_date`, `is_sanctioned` — each cleared only when the target sits at or before the stage that produces it), and calls `recalculateProgress()`. Phased stages default to their entry phase (1). Returns human-readable log lines. **Destructive and irreversible.**
+
+Two surfaces share this engine:
+
+- **CLI** — `php artisan loan:set-stage` (interactive menu with prior-stage validation), or non-interactive `php artisan loan:set-stage {loan} {stage} [--phase=] [--variant=escalated_bm|escalated_bdh|transferred_oe] [--force]`. Ungated (server access only).
+- **Web** — `POST /loans/{loan}/stages/reset` (`loans.stages.reset`) → `LoanStageController@resetStage`, surfaced as a red "Reset Stage" button + SweetAlert stage picker on the loan **stages** page (`newtheme/loans/stages.blade.php`). **Access is email-gated, not role/permission**: `User::canResetLoanStages()` checks `config('app.stage_reset_emails')` (default `superadmin@shfworld.com,admin@shfworld.com`, `STAGE_RESET_EMAILS` override). A super_admin whose email is not listed is still denied. Logs `reset_loan_stage` to the activity log.
+
 ## Notifications
 
 Integrated via `NotificationService`:

@@ -16,7 +16,8 @@ use Tests\TestCase;
 
 /**
  * Loan Pipeline report (report_plan.md Phase 2A):
- *   - Role-gated (4 roles) on both endpoints.
+ *   - Open to every role via view_reports; data narrowed by reportScope
+ *     (all / branch / own — advisors & stage-workers see only touched loans).
  *   - Active rows carry stage lines: in-progress (owner, days in stage, days
  *     with owner from transfer history, open-query count) plus pending
  *     sub-stages inside an active parallel block (queued days from the parent).
@@ -104,18 +105,61 @@ class PipelineReportTest extends TestCase
         return collect($response->json('data'))->firstWhere('loan_number', $loan->loan_number);
     }
 
-    public function test_access_matrix_on_both_endpoints(): void
+    public function test_pipeline_is_available_to_every_role(): void
     {
-        foreach (['super_admin', 'admin', 'bdh', 'branch_manager'] as $slug) {
+        // Reports (Pipeline + Loan Report) are open to all via view_reports.
+        foreach (['super_admin', 'admin', 'bdh', 'branch_manager', 'loan_advisor', 'bank_employee', 'office_employee'] as $slug) {
             $user = $this->makeUser($slug);
             $this->actingAs($user)->get(route('reports.pipeline'))->assertOk();
             $this->actingAs($user)->getJson(route('reports.pipeline.data'))->assertOk();
         }
-        foreach (['loan_advisor', 'bank_employee', 'office_employee'] as $slug) {
-            $user = $this->makeUser($slug);
-            $this->actingAs($user)->get(route('reports.pipeline'))->assertForbidden();
-            $this->actingAs($user)->getJson(route('reports.pipeline.data'))->assertForbidden();
-        }
+    }
+
+    public function test_loan_advisor_sees_only_own_loans(): void
+    {
+        $a = $this->makeUser('loan_advisor');
+        $b = $this->makeUser('loan_advisor');
+        $mine = $this->makeLoan($a);
+        $theirs = $this->makeLoan($b);
+
+        $resp = $this->actingAs($a)->getJson(route('reports.pipeline.data'))->assertOk();
+
+        $this->assertNotNull($this->rowFor($resp, $mine));
+        $this->assertNull($this->rowFor($resp, $theirs));
+        $this->assertSame(1, $resp->json('summary.all.count'));
+    }
+
+    public function test_stage_worker_sees_only_loans_they_touched(): void
+    {
+        $office = $this->makeUser('office_employee');
+        $advisor = $this->makeUser('loan_advisor');
+        $touched = $this->makeLoan($advisor);
+        $untouched = $this->makeLoan($advisor);
+        $this->assign($touched, 'legal_verification', 'in_progress', $office->id, now()->subDays(2));
+
+        $resp = $this->actingAs($office)->getJson(route('reports.pipeline.data'))->assertOk();
+
+        $this->assertNotNull($this->rowFor($resp, $touched));
+        $this->assertNull($this->rowFor($resp, $untouched));
+        $this->assertSame(1, $resp->json('summary.all.count'));
+    }
+
+    public function test_own_scope_cannot_be_widened_by_a_forged_user_id(): void
+    {
+        $a = $this->makeUser('loan_advisor');
+        $b = $this->makeUser('loan_advisor');
+        $mine = $this->makeLoan($a);
+        $theirs = $this->makeLoan($b);
+
+        // A forges B's id — the scope constraint keeps it within A's own set,
+        // so the filter narrows to nothing rather than exposing B's loan.
+        $resp = $this->actingAs($a)
+            ->getJson(route('reports.pipeline.data', ['user_id' => $b->id]))
+            ->assertOk();
+
+        $this->assertNull($this->rowFor($resp, $theirs));
+        $this->assertNull($this->rowFor($resp, $mine));
+        $this->assertSame(0, $resp->json('summary.all.count'));
     }
 
     public function test_active_row_shows_in_progress_stage_with_owner_and_days(): void

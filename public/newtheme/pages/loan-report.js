@@ -76,8 +76,8 @@
             date_to: ddmmyyyyToISO(dates.to),
             bank_id: document.getElementById('filterBank').value || '',
             product_id: document.getElementById('filterProduct').value || '',
-            branch_id: document.getElementById('filterBranch').value || '',
-            user_id: document.getElementById('filterUser').value || '',
+            branch_id: (document.getElementById('filterBranch') || {}).value || '',
+            user_id: (document.getElementById('filterUser') || {}).value || '',
         };
     }
 
@@ -144,11 +144,21 @@
         if (elTotalCount) { elTotalCount.textContent = totals.count != null ? String(totals.count) : '—'; }
         if (elTotalSanctioned) { elTotalSanctioned.textContent = totals.sanctioned || '—'; }
         if (elTotalDisbursed) { elTotalDisbursed.textContent = totals.disbursed || '—'; }
+        // Period totals cover BOTH milestones (management-funnel semantics) —
+        // surface each milestone's loan count in its card label.
+        var sLbl = document.getElementById('lrTotalSanctionedLbl');
+        var dLbl = document.getElementById('lrTotalDisbursedLbl');
+        if (sLbl) { sLbl.textContent = 'Total Sanctioned' + (totals.sanctioned_count != null ? ' (' + totals.sanctioned_count + ' loans)' : ''); }
+        if (dLbl) { dLbl.textContent = 'Total Disbursed' + (totals.disbursed_count != null ? ' (' + totals.disbursed_count + ' loans)' : ''); }
     }
 
     function refresh() {
         elRows.innerHTML = '<div class="lr-loader">Loading…</div>';
-        if (elModeLabel) { elModeLabel.textContent = document.getElementById('filterStatus').value; }
+        var status = document.getElementById('filterStatus').value;
+        if (elModeLabel) { elModeLabel.textContent = status; }
+        // The period filter runs on the milestone completion date server-side.
+        var periodHint = document.getElementById('lrPeriodHint');
+        if (periodHint) { periodHint.textContent = status === 'disbursed' ? '(disbursement date)' : '(sanction date)'; }
         fetch(URLS.dataUrl + '?' + buildQuery(getFilters()), {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' },
@@ -197,6 +207,14 @@
         });
 
         document.getElementById('lrApply').addEventListener('click', refresh);
+        var exportBtn = document.getElementById('lrExport');
+        if (exportBtn) {
+            // Server re-applies the same filters/scope and exports ALL
+            // matching rows (never just the rendered page).
+            exportBtn.addEventListener('click', function () {
+                window.location = URLS.exportUrl + '?' + buildQuery(getFilters());
+            });
+        }
         document.getElementById('lrClear').addEventListener('click', function () {
             document.getElementById('filterStatus').value = 'sanctioned';
             document.getElementById('filterPeriod').value = 'current_month';

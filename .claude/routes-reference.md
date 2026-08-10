@@ -174,12 +174,13 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 
 ## Loan Stages
 
-Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`.
+Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`; `loans.stages.reset` is **email-gated in the controller** (`config('app.stage_reset_emails')`), not by permission.
 
 | Method | URI | Name | Controller |
 |---|---|---|---|
 | GET | `/loans/{loan}/stages` | `loans.stages` | LoanStageController@index (perm: view_loans) |
 | GET | `/loans/{loan}/transfers` | `loans.transfers` | LoanStageController@transferHistory (perm: view_loans) |
+| POST | `/loans/{loan}/stages/reset` | `loans.stages.reset` | LoanStageController@resetStage (email-gated: app.stage_reset_emails; rewinds loan to a stage) |
 | POST | `/loans/{loan}/stages/{stageKey}/status` | `loans.stages.status` | LoanStageController@updateStatus |
 | POST | `/loans/{loan}/stages/{stageKey}/assign` | `loans.stages.assign` | LoanStageController@assign |
 | POST | `/loans/{loan}/stages/{stageKey}/transfer` | `loans.stages.transfer` | LoanStageController@transfer (+`transfer_loan_stages`) |
@@ -335,14 +336,37 @@ Authorization handled inside the controller via `User::canImpersonate()` + `User
 |---|---|---|---|
 | GET | `/reports/pipeline` | `reports.pipeline` | ReportController@pipeline |
 | GET | `/reports/pipeline/data` | `reports.pipeline.data` | ReportController@pipelineData |
+| GET | `/reports/pipeline/export` | `reports.pipeline.export` | ReportController@pipelineExport |
 | GET | `/reports/loans` | `reports.loans` | ReportController@loanReport |
 | GET | `/reports/loans/data` | `reports.loans.data` | ReportController@loanReportData |
+| GET | `/reports/loans/export` | `reports.loans.export` | ReportController@loanReportExport |
 | GET | `/reports/management` | `reports.management` | ReportController@management |
 | GET | `/reports/management/data` | `reports.management.data` | ReportController@managementData |
 
-All report pages: role-gated in controller (no permission slug) — super_admin/admin/**bdh**
-see all branches, branch_manager sees own branches, all other roles 403 on both endpoints.
+Gating (in controller):
+- **Pipeline + Loan Report** — open to any user with the `view_reports` permission
+  (granted to all roles). Data is scoped by `reportScope()`:
+  - `super_admin` / `admin` / `bdh` → all branches
+  - `branch_manager` → loans in their assigned branches
+  - everyone else → only loans they have **touched** (same rule as
+    `LoanDetail::scopeVisibleTo`: created, advisor, stage-assigned, or in
+    transfer history). Branch/User filters are hidden for this scope, and a
+    forged branch/user id cannot widen it (server re-applies the loan-id scope).
+- **Management Summary** — restricted to `super_admin` / `admin` / `bdh` only
+  (branch_manager and below get 403). Always full scope; supports an optional
+  branch filter for admins.
+
 The Turnaround Time report was REMOVED 2026-07-07 (replaced by pipeline + management).
+
+The `/export` routes (added 2026-07-08) stream a true `.xlsx` built by
+`XlsxExportService` (no composer package). They accept the exact same query
+params as their `/data` twins (pipeline: `tab, status, date_from, date_to,
+bank_id, product_id, branch_id, user_id, stage_key, stuck_days`; loans:
+`status, date_from, date_to, bank_id, product_id, branch_id, user_id`),
+re-apply the same gate + `reportScope`/`applyScope`, and always export **all**
+matching rows (no pagination). Amounts are raw numeric cells, dates are real
+date serials (`dd/mm/yyyy`); pipeline stage lines flatten into one wrapped
+"Current Stage(s)" cell; `tab=workload` exports the workload-by-user table.
 
 ## API endpoints
 

@@ -4,6 +4,28 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## 419 on logout — render callback must match HttpException(419), not TokenMismatchException (2026-07-25)
+
+- **Symptom**: expired-session logout still showed a raw 419 page even though `bootstrap/app.php` had `$exceptions->render(function (TokenMismatchException $e, ...) {...})`. The callback never fired.
+- **Root cause**: `Foundation\Exceptions\Handler::render()` calls `prepareException($e)` (which maps `TokenMismatchException → new HttpException(419, ..., $previous)`) on line ~615 **before** `renderViaCallbacks()` on ~617. So render callbacks only ever see the mapped `HttpException` — a callback type-hinted on `TokenMismatchException` can never match. Proven by a feature test that got the default `"CSRF token mismatch."` 419 JSON, not our custom body.
+- **Fix**: type the callback on `Symfony\Component\HttpKernel\Exception\HttpException` and gate on `$e->getStatusCode() === 419` (419 only ever originates from CSRF mismatch in Laravel). `return null` for non-419 so default handling continues. Logout route → silent redirect to login; other web POST → redirect+`status` flash; JSON → 419 with friendly message.
+- **Testing trap**: the real `VerifyCsrfToken` middleware self-skips during tests (`runningUnitTests()`), so you can't trigger a genuine mismatch. Instead define an inline route that `throw new TokenMismatchException()` — the framework still maps it through `prepareException`, exercising the exact production path. `tests/Feature/LogoutSessionExpiredTest.php`.
+- **Deploy note**: this is a `bootstrap/app.php` change — not affected by `config:cache`, but the fix only takes effect once the file is deployed. No migration.
+
+## Report "disbursed" = disbursement_entries tranches, not the stage (2026-07-14)
+
+- **Both the management funnel and the loan report define "disbursed" from `disbursement_entries`** (active rows, `deleted_at IS NULL`): count = DISTINCT loans with a tranche dated in the window, amount = SUM of in-window tranche amounts. This (a) counts partial disbursements before the stage completes, (b) dates money by the user-entered tranche date, not by when someone clicked complete (found 2 loans whose stage completed 14 Jul but tranches were dated 29-30 Jun — stage-dating had inflated July). Sanctioned stays stage-based (`sanction` completed_at). Any new "disbursed" reporting site must use the entries table, or the reports drift apart again.
+- **Don't filter `is_active` for reporting** — it mirrors loan status (on_hold/cancelled → 0), so filtering would silently drop on-hold loans' historical disbursements. Only `deleted_at` matters.
+- **Date-window vs DATE column caution (SQLite)**: comparing a bare DATE string against a datetime string bound (`'2026-07-05' >= '2026-07-05 00:00:00'`) is FALSE under SQLite's lexicographic compare. Bind `->toDateString()` values (or use `whereDate`) when the column is DATE.
+- Coverage check that made this safe: every stage-completed disbursement loan already has mirror entries (63/63) and no entry has a NULL date — verified on live MySQL before switching semantics.
+
+## Duplicate-name conditional inputs break SHF.validateForm (2026-07-14)
+
+- **Symptom**: user create with role=bank_employee showed "City is required" / "Bank is required" even with both selected. Cause: `_form.blade.php` renders `assigned_locations[]` twice (single-city `<select>` + hidden multi-location checkboxes) and `assigned_banks[]` twice (select + checkboxes). `validateForm`'s `$field.is(':checkbox')` is true if ANY element of the mixed set is a checkbox, so it read the (hidden, unchecked) checkbox group → val always `''` → required always failed.
+- **Fix (two layers)**: `validateForm` (BOTH copies — `shf-app.js` + `shf-newtheme.js`, keep identical) now filters `$field.not(':disabled')` since disabled fields never submit; and `user-form.js` disables the inactive variant of every duplicated-name conditional field on role change + initial pass (it already did this for banks "so they don't post stray values" — locations were missed).
+- **Rule**: any form with role/state-conditional inputs sharing a `name` must `prop('disabled', ...)` the hidden variant, not just `display:none` it — for both validation and stray-POST reasons.
+- **Verification pattern**: headless Chrome harness (`chrome --headless=new --allow-file-access-from-files --virtual-time-budget=3000 --dump-dom file://…`) loading the REAL vendor jQuery + real production JS + replica markup, assertions written into a `<pre>`; ran it against git-HEAD copies to prove the harness fails pre-fix. Works when the chrome-devtools MCP profile is locked.
+
 ## Pipeline/Management reports — patterns (2026-07-07)
 
 - **Aggregate report math in PHP/Carbon, not raw SQL, when row counts allow** — the Phase-2 rewrite dropped the driver-aware `DATEDIFF` helpers entirely by fetching rows and computing diffs/groupings in PHP. Portable across MySQL/SQLite (testable) and avoids the affinity/dialect traps below. Only reach for SQL aggregation when the row volume actually demands it.
@@ -246,3 +268,20 @@ Patterns and corrections captured during development. Review at session start.
 
 ## Loan amounts — sanctioned/disbursed columns
 - **2026-06-23**: **Promoted `sanctioned_amount` + `disbursed_amount` to real `loan_details` columns** (were JSON-only in `stage_assignments.notes`). Migration `2026_06_23_185610_*` adds both (unsignedBigInteger nullable) + backfills (sanctioned ← docket notes `sanctioned_amount`, sanction-stage fallback; disbursed ← `disbursement_details.amount_disbursed`). Write-time sync at two choke-points: `LoanStageController::saveNotes()` (docket always wins; sanction fills only when column null) and `DisbursementService::processDisbursement()`. Listings (`LoanController::loanData`, dashboard `newthemeLoans`) now read the columns and render **separate Sanctioned/Disbursed columns** (`—` when null) instead of stacking under Amount. **Latent bug found+fixed:** the old loans-list `DIS-₹` line read `disbursement` stage-notes `disbursed_amount`, a key **never written in production** → always blank; real value was always `disbursement_details.amount_disbursed`. Accessors `formatted_sanctioned_amount`/`formatted_disbursed_amount` return null when empty. Test: `tests/Feature/LoanSanctionedDisbursedColumnsTest.php`. NOTE: migration not yet run on the live DB — env reports APPLICATION IN PRODUCTION, so `php artisan migrate` was declined; must be run (`--force` / deploy pipeline) before the columns exist in prod.
+
+---
+
+## "Missing" loans/quotations — display + create reliability (2026-07-07)
+
+Users reported records they created "going missing." Root causes were three distinct things; all addressed:
+
+- **Silent create-failure reported as success (biggest for quotations).** `QuotationController::generate` returned `success: true` with the DB error demoted to a `warning` whenever a PDF filename was present — so a rolled-back quotation looked saved. Fixed: the controller now returns 422 unless `$result['success']` AND a persisted `$quotation` exist; `create_quotation` activity logs only on a real row. Client `_create-script.blade.php` `catch` used to show a false "Saved offline" success (offline queueing is disabled → data lost); it now shows an honest bilingual error and claims nothing was saved.
+- **Default list filters hid records after a lifecycle change.** Loans index defaulted to `active` (hid completed/rejected/cancelled/on_hold); quotations index defaulted to `not_converted` + `not_cancelled` (a converted or cancelled quotation vanished). Changed the **front-end defaults only** (blades + `loans.js`/`quotations.js` fallbacks + Clear) to show ALL by default; the dashboard endpoints keep their own focused defaults (unchanged), so only the full list pages open up.
+- **Deleting a user destroyed their records.** `quotations.user_id` and `loan_details.created_by` were `cascadeOnDelete` (hard delete bypasses SoftDeletes). `UserController::destroy` guard now blocks deletion when the user has loans OR quotations; migration `2026_07_07_202305_null_on_delete_for_creator_foreign_keys` switches both FKs to `nullOnDelete` as a DB backstop (MySQL only — SQLite skips it; the app guard covers all paths).
+
+Also hardened creation:
+- **`LoanDetail::generateLoanNumber()`** now takes the monthly max NUMERICALLY (was string sort → `...-10000` ranked below `...-9999`, which broke all creation past 9999/month) and includes `withTrashed()` so soft-deleted numbers aren't reused. Concurrent collisions are retried via `LoanConversionService::runWithLoanNumberRetry()` (retries the transaction up to 3× on a `loan_number` unique violation); the already-converted guard was moved INSIDE the transaction with `lockForUpdate()`.
+- **Friendly errors instead of 500s**: `LoanConversionController::convert` now also catches `\Throwable`, and `LoanController::store` wraps `createDirectLoan` — both show "please try again" and `report()` the exception. `LoanController::destroy` now calls `authorizeView` so `delete_loan` alone can't delete out-of-scope loans.
+- **PAN uniqueness on MySQL** (`2026_07_07_202304_*`) replaced the plain unique (which caught soft-deleted rows → duplicate-key 500 for returning customers) with a STORED generated column `pan_active` (NULL when soft-deleted) + unique index. MySQL only; SQLite/Postgres already have the partial index.
+
+Tests: `LoanNumberGenerationTest`, `UserDeletionGuardTest`. NOTE: the three new migrations (`grant_view_reports_to_all_roles`, `fix_pan_unique...`, `null_on_delete...`) are NOT yet run on prod — env is APPLICATION IN PRODUCTION so `migrate` was declined; run via `--force`/deploy pipeline.

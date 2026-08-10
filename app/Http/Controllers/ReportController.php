@@ -4,16 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use App\Models\Branch;
+use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Models\Stage;
 use App\Models\User;
 use App\Services\NumberToWordsService;
+use App\Services\XlsxExportService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
@@ -48,14 +51,55 @@ class ReportController extends Controller
         $scope = $this->reportScope($user);
 
         if ($request->input('tab') === 'workload') {
-            return $this->workloadData($request, $scope);
+            return response()->json(['data' => $this->workloadRows($request, $scope)]);
         }
 
+        ['summary' => $summary, 'queued_parallel' => $queuedParallel, 'rows' => $rows] = $this->pipelineRawRows($request, $scope);
+
+        $data = $rows->map(fn (array $r) => [
+            'loan_number' => $r['loan_number'],
+            'stages_url' => route('loans.stages', $r['id']),
+            'customer_name' => $r['customer_name'],
+            'bank_product' => $r['bank_product'],
+            'branch_name' => $r['branch_name'] ?? '—',
+            'advisor_name' => $r['advisor_name'] ?? '—',
+            'loan_amount' => $r['loan_amount'] ? NumberToWordsService::formatCurrency($r['loan_amount']) : '—',
+            'loan_age_days' => $r['loan_age_days'],
+            'status' => $r['status'],
+            'stage_lines' => $r['stage_lines'],
+            'max_stage_days' => $r['max_stage_days'],
+            'sanctioned_amount' => $r['sanctioned_amount'] ? NumberToWordsService::formatCurrency($r['sanctioned_amount']) : '—',
+            'disbursed_amount' => $r['disbursed_amount'] ? NumberToWordsService::formatCurrency($r['disbursed_amount']) : '—',
+            'tat_days' => $r['tat_days'],
+            'status_reason' => $r['status_reason'],
+            'status_since' => $r['status_since'] ? date('d/m/Y', strtotime($r['status_since'])) : '—',
+            'rejected_stage' => $r['rejected_stage'],
+            'rejection_reason' => $r['rejection_reason'],
+            'rejected_at' => $r['rejected_at'] ? date('d/m/Y', strtotime($r['rejected_at'])) : '—',
+            'rejected_by' => $r['rejected_by'] ?? '—',
+        ]);
+
+        return response()->json([
+            'summary' => $summary,
+            'queued_parallel' => $queuedParallel,
+            'data' => $data->values(),
+        ]);
+    }
+
+    /**
+     * Shared core for the pipeline data + export endpoints: filtered, scoped,
+     * stage-filtered and stuck-sorted rows with display-agnostic values (raw
+     * int amounts, raw datetime strings, null fallbacks), plus the status-chip
+     * summary and the queued-parallel count (computed on the pre-stage-filter
+     * line set, exactly as the chips expect).
+     *
+     * @return array{summary: array<string, array{count: int, amount: string}>, queued_parallel: int, rows: Collection<int, array<string, mixed>>}
+     */
+    private function pipelineRawRows(Request $request, array $scope): array
+    {
         $base = DB::table('loan_details as ld')->whereNull('ld.deleted_at');
         $this->applyFilters($base, $request, 'ld');
-        if ($scope['type'] === 'branch') {
-            $base->whereIn('ld.branch_id', $scope['branch_ids']);
-        }
+        $this->applyScope($base, $scope);
 
         // Status chips (status filter NOT applied — chips show the whole set).
         $byStatus = (clone $base)
@@ -98,7 +142,7 @@ class ReportController extends Controller
         $linesByLoan = $lineLoanIds->isEmpty() ? collect() : $this->stageLines($lineLoanIds);
 
         $now = now();
-        $data = $loans->map(function ($r) use ($linesByLoan, $now) {
+        $rows = $loans->map(function ($r) use ($linesByLoan, $now) {
             $lines = ($linesByLoan[$r->id] ?? collect())->map(function ($l) use ($now) {
                 $pending = $l->status === 'pending';
                 $heldSince = $pending ? null : max(
@@ -119,57 +163,55 @@ class ReportController extends Controller
             })->values();
 
             return [
+                'id' => $r->id,
                 'loan_number' => $r->loan_number,
-                'stages_url' => route('loans.stages', $r->id),
                 'customer_name' => $r->customer_name,
                 'bank_product' => trim(($r->bank_name ?? '—').($r->product_name ? ' / '.$r->product_name : '')),
-                'branch_name' => $r->branch_name ?? '—',
-                'advisor_name' => $r->advisor_name ?? '—',
-                'loan_amount' => $r->loan_amount ? NumberToWordsService::formatCurrency($r->loan_amount) : '—',
+                'branch_name' => $r->branch_name,
+                'advisor_name' => $r->advisor_name,
+                'loan_amount' => $r->loan_amount !== null ? (int) $r->loan_amount : null,
                 'loan_age_days' => (int) Carbon::parse($r->created_at)->diffInDays($now),
                 'status' => $r->status,
                 'stage_lines' => $lines,
                 'max_stage_days' => (int) $lines->max(fn ($l) => $l['days_in_stage'] ?? 0),
-                'sanctioned_amount' => $r->sanctioned_amount ? NumberToWordsService::formatCurrency($r->sanctioned_amount) : '—',
-                'disbursed_amount' => $r->disbursed_amount ? NumberToWordsService::formatCurrency($r->disbursed_amount) : '—',
+                'sanctioned_amount' => $r->sanctioned_amount !== null ? (int) $r->sanctioned_amount : null,
+                'disbursed_amount' => $r->disbursed_amount !== null ? (int) $r->disbursed_amount : null,
                 'tat_days' => $r->status === 'completed' && $r->done_at ? (int) Carbon::parse($r->created_at)->diffInDays(Carbon::parse($r->done_at)) : null,
                 'status_reason' => $r->status_reason,
-                'status_since' => $r->status_changed_at ? date('d/m/Y', strtotime($r->status_changed_at)) : '—',
+                'status_since' => $r->status_changed_at,
                 'rejected_stage' => $r->rejected_stage,
                 'rejection_reason' => $r->rejection_reason,
-                'rejected_at' => $r->rejected_at ? date('d/m/Y', strtotime($r->rejected_at)) : '—',
-                'rejected_by' => $r->rejected_by_name ?? '—',
+                'rejected_at' => $r->rejected_at,
+                'rejected_by' => $r->rejected_by_name,
             ];
         });
 
         // Loan-level stage filters (applied on the computed lines).
         if ($request->filled('stage_key')) {
             $key = $request->stage_key;
-            $data = $data->filter(fn ($row) => collect($row['stage_lines'])->contains('stage_key', $key));
+            $rows = $rows->filter(fn ($row) => collect($row['stage_lines'])->contains('stage_key', $key));
         }
         if ($request->filled('stuck_days')) {
             $min = (int) $request->stuck_days;
-            $data = $data->filter(fn ($row) => $row['max_stage_days'] >= $min);
+            $rows = $rows->filter(fn ($row) => $row['max_stage_days'] >= $min);
         }
 
         // Most-stuck first for open loans; everything else stays newest-first.
         if (in_array($status, ['active', 'on_hold'], true)) {
-            $data = $data->sortByDesc('max_stage_days');
+            $rows = $rows->sortByDesc('max_stage_days');
         }
 
-        $queuedParallel = $linesByLoan->flatten(1)->where('status', 'pending')->count();
-
-        return response()->json([
+        return [
             'summary' => $summary,
-            'queued_parallel' => $queuedParallel,
-            'data' => $data->values(),
-        ]);
+            'queued_parallel' => $linesByLoan->flatten(1)->where('status', 'pending')->count(),
+            'rows' => $rows->values(),
+        ];
     }
 
     /**
      * Workload tab — in-progress stages of active loans grouped by holder.
      */
-    private function workloadData(Request $request, array $scope): JsonResponse
+    private function workloadRows(Request $request, array $scope): Collection
     {
         $q = DB::table('stage_assignments as sa')
             ->join('loan_details as ld', 'ld.id', '=', 'sa.loan_id')
@@ -180,9 +222,7 @@ class ReportController extends Controller
             ->whereNull('ld.deleted_at')
             ->select(['u.id as user_id', 'u.name as user_name', 's.stage_name_en', 'sa.started_at']);
         $this->applyFilters($q, $request, 'ld', 'sa.assigned_to');
-        if ($scope['type'] === 'branch') {
-            $q->whereIn('ld.branch_id', $scope['branch_ids']);
-        }
+        $this->applyScope($q, $scope);
 
         $now = now();
         $rows = $q->get()->map(function ($r) use ($now) {
@@ -191,7 +231,7 @@ class ReportController extends Controller
             return $r;
         });
 
-        $data = $rows->groupBy('user_id')->map(function (Collection $held) {
+        return $rows->groupBy('user_id')->map(function (Collection $held) {
             return [
                 'user_name' => $held->first()->user_name,
                 'held' => $held->count(),
@@ -203,15 +243,13 @@ class ReportController extends Controller
                     ->values()->implode(', '),
             ];
         })->sortByDesc('oldest_days')->values();
-
-        return response()->json(['data' => $data]);
     }
 
     // ── Management Summary ──
 
     public function management()
     {
-        $user = $this->authorizeReports();
+        $user = $this->authorizeManagement();
         $scope = $this->reportScope($user);
 
         [$branches] = $this->filterOptions($scope);
@@ -221,7 +259,7 @@ class ReportController extends Controller
 
     public function managementData(Request $request): JsonResponse
     {
-        $user = $this->authorizeReports();
+        $user = $this->authorizeManagement();
         $scope = $this->reportScope($user);
 
         $branchIds = null;
@@ -276,11 +314,27 @@ class ReportController extends Controller
             ->select(['ld.id', 'ld.created_at as loan_created_at', 'ld.sanctioned_amount', 'ld.disbursed_amount', 'sa.completed_at']);
 
         $sanctioned = $milestones('sanction')->get();
-        $disbursed = $milestones('disbursement')
+
+        // Disbursement counts from the per-tranche mirror table so partial
+        // disbursements (entries saved, stage not yet completed) are included
+        // and each tranche lands in its own period. Count = distinct loans
+        // with a tranche in the window; amount = sum of those tranches.
+        $disbursed = DB::table('disbursement_entries as de')
+            ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
             ->leftJoin('stage_assignments as ssa', function ($j) {
-                $j->on('ssa.loan_id', '=', 'sa.loan_id')->where('ssa.stage_key', 'sanction')->where('ssa.status', 'completed');
+                $j->on('ssa.loan_id', '=', 'de.loan_id')->where('ssa.stage_key', 'sanction')->where('ssa.status', 'completed');
             })
-            ->addSelect('ssa.completed_at as sanctioned_at')
+            ->whereNull('de.deleted_at')->whereNull('ld.deleted_at')
+            ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))
+            ->when($from, fn ($q) => $q->where('de.disbursement_date', '>=', $from->toDateString()))
+            ->when($to, fn ($q) => $q->where('de.disbursement_date', '<=', $to->toDateString()))
+            ->groupBy('de.loan_id')
+            ->select([
+                'de.loan_id',
+                DB::raw('MIN(de.disbursement_date) as first_disbursed_on'),
+                DB::raw('SUM(de.amount) as period_amount'),
+                DB::raw('MAX(ssa.completed_at) as sanctioned_at'),
+            ])
             ->get();
 
         $avgDays = function (Collection $rows, callable $fromCol, callable $toCol): ?float {
@@ -311,9 +365,9 @@ class ReportController extends Controller
             ],
             'disbursed' => [
                 'count' => $disbursed->count(),
-                'amount' => NumberToWordsService::formatCurrency((int) $disbursed->sum('disbursed_amount')),
+                'amount' => NumberToWordsService::formatCurrency((int) $disbursed->sum('period_amount')),
                 'pct' => $pct($disbursed->count(), $sanctioned->count()),
-                'avg_days' => $avgDays($disbursed, fn ($r) => $r->sanctioned_at, fn ($r) => $r->completed_at),
+                'avg_days' => $avgDays($disbursed, fn ($r) => $r->sanctioned_at, fn ($r) => $r->first_disbursed_on),
             ],
         ];
     }
@@ -347,7 +401,18 @@ class ReportController extends Controller
 
         $createdBuckets = $bucket($created, 'created_at', 'loan_amount');
         $sanctionedBuckets = $bucket($stageRows('sanction', 'sanctioned_amount'), 'completed_at', 'amount_col');
-        $disbursedBuckets = $bucket($stageRows('disbursement', 'disbursed_amount'), 'completed_at', 'amount_col');
+
+        // Disbursements bucket per tranche (partials included, each tranche in
+        // its own month); count = distinct loans disbursed that month.
+        $disbursedBuckets = DB::table('disbursement_entries as de')
+            ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
+            ->whereNull('de.deleted_at')->whereNull('ld.deleted_at')
+            ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))
+            ->where('de.disbursement_date', '>=', $start->toDateString())
+            ->select(['de.loan_id', 'de.disbursement_date', 'de.amount'])
+            ->get()
+            ->groupBy(fn ($r) => Carbon::parse($r->disbursement_date)->format('Y-m'))
+            ->map(fn ($g) => ['count' => $g->pluck('loan_id')->unique()->count(), 'amount' => (int) $g->sum('amount')]);
 
         $months = [];
         for ($i = 11; $i >= 0; $i--) {
@@ -513,40 +578,7 @@ class ReportController extends Controller
         $user = $this->authorizeReports();
         $scope = $this->reportScope($user);
 
-        $status = $request->input('status', 'sanctioned') === 'disbursed' ? 'disbursed' : 'sanctioned';
-
-        $query = DB::table('loan_details as ld')
-            ->leftJoin('users as adv', DB::raw('COALESCE(ld.assigned_advisor, ld.created_by)'), '=', DB::raw('adv.id'))
-            ->leftJoin('branches as br', 'br.id', '=', 'ld.branch_id')
-            ->leftJoin('products as p', 'p.id', '=', 'ld.product_id')
-            ->leftJoin('stage_assignments as ssa', function ($join) {
-                $join->on('ssa.loan_id', '=', 'ld.id')
-                    ->where('ssa.stage_key', 'sanction')
-                    ->where('ssa.status', 'completed');
-            })
-            ->leftJoin('stage_assignments as dsa', function ($join) {
-                $join->on('dsa.loan_id', '=', 'ld.id')
-                    ->where('dsa.stage_key', 'disbursement')
-                    ->where('dsa.status', 'completed');
-            })
-            ->whereNull('ld.deleted_at')
-            ->whereNotNull($status === 'disbursed' ? 'ld.disbursed_amount' : 'ld.sanctioned_amount')
-            ->select([
-                'ld.id', 'ld.loan_number', 'ld.customer_name', 'ld.bank_name',
-                'p.name as product_name', 'br.name as branch_name', 'adv.name as advisor_name',
-                'ld.loan_amount', 'ld.sanctioned_amount', 'ld.disbursed_amount', 'ld.status',
-                'ld.created_at',
-                'ssa.completed_at as sanctioned_on', 'dsa.completed_at as disbursed_on',
-            ]);
-
-        $this->applyFilters($query, $request, 'ld');
-
-        // Server-side scope — never trust the branch dropdown value.
-        if ($scope['type'] === 'branch') {
-            $query->whereIn('ld.branch_id', $scope['branch_ids']);
-        }
-
-        $rows = $query->orderByDesc('ld.created_at')->get();
+        $rows = $this->loanReportRows($request, $scope);
 
         $data = $rows->map(fn ($r) => [
             'loan_number' => $r->loan_number,
@@ -563,14 +595,275 @@ class ReportController extends Controller
             'status' => $r->status,
         ]);
 
+        $totals = $this->loanReportTotals($request, $scope);
+
         return response()->json([
             'data' => $data->values(),
             'totals' => [
                 'count' => $rows->count(),
-                'sanctioned' => NumberToWordsService::formatCurrency((int) $rows->sum('sanctioned_amount')),
-                'disbursed' => NumberToWordsService::formatCurrency((int) $rows->sum('disbursed_amount')),
+                'sanctioned' => NumberToWordsService::formatCurrency($totals['sanctioned']['amount']),
+                'sanctioned_count' => $totals['sanctioned']['count'],
+                'disbursed' => NumberToWordsService::formatCurrency($totals['disbursed']['amount']),
+                'disbursed_count' => $totals['disbursed']['count'],
             ],
         ]);
+    }
+
+    /**
+     * Period totals for the totals strip and export footer — counted by
+     * milestone completion date exactly like the management funnel, for BOTH
+     * milestones regardless of the status toggle. Same non-date filters,
+     * date window and scope as the row query.
+     *
+     * @return array{sanctioned: array{count: int, amount: int}, disbursed: array{count: int, amount: int}}
+     */
+    private function loanReportTotals(Request $request, array $scope): array
+    {
+        // Sanctioned: loans whose sanction stage completed in the window.
+        $sanctionedQuery = DB::table('loan_details as ld')
+            ->join('stage_assignments as msa', function ($join) {
+                $join->on('msa.loan_id', '=', 'ld.id')
+                    ->where('msa.stage_key', 'sanction')
+                    ->where('msa.status', 'completed');
+            })
+            ->whereNull('ld.deleted_at');
+        $this->applyFilters($sanctionedQuery, $request, 'ld', null, 'msa.completed_at');
+        $this->applyScope($sanctionedQuery, $scope);
+        $sanctioned = $sanctionedQuery->selectRaw('COUNT(*) as c, COALESCE(SUM(ld.sanctioned_amount), 0) as s')->first();
+
+        // Disbursed: per-tranche, so partial disbursements count and each
+        // tranche lands in its own period (management-funnel semantics).
+        $disbursedQuery = DB::table('disbursement_entries as de')
+            ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
+            ->whereNull('de.deleted_at')
+            ->whereNull('ld.deleted_at');
+        $this->applyFilters($disbursedQuery, $request, 'ld', null, 'de.disbursement_date');
+        $this->applyScope($disbursedQuery, $scope);
+        $disbursed = $disbursedQuery->selectRaw('COUNT(DISTINCT de.loan_id) as c, COALESCE(SUM(de.amount), 0) as s')->first();
+
+        return [
+            'sanctioned' => ['count' => (int) $sanctioned->c, 'amount' => (int) $sanctioned->s],
+            'disbursed' => ['count' => (int) $disbursed->c, 'amount' => (int) $disbursed->s],
+        ];
+    }
+
+    /**
+     * Shared core for the loan-report data + export endpoints: filtered,
+     * scoped, status-narrowed raw DB rows, newest first.
+     */
+    private function loanReportRows(Request $request, array $scope): Collection
+    {
+        $status = $request->input('status', 'sanctioned') === 'disbursed' ? 'disbursed' : 'sanctioned';
+
+        // Sanctioned = completed sanction stage (management-funnel rule; the
+        // amount may still be NULL until docket phase 2 and renders "—").
+        // Disbursed = has tranches in `disbursement_entries`, so partial
+        // disbursements count before the stage completes. "Disbursed On" is
+        // the latest tranche date in both views.
+        $entryAgg = DB::table('disbursement_entries')
+            ->whereNull('deleted_at')
+            ->groupBy('loan_id')
+            ->select(['loan_id', DB::raw('MAX(disbursement_date) as last_disbursed_on')]);
+
+        $query = DB::table('loan_details as ld')
+            ->leftJoin('users as adv', DB::raw('COALESCE(ld.assigned_advisor, ld.created_by)'), '=', DB::raw('adv.id'))
+            ->leftJoin('branches as br', 'br.id', '=', 'ld.branch_id')
+            ->leftJoin('products as p', 'p.id', '=', 'ld.product_id')
+            ->leftJoin('stage_assignments as ssa', function ($join) {
+                $join->on('ssa.loan_id', '=', 'ld.id')
+                    ->where('ssa.stage_key', 'sanction')
+                    ->where('ssa.status', 'completed');
+            })
+            ->whereNull('ld.deleted_at')
+            ->select([
+                'ld.id', 'ld.loan_number', 'ld.customer_name', 'ld.bank_name',
+                'p.name as product_name', 'br.name as branch_name', 'adv.name as advisor_name',
+                'ld.loan_amount', 'ld.sanctioned_amount', 'ld.disbursed_amount', 'ld.status',
+                'ld.created_at',
+                'ssa.completed_at as sanctioned_on', 'dea.last_disbursed_on as disbursed_on',
+            ]);
+
+        // Period filter runs on the milestone date (sanction completion, or
+        // tranche dates for disbursed), matching the management funnel's
+        // semantics — NOT on when the loan was created.
+        if ($status === 'disbursed') {
+            $entryAgg
+                ->when($request->filled('date_from'), fn ($q) => $q->whereDate('disbursement_date', '>=', $request->date_from))
+                ->when($request->filled('date_to'), fn ($q) => $q->whereDate('disbursement_date', '<=', $request->date_to));
+            $query->joinSub($entryAgg, 'dea', 'dea.loan_id', '=', 'ld.id');
+            $this->applyFilters($query, $request, 'ld', null, false); // dates live in the aggregate
+            $orderColumn = 'dea.last_disbursed_on';
+        } else {
+            $query->leftJoinSub($entryAgg, 'dea', 'dea.loan_id', '=', 'ld.id')
+                ->whereNotNull('ssa.completed_at');
+            $this->applyFilters($query, $request, 'ld', null, 'ssa.completed_at');
+            $orderColumn = 'ssa.completed_at';
+        }
+
+        // Server-side scope — never trust the branch/user dropdown values.
+        $this->applyScope($query, $scope);
+
+        return $query->orderByDesc($orderColumn)->orderByDesc('ld.created_at')->get();
+    }
+
+    // ── Excel exports ──
+
+    /**
+     * Pipeline export — same gate, scope, filters and row set as
+     * pipelineData (all matching records, no pagination). Exports the
+     * active tab: loans (stage lines flattened to one wrapped cell) or
+     * workload-by-user. Amounts/dates are raw so Excel gets real cells.
+     */
+    public function pipelineExport(Request $request, XlsxExportService $xlsx): BinaryFileResponse
+    {
+        $user = $this->authorizeReports();
+        $scope = $this->reportScope($user);
+        $date = now()->format('Y-m-d');
+
+        if ($request->input('tab') === 'workload') {
+            $rows = $this->workloadRows($request, $scope)->map(fn (array $r) => [
+                $r['user_name'], $r['held'], $r['oldest_days'], $r['avg_days'], $r['stuck'], $r['stages'],
+            ]);
+
+            return $xlsx->download(
+                "workload-by-user-{$date}.xlsx",
+                ['User', 'Stages Held', 'Oldest (days)', 'Average (days)', 'Stuck > 7d', 'Stages'],
+                $rows,
+                [
+                    1 => XlsxExportService::TYPE_NUMBER,
+                    2 => XlsxExportService::TYPE_NUMBER,
+                    3 => XlsxExportService::TYPE_DECIMAL,
+                    4 => XlsxExportService::TYPE_NUMBER,
+                    5 => XlsxExportService::TYPE_WRAP,
+                ],
+                [],
+                'Workload',
+            );
+        }
+
+        $rows = $this->pipelineRawRows($request, $scope)['rows']->map(fn (array $r) => [
+            $r['loan_number'],
+            $r['customer_name'],
+            $r['bank_product'],
+            $r['branch_name'],
+            $r['advisor_name'],
+            $r['loan_amount'],
+            $r['loan_age_days'],
+            str_replace('_', ' ', (string) $r['status']),
+            $this->flattenStageLines($r['stage_lines']),
+            $r['max_stage_days'] ?: null,
+            $r['sanctioned_amount'],
+            $r['disbursed_amount'],
+            $r['tat_days'],
+            $r['status_reason'],
+            $r['status_since'],
+            $r['rejected_stage'],
+            $r['rejection_reason'],
+            $r['rejected_by'],
+            $r['rejected_at'],
+        ]);
+
+        $status = $request->input('status', 'active');
+
+        return $xlsx->download(
+            "loan-pipeline-{$status}-{$date}.xlsx",
+            ['Loan #', 'Customer', 'Bank / Product', 'Branch', 'Advisor', 'Loan Amount', 'Age (days)', 'Status',
+                'Current Stage(s)', 'Max Stage Days', 'Sanctioned', 'Disbursed', 'TAT (days)', 'Status Reason',
+                'Status Since', 'Rejected At Stage', 'Rejection Reason', 'Rejected By', 'Rejected On'],
+            $rows,
+            [
+                5 => XlsxExportService::TYPE_NUMBER,
+                6 => XlsxExportService::TYPE_NUMBER,
+                8 => XlsxExportService::TYPE_WRAP,
+                9 => XlsxExportService::TYPE_NUMBER,
+                10 => XlsxExportService::TYPE_NUMBER,
+                11 => XlsxExportService::TYPE_NUMBER,
+                12 => XlsxExportService::TYPE_NUMBER,
+                14 => XlsxExportService::TYPE_DATE,
+                18 => XlsxExportService::TYPE_DATE,
+            ],
+            [],
+            'Pipeline',
+        );
+    }
+
+    /**
+     * Loan report export — same gate, scope, filters and full row set as
+     * loanReportData, plus a bold totals footer with raw numeric sums.
+     */
+    public function loanReportExport(Request $request, XlsxExportService $xlsx): BinaryFileResponse
+    {
+        $user = $this->authorizeReports();
+        $scope = $this->reportScope($user);
+
+        $rows = $this->loanReportRows($request, $scope);
+
+        $data = $rows->map(fn ($r) => [
+            $r->loan_number,
+            $r->customer_name,
+            trim(($r->bank_name ?? '—').($r->product_name ? ' / '.$r->product_name : '')),
+            $r->branch_name,
+            $r->advisor_name,
+            $r->loan_amount !== null ? (int) $r->loan_amount : null,
+            $r->sanctioned_amount !== null ? (int) $r->sanctioned_amount : null,
+            $r->disbursed_amount !== null ? (int) $r->disbursed_amount : null,
+            $r->sanctioned_on,
+            $r->disbursed_on,
+            str_replace('_', ' ', (string) $r->status),
+        ]);
+
+        $status = $request->input('status', 'sanctioned') === 'disbursed' ? 'disbursed' : 'sanctioned';
+
+        // Footer carries the PERIOD totals (milestone-dated, both milestones)
+        // so the export matches the management funnel, not just the row sums.
+        $totals = $this->loanReportTotals($request, $scope);
+
+        return $xlsx->download(
+            'loan-report-'.$status.'-'.now()->format('Y-m-d').'.xlsx',
+            ['Loan #', 'Customer', 'Bank / Product', 'Branch', 'Advisor', 'Loan Amount',
+                'Sanctioned', 'Disbursed', 'Sanctioned On', 'Disbursed On', 'Status'],
+            $data,
+            [
+                5 => XlsxExportService::TYPE_NUMBER,
+                6 => XlsxExportService::TYPE_NUMBER,
+                7 => XlsxExportService::TYPE_NUMBER,
+                8 => XlsxExportService::TYPE_DATE,
+                9 => XlsxExportService::TYPE_DATE,
+            ],
+            [[
+                'Period totals — sanctioned '.$totals['sanctioned']['count'].' / disbursed '.$totals['disbursed']['count'].' loans',
+                null, null, null, null, null,
+                $totals['sanctioned']['amount'], $totals['disbursed']['amount'], null, null, null,
+            ]],
+            'Loan Report',
+        );
+    }
+
+    /**
+     * One text line per open stage, for the wrapped "Current Stage(s)" cell.
+     *
+     * @param  Collection<int, array<string, mixed>>  $lines
+     */
+    private function flattenStageLines(Collection $lines): string
+    {
+        return $lines->map(function (array $l) {
+            if ($l['kind'] === 'pending') {
+                $queued = $l['queued_days'] !== null ? "queued {$l['queued_days']}d" : 'queued';
+
+                return "{$l['stage_name']} — ".($l['owner'] ?? 'unassigned')." — {$queued}";
+            }
+
+            $line = "{$l['stage_name']} — ".($l['owner'] ?? '—').' — '
+                .($l['days_in_stage'] !== null ? $l['days_in_stage'].'d' : '—');
+            if ($l['days_with_owner'] !== null && $l['days_with_owner'] !== $l['days_in_stage']) {
+                $line .= " ({$l['days_with_owner']}d with owner)";
+            }
+            if (! empty($l['open_queries'])) {
+                $line .= " [{$l['open_queries']} open queries]";
+            }
+
+            return $line;
+        })->implode("\n");
     }
 
     // ── Shared helpers ──
@@ -654,23 +947,34 @@ class ReportController extends Controller
             $users = User::where('is_active', true)
                 ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['loan_advisor', 'branch_manager', 'bdh', 'bank_employee', 'office_employee']))
                 ->orderBy('name')->get();
-        } else {
+        } elseif ($scope['type'] === 'branch') {
             $branches = Branch::active()->whereIn('id', $scope['branch_ids'])->orderBy('name')->get();
             $users = User::where('is_active', true)
                 ->whereHas('branches', fn ($q) => $q->whereIn('branches.id', $scope['branch_ids']))
                 ->orderBy('name')->get();
+        } else {
+            // Own scope — the branch/user filters are hidden, so no options needed.
+            $branches = collect();
+            $users = collect();
         }
 
         return [$branches, $users];
     }
 
-    private function applyFilters($query, Request $request, string $loanAlias, ?string $userColumn = null): void
+    /**
+     * @param  string|false|null  $dateColumn  column for the date window;
+     *                                         null = "{alias}.created_at",
+     *                                         false = caller applies dates itself
+     */
+    private function applyFilters($query, Request $request, string $loanAlias, ?string $userColumn = null, string|false|null $dateColumn = null): void
     {
-        if ($request->filled('date_from')) {
-            $query->whereDate("{$loanAlias}.created_at", '>=', $request->date_from);
+        $dateColumn ??= "{$loanAlias}.created_at";
+
+        if ($dateColumn !== false && $request->filled('date_from')) {
+            $query->whereDate($dateColumn, '>=', $request->date_from);
         }
-        if ($request->filled('date_to')) {
-            $query->whereDate("{$loanAlias}.created_at", '<=', $request->date_to);
+        if ($dateColumn !== false && $request->filled('date_to')) {
+            $query->whereDate($dateColumn, '<=', $request->date_to);
         }
         if ($request->filled('bank_id')) {
             $query->where("{$loanAlias}.bank_id", $request->bank_id);
@@ -696,19 +1000,38 @@ class ReportController extends Controller
     }
 
     /**
-     * Role gate for all report pages — role-based, no permission slug.
+     * Gate for the Pipeline + Loan Report pages — open to any user holding
+     * the view_reports permission (data is then narrowed by reportScope).
      */
     private function authorizeReports(): User
     {
         $user = auth()->user();
-        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin', 'bdh', 'branch_manager']), 403);
+        abort_unless($user && $user->hasPermission('view_reports'), 403);
 
         return $user;
     }
 
     /**
-     * Report data scope. BDH sees ALL branches (explicit requirement —
-     * see report_plan.md).
+     * Gate for the Management Summary — restricted to full-scope supervisory
+     * roles (super_admin, admin, bdh). Branch managers and below are excluded.
+     */
+    private function authorizeManagement(): User
+    {
+        $user = auth()->user();
+        abort_unless($user && ($user->isSuperAdmin() || $user->hasAnyRole(['admin', 'bdh'])), 403);
+
+        return $user;
+    }
+
+    /**
+     * Report data scope:
+     *   - all:    super_admin / admin / bdh — every branch.
+     *   - branch: branch_manager — loans in their assigned branches.
+     *   - own:    everyone else — only loans they have touched (same rule as
+     *             LoanDetail::scopeVisibleTo: created, advisor, stage-assigned,
+     *             or in transfer history).
+     *
+     * @return array{type: string, branch_ids?: array<int>, loan_ids?: array<int>}
      */
     private function reportScope(User $user): array
     {
@@ -716,7 +1039,27 @@ class ReportController extends Controller
             return ['type' => 'all'];
         }
 
-        // branch_manager (the only remaining role past the gate)
-        return ['type' => 'branch', 'branch_ids' => $user->branches()->pluck('branches.id')->toArray()];
+        if ($user->hasRole('branch_manager')) {
+            return ['type' => 'branch', 'branch_ids' => $user->branches()->pluck('branches.id')->toArray()];
+        }
+
+        return ['type' => 'own', 'loan_ids' => LoanDetail::visibleTo($user)->pluck('id')->all()];
+    }
+
+    /**
+     * Constrain a report query to the caller's scope. Every report query
+     * aliases loan_details as `ld`, so one loan-id / branch-id filter covers
+     * them all. 'all' scope adds nothing.
+     *
+     * @param  Builder  $query
+     * @param  array{type: string, branch_ids?: array<int>, loan_ids?: array<int>}  $scope
+     */
+    private function applyScope($query, array $scope, string $alias = 'ld'): void
+    {
+        if ($scope['type'] === 'branch') {
+            $query->whereIn("{$alias}.branch_id", $scope['branch_ids']);
+        } elseif ($scope['type'] === 'own') {
+            $query->whereIn("{$alias}.id", $scope['loan_ids']);
+        }
     }
 }

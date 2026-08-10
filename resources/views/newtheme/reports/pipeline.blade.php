@@ -49,6 +49,10 @@
                     Filters
                 </div>
                 <div class="actions">
+                    <button type="button" class="btn" id="plExport">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/></svg>
+                        Export
+                    </button>
                     <button type="button" class="btn" id="plClear">Clear</button>
                     <button type="button" class="btn primary" id="plApply">
                         <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
@@ -97,24 +101,26 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="pl-field">
-                        <label for="filterBranch" class="pl-lbl">Branch</label>
-                        <select id="filterBranch" class="input pl-input">
-                            <option value="">All Branches</option>
-                            @foreach ($branches as $branch)
-                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="pl-field">
-                        <label for="filterUser" class="pl-lbl">User (Advisor)</label>
-                        <select id="filterUser" class="input pl-input">
-                            <option value="">All Users</option>
-                            @foreach ($users as $reportUser)
-                                <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @if ($scope['type'] !== 'own')
+                        <div class="pl-field">
+                            <label for="filterBranch" class="pl-lbl">Branch</label>
+                            <select id="filterBranch" class="input pl-input">
+                                <option value="">All Branches</option>
+                                @foreach ($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="pl-field">
+                            <label for="filterUser" class="pl-lbl">User (Advisor)</label>
+                            <select id="filterUser" class="input pl-input">
+                                <option value="">All Users</option>
+                                @foreach ($users as $reportUser)
+                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div class="pl-field pl-active-only">
                         <label for="filterStage" class="pl-lbl">Stage</label>
                         <select id="filterStage" class="input pl-input">
@@ -165,6 +171,7 @@
     <script>
         window.__PL = {
             dataUrl: @json(route('reports.pipeline.data')),
+            exportUrl: @json(route('reports.pipeline.export')),
         };
     </script>
     <script src="{{ asset('newtheme/pages/pipeline.js') }}?v={{ config('app.shf_version') }}"></script>

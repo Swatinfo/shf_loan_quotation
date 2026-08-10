@@ -140,6 +140,27 @@ Static-style helpers for Indian numbering + bilingual words.
 
 ---
 
+## XlsxExportService
+
+Self-contained `.xlsx` writer built on PHP's `ZipArchive` — **no composer
+spreadsheet package**. Used by `ReportController@pipelineExport` /
+`@loanReportExport` (2026-07-08). Single sheet, inline strings (no
+sharedStrings part), bold header row, optional bold footer rows.
+
+### `download(string $filename, array $headers, iterable $rows, array $columnTypes = [], array $footerRows = [], string $sheetName = 'Report'): BinaryFileResponse`
+
+- `$rows`: arrays of cell values; `null`/`''` → empty cell.
+- `$columnTypes`: column index → `TYPE_*` constant (default `TYPE_STRING`):
+  - `TYPE_NUMBER` — raw numeric cell, `#,##0` display (amounts, day counts)
+  - `TYPE_DECIMAL` — numeric cell, general format (keeps decimals, e.g. averages)
+  - `TYPE_DATE` — real Excel date serial from a `Y-m-d(...)` string, shown `dd/mm/yyyy` (UTC-midnight parse, never TZ-shifted)
+  - `TYPE_WRAP` — multi-line text, wrapped + top-aligned, wide column (stage lines)
+- Escapes with `ENT_XML1` + strips XML-invalid control chars (prevents Excel
+  "repair" prompts); sheet name sanitized to Excel's 31-char/no-`\/:*?[]` rule.
+- Writes to a temp file, returns `response()->download(...)->deleteFileAfterSend(true)`.
+
+---
+
 ## CustomerService
 
 `app/Services/CustomerService.php` — customer identity by PAN + per-loan KYC snapshots. Master is created once per PAN and never updated; each loan gets a `customer_kyc_details` row. See `.docs/customers.md`.
@@ -157,11 +178,13 @@ Constructor: `LoanStageService`, `LoanDocumentService`, `CustomerService`.
 
 ### `convertFromQuotation(Quotation, int $bankIndex, array $extra = []): LoanDetail`
 
+The transaction runs through `runWithLoanNumberRetry()` — retries up to 3× on a `loan_number` unique-constraint collision (concurrent conversions), so both succeed instead of one 500-ing.
+
 Inside DB transaction:
-1. Guard if already converted
+1. Re-check the already-converted guard under `lockForUpdate()` (blocks double-submit conversion)
 2. Resolve customer by PAN via `CustomerService::resolveMasterByPan` (reuse or create once — never updates an existing master), then `recordKyc()` and link `customer_kyc_details_id`
 3. Build `LoanDetail` (status=active, current_stage=document_collection)
-4. `generateLoanNumber()` → `SHF-YYYYMM-NNNN`
+4. `generateLoanNumber()` → `SHF-YYYYMM-NNNN` (monthly max compared NUMERICALLY incl. `withTrashed()`; string sort would break past 9999)
 5. Freeze `workflow_config` via `LoanStageService::buildWorkflowSnapshot()`
 6. Populate documents via `LoanDocumentService::populateFromQuotation`
 7. `initializeStages` → all stage_assignments
@@ -249,6 +272,12 @@ Orchestration logic:
 ### Progress
 
 `recalculateProgress(LoanDetail): LoanProgress` — rebuilds counts + workflow_snapshot.
+
+### Stage reset
+
+`resetToStage(LoanDetail, string $stageKey, ?int $phase = null, ?string $variant = null): array` — rewinds a loan to `$stageKey`: target → `in_progress` (assignee via `resolveResetUsers`), all later stages → `pending`, re-opens `parallel_processing` when the target is a sub-stage, clears dependent data (disbursement/valuation rows, `application_number`, `expected_docket_date`, `is_sanctioned`, each only when the target is at/before its producing stage), then `recalculateProgress`. Phased stages default to entry phase 1. Returns log lines. Destructive/irreversible. Shared by the `loan:set-stage` command and the email-gated `LoanStageController@resetStage` web action (`User::canResetLoanStages()` → `config('app.stage_reset_emails')`).
+
+`resolveResetUsers(LoanDetail): array` — `{task_owner, bank_employee, office_employee, branch_manager, bdh}` default user IDs for the loan (product-stage → bank/branch default → any active fallback).
 
 ---
 
@@ -427,7 +456,8 @@ Merges 9+ event types into a single chronological collection (each entry: `{type
 
 ## Conventions
 
-- **Transactions**: `convertFromQuotation`, `createDirectLoan`, `processDisbursement`, `generate` (DB-save phase) — wrapped in `DB::transaction`.
+- **Transactions**: `convertFromQuotation`, `createDirectLoan`, `processDisbursement`, `generate` (DB-save phase) — wrapped in `DB::transaction`. Loan creation goes through `runWithLoanNumberRetry()` (retries on `loan_number` collisions).
+- **Create-failure contract**: `QuotationService::generate` returns `['success'=>true,'quotation'=>…]` only when the row persists; on any failure it returns `['success'=>false,'error'=>…]`. `QuotationController::generate` returns **422 on any non-success** — never a success response for an unsaved quotation (a rendered PDF alone is not a saved quotation).
 - **Activity logs**: services log via `ActivityLog::log($action, $subject, $properties)` after write.
 - **Notifications**: sent inside the same request; no queue.
 - **Cache invalidation**: `PermissionService` caches are the only service-level cache; `Role::clearAdvisorCache()` for advisor-eligible lookups.

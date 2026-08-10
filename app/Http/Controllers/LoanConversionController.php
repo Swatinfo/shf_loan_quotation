@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\User;
 use App\Services\LoanConversionService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class LoanConversionController extends Controller
@@ -39,7 +41,7 @@ class LoanConversionController extends Controller
         $advisors = User::advisorEligible()->with(['branches', 'locations'])->orderBy('name')->get();
 
         // Map quotation bank names to banks table IDs for product filtering
-        $allBanks = \App\Models\Bank::active()->get();
+        $allBanks = Bank::active()->get();
         $bankNameToId = $allBanks->pluck('id', 'name')->toArray();
 
         // Branch comes from quotation (locked) or fallback to user's default
@@ -77,7 +79,7 @@ class LoanConversionController extends Controller
         ]);
 
         // Convert date format for storage
-        $validated['date_of_birth'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['date_of_birth'])->toDateString();
+        $validated['date_of_birth'] = Carbon::createFromFormat('d/m/Y', $validated['date_of_birth'])->toDateString();
         $validated['pan_number'] = strtoupper($validated['pan_number']);
 
         // Use quotation's branch if available, otherwise use form input
@@ -94,7 +96,15 @@ class LoanConversionController extends Controller
             return redirect()->route('loans.show', $loan)
                 ->with('success', 'Quotation converted to Loan #'.$loan->loan_number);
         } catch (\RuntimeException $e) {
+            // Business-rule failures carry a user-facing message.
             return redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            // DB/unexpected failure — surface a clear error instead of a 500 so
+            // the user knows the loan was NOT created and can retry.
+            report($e);
+
+            return redirect()->back()->withInput()
+                ->with('error', 'Could not convert the quotation to a loan. Please try again.');
         }
     }
 }

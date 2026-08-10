@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use App\Models\User;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -41,17 +42,25 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        ActivityLog::log('logout', Auth::user(), [
-            'name' => Auth::user()->name,
-        ]);
 
-        $this->dropCurrentDeviceToken($request);
+        $user = Auth::user();
+
+        if ($user) {
+            ActivityLog::log('logout', $user, [
+                'name' => $user->name,
+            ]);
+
+            $this->dropCurrentDeviceToken($request, $user);
+        }
+
 
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+
 
         return redirect('/');
     }
@@ -62,10 +71,13 @@ class AuthenticatedSessionController extends Controller
      * token so the logged-out user stops receiving native pushes on it. Scoped
      * to the current user + exact token so other devices stay registered.
      */
-    private function dropCurrentDeviceToken(Request $request): void
+    private function dropCurrentDeviceToken(Request $request, User $user): void
     {
         $token = $request->input('device_token');
-        if ($token && ($user = Auth::user())) {
+        // if ($token && ($user = Auth::user())) {
+        //     $user->deviceTokens()->where('token', $token)->delete();
+        // }
+        if ($token) {
             $user->deviceTokens()->where('token', $token)->delete();
         }
     }

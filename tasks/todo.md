@@ -4,6 +4,85 @@ Current and completed tasks. Updated as work progresses.
 
 ---
 
+## DONE: Email-gated loan stage reset — web + CLI (2026-07-24)
+
+Rewind a loan to an earlier stage. Engine extracted from `LoanSetStageCommand` into `LoanStageService::resetToStage()` so CLI + web share one implementation. Access gated to specific email accounts (NOT role/permission).
+
+- [x] `LoanStageService::resetToStage($loan,$stageKey,?$phase,?$variant)` + `resolveResetUsers()` + ported reset helpers (target→in_progress, later stages→pending, re-open parallel parent, clear disbursement/valuation/app_number/expected_docket_date/is_sanctioned, recalc progress). Phased stages default to entry phase 1.
+- [x] `LoanSetStageCommand` → thin wrapper: keeps interactive menu + prior-stage validation; delegates mutation to the service. Added non-interactive args `loan:set-stage {loan} {stage} [--phase=] [--variant=] [--force]`.
+- [x] Gate: `config('app.stage_reset_emails')` (default superadmin@shfworld.com,admin@shfworld.com; `STAGE_RESET_EMAILS` env override) + `User::canResetLoanStages()`. Even super_admin denied unless email listed.
+- [x] Web: `POST /loans/{loan}/stages/reset` (`loans.stages.reset`, outside permission group) → `LoanStageController@resetStage` (email abort_unless + stage_key validation + `reset_loan_stage` activity log). Red "Reset Stage" button + SweetAlert stage picker in `newtheme/loans/stages.blade.php` (gated, uses global Swal + SHF.loader). No 4400-line body touched.
+- [x] Tests: `LoanStageResetTest` 5/5 (allowed reset, clears application_number, super_admin-role-wrong-email 403, unknown stage 422, CLI non-interactive). Regression: StageTransition/Escalation/QueryResolve/DateFilter 32/32. Pint clean; blades compile.
+- [x] Docs: `.docs/workflow-developer.md` (reset section), `.claude/services-reference.md`, `.claude/routes-reference.md`, `.env.example`. No asset version bump (server-rendered blade only).
+- [ ] **PENDING (server)**: deploy `LoanStageService.php`, `LoanSetStageCommand.php`, `LoanStageController.php`, `User.php`, `config/app.php`, `routes/web.php`, `loans/stages.blade.php`, tests. Optionally set `STAGE_RESET_EMAILS` in server `.env`; `php artisan config:clear && route:clear && view:clear`.
+
+## DONE: Loan-list date filter → stage-completion activity (2026-07-24)
+
+Loan-list date range filtered on `loan_details.created_at` → loan 96 (SHF-202606-0023, created 17 Jun, OTC completed 23 Jul) was hidden from a July window. Now the date range keys on stage completion.
+
+- [x] `LoanController::loanData()` — replaced `created_at` date blocks + old "currently at stage" match. **Stage selected** → `whereHas('stageAssignments', stage_key AND status='completed')` with date bounds on that stage's `completed_at` (one closure; works for parent + sub-stage keys). **Date only** → correlated subquery on `MAX(completed_at)` (latest stage completion), `DATE()`-wrapped, MySQL+SQLite portable.
+- [x] `tests/Feature/LoanStageDateFilterTest.php` — 4 tests (loan-96 stage+date match, out-of-range exclusion, stage-only completed vs in-progress, date-only latest-completion). Green. Regression: LoanProductFilterTest + LoanListingTaskOwnerTest 7/7.
+- [x] Pint clean; MySQL sanity: both new queries return loan 96 for July window. Docs synced (`.docs/loans.md` `stage` + `date_from/date_to` filter notes).
+- [x] No new dropdown added (user confirmed: drop the active/completed control). Stage filter meaning changed from "currently at stage" → "stage completed".
+
+## DONE: Entry-based "disbursed" in management + loan reports (2026-07-14)
+
+Partial disbursements (entries saved, stage not completed) now count as disbursed in BOTH reports. Rule: disbursed count = distinct loans with ≥1 active `disbursement_entries` row dated in period; disbursed amount = SUM of in-window tranche amounts (each tranche in its own month). Sanctioned stays stage-based. Coverage verified: all 63 stage-completed loans have mirror entries, 0 gaps, 0 NULL entry dates.
+
+- [x] 1. Management funnel: `$disbursed` → per-loan entry aggregate (count / period tranche sum / avg days = sanction → first tranche). Date bounds via `toDateString()` (SQLite string-compare safe).
+- [x] 2. Management trend: disbursed buckets from entries (distinct loans + tranche sums per month).
+- [x] 3. `loanReportTotals()` disbursed side → entry aggregate (COUNT DISTINCT loan + SUM amount, whereDate window).
+- [x] 4. `loanReportRows()`: disbursed view = INNER joinSub on windowed entry aggregate; sanctioned view LEFT joins the unwindowed aggregate; `disbursed_on` = MAX tranche date in both views (dsa join removed); `applyFilters` accepts `false` to skip dates.
+- [x] 5. Tests: shared `addDisbursementEntry()` helper ×3 files; ManagementReportTest funnel on midnight-aligned dates + 2-tranche partial; trend asserts tranche bucket; LoanReportTest new cross-period partial test (July window: count 1 / ₹2L; June: ₹3L). 47/47 green.
+- [x] 6. Pint pass, docs synced (.docs/loans.md). MySQL July: both reports now 10 disbursed / ₹3,45,03,551 — partial SHF-202606-0008 (₹24L tranche 6 Jul, stage open) now included; SHF-202605-0043 + SHF-202606-0026 (stages completed 14 Jul, tranches dated 29-30 Jun) correctly moved to June.
+- [ ] **PENDING (server)**: deploy `ReportController.php` + `tests/Feature/{LoanReportTest,ReportExportTest,ManagementReportTest}.php` (same batch as earlier today; no new asset changes beyond the existing `SHF_VERSION=20260714100000` bump).
+
+## DONE: Loan report = management figures + period totals (2026-07-14)
+
+Row inclusion switched from `whereNotNull(amount)` to completed-milestone-stage (matches management funnel counts; amount renders "—" until docket P2 fills it). Totals strip/export footer show PERIOD totals (both milestones, milestone-dated, filter+scope aware) — independent of the status toggle and of which rows are listed.
+
+- [x] 1. `loanReportRows()` — rows included by `whereNotNull(milestone completed_at)` instead of amount.
+- [x] 2. New `loanReportTotals()` — two milestone aggregates (count + ₹ sum), same filters/scope/date semantics as rows.
+- [x] 3. `loanReportData()` totals payload gains `sanctioned_count`/`disbursed_count`; export footer = `Period totals — sanctioned N / disbursed M loans` + period sums.
+- [x] 4. Blade label ids + `loan-report.js` renders milestone counts in the totals card labels.
+- [x] 5. Tests: LoanReportTest reworked (all loans get completed milestone stages; totals test now proves disbursed total includes non-listed loans; new NULL-amount test) + ReportExportTest footer/status/bulk tests updated. 46/46 green across 4 report suites.
+- [x] 6. Pint pass, `node --check` clean, docs synced (.docs/loans.md). MySQL sanity: July = 11/11 both reports; totals ₹2,83,50,000 / ₹4,20,68,799 identical to management funnel.
+- [ ] **PENDING (server)**: deploy `ReportController.php`, `reports/loan-report.blade.php`, `pages/loan-report.js`, `tests/Feature/{LoanReportTest,ReportExportTest}.php` (same `SHF_VERSION=20260714100000` batch; `config:clear && view:clear`).
+
+## DONE: Loan report date filter → milestone date (2026-07-14)
+
+Loan report filtered `date_from`/`date_to` on `ld.created_at` while the management funnel counts by `stage_assignments.completed_at` → 11 vs 1 mismatch. Switched loan report to filter by the milestone date (sanction completion for status=sanctioned, disbursement completion for status=disbursed).
+
+- [x] 1. `applyFilters()` — optional `$dateColumn` param (default `{alias}.created_at`; pipeline/loan-list callers unchanged).
+- [x] 2. `loanReportRows()` — passes `ssa.completed_at` / `dsa.completed_at` per status; rows ordered by milestone date desc (created_at tiebreak). Applies to data + export endpoints (shared core).
+- [x] 3. Blade: Period label now shows "(sanction date)" / "(disbursement date)", synced to the status toggle in `loan-report.js`.
+- [x] 4. Tests: +2 in `LoanReportTest` (May-created/July-sanctioned appears in July window; July-created/June-sanctioned excluded; disbursed view uses disbursement date). All 4 report suites: 45/45 green.
+- [x] 5. Pint pass; `node --check` clean; docs synced (.docs/loans.md). MySQL sanity: July window now returns 10 sanctioned / 11 disbursed vs management's 11/11 — the 1-loan gap is loan 92 `SHF-202606-0019` (sanction completed 2026-07-14, `sanctioned_amount` NULL — amount never entered; data-entry gap, not report logic).
+- [ ] **PENDING (server)**: deploy `ReportController.php`, `reports/loan-report.blade.php`, `pages/loan-report.js`, `tests/Feature/LoanReportTest.php` (same `SHF_VERSION=20260714100000` bump batch as the user-form fix; `config:clear && view:clear`).
+
+## DONE: Fix false "City/Bank is required" on user create for bank_employee (2026-07-14)
+
+Root cause: `assigned_locations[]`/`assigned_banks[]` each rendered twice in `users/_form.blade.php` (role-conditional select + checkbox variants); `SHF.validateForm`'s mixed-set `is(':checkbox')` read the hidden unchecked group → required always failed.
+
+- [x] `user-form.js`: disable inactive location variants on role change + initial pass (banks already were).
+- [x] `validateForm` in `shf-app.js` + `shf-newtheme.js` (identical copies): skip `:disabled` fields.
+- [x] Bumped `SHF_VERSION` (.env/.env.example) + `SHF_SW_VERSION` (sw.js) → `20260714100000`; `config:clear` run.
+- [x] Verified via headless-Chrome harness (real jQuery + real JS + form replica): 12/12 assertions pass post-fix; same harness fails on git-HEAD pre-fix code. `node --check` clean on all three files.
+- [x] Docs: `.docs/frontend.md` validateForm note; `tasks/lessons.md` entry.
+- [ ] **PENDING (server)**: deploy `public/newtheme/pages/user-form.js`, `public/newtheme/js/shf-app.js`, `public/newtheme/assets/shf-newtheme.js`, `public/sw.js`; set `SHF_VERSION=20260714100000` in server `.env`; `php artisan config:clear`.
+
+## DONE: Export to Excel — Pipeline + Loan Report (2026-07-08)
+
+Plan: `.claude/plans/zippy-coalescing-wreath.md`. True .xlsx via in-house ZipArchive writer (no new composer deps); exports honor applied filters + full unpaginated record set; pipeline exports active tab (loans w/ flattened stage lines, or workload).
+
+- [x] 1. `app/Services/XlsxExportService.php` — minimal OOXML writer (inline strings, numeric `#,##0` + decimal + date-serial `dd/mm/yyyy` cells, bold header, wrap style, footer rows, ENT_XML1 escaping + control-char strip).
+- [x] 2. `ReportController` behavior-neutral refactor: `pipelineRawRows()` / `workloadRows()` / `loanReportRows()` privates return raw values; JSON methods format on top. Pipeline/LoanReport/Management tests 31/31 green post-refactor.
+- [x] 3. `pipelineExport()` + `loanReportExport()` + `flattenStageLines()`; routes `reports.pipeline.export` + `reports.loans.export` (same in-controller `view_reports` gate + scope).
+- [x] 4. Export buttons in both report blades (`plExport`/`lrExport`, filters card) + `window.location = exportUrl + getFilters()` handlers in `pages/pipeline.js` / `loan-report.js`; bumped SHF_VERSION + SHF_SW_VERSION → `20260708120000`; `config:clear` run.
+- [x] 5. `tests/Feature/ReportExportTest.php` — 12 tests / 208 assertions (permission gate + guest redirect, forged-branch scope, raw numeric cells + no ₹, date serials, totals footer, status/stuck/workload-tab filters, empty-valid xlsx, 60-loan all-records).
+- [x] 6. Pint pass; full suite 233 passed / 1 pre-existing unrelated fail (FcmServiceTest, fails on clean tree too); docs synced (routes-reference, services-reference, .docs/loans.md incl. stale Loan Report access note fixed).
+- [ ] **PENDING (server)**: deploy `app/Services/XlsxExportService.php`, `ReportController.php`, `routes/web.php`, both report blades, `pages/{pipeline,loan-report}.js`, `public/sw.js`, `tests/Feature/ReportExportTest.php`; set `SHF_VERSION=20260708120000` in server `.env`; `php artisan config:clear && view:clear && route:clear`.
+
 ## DONE: Phase 2 — remove TAT, add Pipeline + Management reports (2026-07-07)
 
 - [x] 1. `ReportController`: TAT methods + getUserScope/applyRoleScope deleted; authorizeReports()/reportScope() shared; pipeline()/pipelineData() (summary chips, status-adaptive rows, stage lines incl. pending-in-parallel + queued days, container excluded, workload tab) + management()/managementData() (funnel, 12-mo trend, scoreboard, exceptions). All date math PHP/Carbon (driver-portable); SQL diff helpers removed as dead code.

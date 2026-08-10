@@ -230,12 +230,12 @@ Each tranche is also mirrored into the **`disbursement_entries` table** (json en
 - `status` (default "active"), `customer_type`, `bank_id`, `branch_id`, `role` (admin/mgr only — filters by who currently owns the loan)
 - `product_id` — plain `where` on `loan_details.product_id` (loans with null product drop out when active). UI: `lxProduct` select, visible to all roles; options are all active products labeled "Product — Bank" (bank employees with a `task_bank_id` get only their bank's products). Selecting a Bank narrows the product options client-side via `data-bank-id` (stale selection is cleared; Clear resets the cascade).
 - `user` (admin/mgr only — `lxUser` dropdown of all active users) — filters by the **current task owner**: loans where the user is the assignee of the current-stage assignment, OR (only while `current_stage = parallel_processing`) the assignee of any in-progress sub-stage. Matches the Task Owner column exactly, including loans with multiple active parallel owners.
-- `stage` — top-level stages match `loan_details.current_stage`. **Sub-stage values** (e.g. `bsm_osv`) are detected via `Stage.parent_stage_key` and matched against `stage_assignments.stage_key` with `status = in_progress`. This lets you filter loans currently sitting at a parallel sub-stage even though `current_stage` always shows `parallel_processing` for the parent.
+- `stage` — matches loans that have **completed** the selected stage (`whereHas('stageAssignments', stage_key = value AND status = 'completed')`, working for top-level and parallel sub-stage keys alike). When `date_from`/`date_to` are also present, the range applies to that stage's `completed_at` (all bounds in one closure, so a single completed row must satisfy the whole range). *(Was "loans currently sitting at this stage"; now "loans where this stage is completed".)*
 - `docket` — consolidated filter with two flavors:
   - **Date-range options** (`overdue / due_today / due_soon / due_15 / due_month / custom`) operate on an **effective docket date** computed inline as `COALESCE(loan_details.expected_docket_date, app_number.notes.custom_docket_date, today + app_number.notes.docket_days_offset)`. Pre-sanction loans surface using their tentative `today + offset` so users can plan ahead; the authoritative column itself is only written when `sanction` completes (`LoanStageService::handleStageCompletion`).
   - **Commitment-type options** (`s_plus_1 / s_plus_2 / s_plus_3`) match `JSON_UNQUOTE(JSON_EXTRACT(app_number.notes, '$.docket_days_offset'))` against `'1' / '2' / '3'`. Date-agnostic — finds all S+N commitments regardless of where the loan is in the workflow.
   - `custom` pairs with `docket_date` (yyyy-mm-dd) to filter on effective date ≤ that date.
-- `date_from` / `date_to`
+- `date_from` / `date_to` — filter on **stage-completion activity**, not `loan_details.created_at`. With a `stage` selected, the range applies to that stage's `completed_at` (see above). Without a stage, the range matches the loan's **latest** stage completion via a correlated subquery `DATE((SELECT MAX(completed_at) FROM stage_assignments WHERE loan_id = loan_details.id))` (portable across MySQL + SQLite), so a loan surfaces only in the window where it last moved.
 
 Search: `loan_number`, `customer_name`, `bank_name`, `customer_phone`, `customer_email`. UI exposes this via the always-visible search input in the results-card header (debounced 250 ms, sent as the standard `search[value]` DataTables param).
 
@@ -271,6 +271,12 @@ Completed/Rejected/Cancelled, count + ₹). Status-adaptive table (default Activ
   holder — held, oldest, avg, stuck>7d, stage breakdown.
 - Filters: status, bank, product, branch, user (COALESCE advisor/creator), period on
   `created_at`, stage (incl. sub-stages), stuck ≥ N days.
+- **Export button** (filters card): downloads a true `.xlsx` via
+  `reports.pipeline.export` with the exact current filters. Exports the active
+  tab — loans (19-column superset, stage lines flattened into one wrapped
+  "Current Stage(s)" cell) or workload-by-user. Amounts/day counts are raw
+  numeric cells, dates real serials (`dd/mm/yyyy`); **all** matching rows,
+  never a page subset. Built by `XlsxExportService` (ZipArchive, no package).
 
 ### Management Summary (`/reports/management`)
 
@@ -286,19 +292,35 @@ filter deliberately: they are current-state).
 
 Standalone report of sanctioned/disbursed loans (`ReportController::loanReport/loanReportData`).
 
-- **Access (role-gated, no permission slug)**: super_admin, admin, **bdh** → all branches;
-  branch_manager → own `user_branches` branches (re-applied server-side in the data endpoint,
-  forged `branch_id` values cannot leak); all other roles → 403 on both endpoints.
+- **Access**: any user with `view_reports` (granted to all roles); data narrowed by
+  `reportScope()` — super_admin/admin/**bdh** → all branches; branch_manager → own
+  `user_branches` branches (re-applied server-side, forged `branch_id` values cannot
+  leak); everyone else → only loans they have touched.
 - **Status select** (required, default `Sanctioned`, no "All"): `sanctioned` →
-  `loan_details.sanctioned_amount IS NOT NULL`; `disbursed` → `disbursed_amount IS NOT NULL`.
+  completed `sanction` stage-assignment (the amount may still be NULL until docket
+  phase 2 and renders "—"); `disbursed` → the loan has ≥1 active row in
+  `disbursement_entries` (per-tranche), so **partial disbursements count before the
+  stage completes**. Same rules as the management funnel — both reports agree.
 - **Filters**: bank, product, branch, user (`COALESCE(assigned_advisor, created_by)`),
-  period/date range on loan `created_at` (same presets as the other report pages).
+  period/date range on the **milestone date** — sanction stage `completed_at` for the
+  sanctioned view, **tranche `disbursement_date`s** for the disbursed view (a loan is
+  listed when it has a tranche in the window; each tranche belongs to its own period).
+  Matches the management funnel; NOT loan `created_at`. Rows ordered by milestone date
+  (newest first). "Disbursed On" = latest tranche date (in-window for the disbursed view).
 - **Columns**: Loan #, Customer, Bank/Product, Branch, Advisor, Loan Amount, Sanctioned ₹,
   Disbursed ₹, Sanctioned On / Disbursed On (completed `sanction`/`disbursement`
-  stage-assignment `completed_at`), Status badge. Totals strip: count + ₹ sums (Indian format).
+  stage-assignment `completed_at`), Status badge. Totals strip: row count + PERIOD
+  totals for BOTH milestones (`loanReportTotals()` — sanctioned: stage-dated count +
+  `sanctioned_amount` sum; disbursed: distinct loans with in-window tranches +
+  SUM of in-window tranche amounts; same filters/scope; independent of the status
+  toggle and of which rows are listed — always matches the management funnel).
+- **Export button** (filters card): `.xlsx` download via `reports.loans.export`
+  with the same filters/scope — 11 columns + bold period-totals footer
+  (`Period totals — sanctioned N / disbursed M loans` + raw period sums). Raw
+  numeric amount cells (no ₹ strings) and real date cells; all matching rows, unpaginated.
 - Frontend: `newtheme/reports/loan-report.blade.php` + `public/newtheme/pages/loan-report.{css,js}`
   (fetch + inline loader, not the global overlay). Nav: header Reports dropdown + bottom-nav
-  (role-gated entry). Tests: `tests/Feature/LoanReportTest.php`.
+  (role-gated entry). Tests: `tests/Feature/LoanReportTest.php` + `tests/Feature/ReportExportTest.php`.
 
 ## See also
 

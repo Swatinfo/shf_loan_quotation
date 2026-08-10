@@ -199,6 +199,8 @@ Named: `.shf-role-loan-advisor` `#2563eb`, `.shf-role-bank-employee` `#d97706`, 
 - `label: string` — custom label for errors
 - `custom: function(val, $field, $form) → errorMessage | null`
 
+Disabled fields are skipped (they never submit). Forms that reuse one `name` across role-conditional variants (e.g. user form `assigned_locations[]` as select + checkbox group) must disable the inactive variant so validation sees only the active field.
+
 On failure: adds `.is-invalid`, inline error div `.shf-validation-error`, scrolls to first error (-120px), focuses. Clears automatically on next `input` / `change`.
 
 `SHF.validateBeforeAjax($container, rules, url, data)` — validate first, then `$.post` if valid. Returns jqXHR or `false`.

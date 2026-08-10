@@ -106,24 +106,38 @@ class LoanController extends Controller
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-        if ($request->filled('stage')) {
-            $stage = $request->stage;
-            $stageRow = Stage::where('stage_key', $stage)->first();
-            // Sub-stages (e.g. bsm_osv) live under parallel_processing. loan_details.current_stage
-            // only ever holds the parent key, so match by active assignment instead.
-            if ($stageRow && $stageRow->parent_stage_key) {
-                $query->whereHas('stageAssignments', fn ($q) => $q
-                    ->where('stage_key', $stage)
-                    ->where('status', 'in_progress')
-                );
-            } else {
-                $query->where('current_stage', $stage);
+        // Stage + date range filter on stage COMPLETION activity, not on
+        // loan_details.created_at. With a stage selected we match loans that
+        // have COMPLETED that stage (optionally with its completion date inside
+        // the range). With only a date range we match the loan's LATEST stage
+        // completion, so it surfaces in the window where it last moved.
+        $stage = $request->filled('stage') ? $request->stage : null;
+        $dateFrom = $request->filled('date_from') ? $request->date_from : null;
+        $dateTo = $request->filled('date_to') ? $request->date_to : null;
+
+        if ($stage !== null) {
+            // "Loans where this stage is completed" — one closure matches a
+            // single completed stage_assignments row (works for top-level and
+            // parallel sub-stage keys alike); date bounds apply to its completed_at.
+            $query->whereHas('stageAssignments', function ($q) use ($stage, $dateFrom, $dateTo) {
+                $q->where('stage_key', $stage)->where('status', 'completed');
+                if ($dateFrom !== null) {
+                    $q->whereDate('completed_at', '>=', $dateFrom);
+                }
+                if ($dateTo !== null) {
+                    $q->whereDate('completed_at', '<=', $dateTo);
+                }
+            });
+        } elseif ($dateFrom !== null || $dateTo !== null) {
+            // Date range without a stage → filter on the loan's most-recent
+            // stage completion (MAX(completed_at)). Correlated subquery is
+            // portable across MySQL (prod) and SQLite (tests); DATE() drops time.
+            $latest = '(SELECT MAX(sa.completed_at) FROM stage_assignments sa WHERE sa.loan_id = loan_details.id)';
+            if ($dateFrom !== null) {
+                $query->whereRaw("DATE($latest) >= ?", [$dateFrom]);
+            }
+            if ($dateTo !== null) {
+                $query->whereRaw("DATE($latest) <= ?", [$dateTo]);
             }
         }
         if ($request->filled('role')) {
@@ -359,7 +373,16 @@ class LoanController extends Controller
         $validated['date_of_birth'] = Carbon::createFromFormat('d/m/Y', $validated['date_of_birth'])->toDateString();
         $validated['pan_number'] = strtoupper($validated['pan_number']);
 
-        $loan = $this->conversionService->createDirectLoan($validated);
+        try {
+            $loan = $this->conversionService->createDirectLoan($validated);
+        } catch (\Throwable $e) {
+            // Surface a clear error instead of a raw 500 so the user knows the
+            // loan was NOT created and can retry.
+            report($e);
+
+            return redirect()->back()->withInput()
+                ->with('error', 'Could not create the loan. Please try again.');
+        }
 
         return redirect()->route('loans.show', $loan)
             ->with('success', 'Loan #'.$loan->loan_number.' created successfully');
@@ -572,6 +595,10 @@ class LoanController extends Controller
 
     public function destroy(LoanDetail $loan): JsonResponse
     {
+        // Only someone who can see this loan may delete it — the delete_loan
+        // permission alone must not let a user destroy loans outside their scope.
+        $this->authorizeView($loan);
+
         // Clear loan reference on linked quotation so it can be re-converted
         Quotation::where('loan_id', $loan->id)->update(['loan_id' => null]);
 

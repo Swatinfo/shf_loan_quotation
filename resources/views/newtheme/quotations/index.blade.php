@@ -75,7 +75,7 @@
                             <option value="active">Active</option>
                             <option value="on_hold">On Hold</option>
                             <option value="cancelled">Cancelled</option>
-                            <option value="all">All Statuses</option>
+                            <option value="all" selected>All Statuses</option>
                         </select>
                     </div>
                     <div class="qx-field">
@@ -86,7 +86,7 @@
                             <option value="active">Loan Active</option>
                             <option value="completed">Loan Completed</option>
                             <option value="rejected">Loan Rejected</option>
-                            <option value="all">All Quotations</option>
+                            <option value="all" selected>All Quotations</option>
                         </select>
                     </div>
                     <div class="qx-field">

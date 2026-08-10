@@ -121,6 +121,10 @@ $(function () {
 
         $.each(rules, function (fieldName, rule) {
             var $field = $form.find('[name="' + fieldName + '"]');
+            // Disabled fields never submit — exclude them. Role-conditional
+            // forms reuse one name across select/checkbox variants and disable
+            // the inactive one (e.g. user form assigned_locations[]).
+            $field = $field.not(':disabled');
             if (!$field.length) { return; }
 
             var val;

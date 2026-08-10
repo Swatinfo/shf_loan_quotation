@@ -598,18 +598,21 @@ class LoanDetail extends Model
     public static function generateLoanNumber(): string
     {
         $prefix = 'SHF-'.now()->format('Ym').'-';
-        $lastLoan = static::where('loan_number', 'like', $prefix.'%')
-            ->orderByDesc('loan_number')
-            ->first();
 
-        if ($lastLoan) {
-            $lastNum = (int) substr($lastLoan->loan_number, -4);
-            $nextNum = $lastNum + 1;
-        } else {
-            $nextNum = 1;
-        }
+        // Highest existing counter for this month, compared NUMERICALLY. String
+        // ordering breaks once the counter passes 9999 (e.g. '...-10000' sorts
+        // below '...-9999'), which would otherwise regenerate a colliding number
+        // and break all loan creation for the rest of the month. The counter is
+        // everything after the prefix, so widths beyond 4 digits are handled.
+        // A duplicate under concurrency is caught by the unique index and
+        // retried at the creation site (see LoanConversionService).
+        $maxNum = static::withTrashed()
+            ->where('loan_number', 'like', $prefix.'%')
+            ->pluck('loan_number')
+            ->map(fn ($number) => (int) substr($number, strlen($prefix)))
+            ->max() ?? 0;
 
-        return $prefix.str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) ($maxNum + 1), 4, '0', STR_PAD_LEFT);
     }
 
     // Scopes

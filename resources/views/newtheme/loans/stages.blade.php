@@ -85,6 +85,31 @@
 @endpush
 
 @section('content')
+    @php
+        // Stage-reset control is gated to specific accounts (config app.stage_reset_emails),
+        // not a role/permission. Build grouped options from the stages this loan has.
+        $canResetStages = auth()->user()->canResetLoanStages();
+        $resetStageGroups = [];
+        if ($canResetStages) {
+            $mainOpts = [];
+            foreach ($mainStages as $sa) {
+                if ($sa->stage_key === 'parallel_processing') {
+                    continue; // container — target its sub-stages instead
+                }
+                $mainOpts[$sa->stage_key] = $sa->stage?->stage_name_en ?? $sa->stage_key;
+            }
+            $subOpts = [];
+            foreach ($subStages as $sa) {
+                $subOpts[$sa->stage_key] = $sa->stage?->stage_name_en ?? $sa->stage_key;
+            }
+            if ($subOpts) {
+                $resetStageGroups['Parallel Sub-Stages'] = $subOpts;
+            }
+            if ($mainOpts) {
+                $resetStageGroups['Main Stages'] = $mainOpts;
+            }
+        }
+    @endphp
     <header class="page-header">
         <div class="head-row">
             <div>
@@ -123,6 +148,12 @@
                     <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m-8 6H4m0 0l4 4m-4-4l4-4"/></svg>
                     Transfers
                 </a>
+                @if ($canResetStages)
+                    <button type="button" class="btn" id="lrResetStageBtn" style="border-color:#dc3545;color:#dc3545;">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6M3 8a9 9 0 1 0 3-5"/></svg>
+                        Reset Stage
+                    </button>
+                @endif
             </div>
         </div>
     </header>
@@ -139,4 +170,52 @@
          `$('#raiseQueryModal').modal('show')`. --}}
     <script src="{{ asset('newtheme/vendor/bootstrap/js/bootstrap.bundle.min.js') }}?v={{ config('app.shf_version') }}"></script>
     @include('newtheme.loans._stages-scripts')
+
+    @if ($canResetStages)
+        {{-- Email-gated stage reset. Uses the globally-loaded SweetAlert2 + SHF.loader. --}}
+        <script>
+            (function () {
+                var btn = document.getElementById('lrResetStageBtn');
+                if (!btn) { return; }
+                var url = @json(route('loans.stages.reset', $loan));
+                var csrf = @json(csrf_token());
+                var groups = @json((object) $resetStageGroups);
+
+                btn.addEventListener('click', function () {
+                    Swal.fire({
+                        title: 'Reset loan to stage',
+                        html: 'This <b>rewinds the loan</b> to the chosen stage. Every later stage is reset to pending and dependent data (disbursement, valuation, sanction/docket fields) is cleared. <b>This cannot be undone.</b>',
+                        input: 'select',
+                        inputOptions: groups,
+                        inputPlaceholder: 'Select target stage',
+                        showCancelButton: true,
+                        confirmButtonText: 'Reset',
+                        confirmButtonColor: '#dc3545',
+                        inputValidator: function (v) { return !v ? 'Please choose a stage' : undefined; }
+                    }).then(function (res) {
+                        if (!res.isConfirmed || !res.value) { return; }
+                        if (window.SHF && SHF.loader) { SHF.loader.begin(); }
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ stage_key: res.value })
+                        }).then(function (r) {
+                            return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+                        }).then(function (x) {
+                            if (!x.ok) { throw new Error((x.d && (x.d.message || x.d.error)) || 'Reset failed'); }
+                            window.location = (x.d && x.d.redirect) || window.location.href;
+                        }).catch(function (e) {
+                            Swal.fire({ icon: 'error', title: 'Reset failed', text: e.message });
+                        }).finally(function () {
+                            if (window.SHF && SHF.loader) { SHF.loader.end(); }
+                        });
+                    });
+                });
+            })();
+        </script>
+    @endif
 @endpush
