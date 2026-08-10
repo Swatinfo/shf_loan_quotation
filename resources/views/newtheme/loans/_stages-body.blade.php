@@ -904,8 +904,7 @@
                                                                                         ]
                                                                                     )
                                                                                         ? now()->addDays(3)->format('d/m/Y')
-                                                                                        : $assignment->created_at->format(
-                                                                                            'd/m/Y'),
+                                                                                        : now()->format('d/m/Y'),
                                                                                 ],
                                                                                 [
                                                                                     'name' => 'stageRemarks',
@@ -1648,8 +1647,15 @@ $canSkipLegalBank =
                                     </div>
                                 @endif
 
-                                {{-- Stage-specific forms and links (only for assignee or admin) --}}
-                                @php $stageEditable = in_array($assignment->status, ['in_progress', 'completed']) && $isMainAssignee; @endphp
+                                {{-- Stage-specific forms and links (only for assignee or admin).
+                                     $stageViewable drops the assignee requirement so non-assignee
+                                     viewers still see the read-only financial detail (via the
+                                     _stage-readonly-detail partial in the @elseif below) — but never
+                                     any form/button, which stay gated behind $stageEditable. --}}
+                                @php
+                                    $stageViewable = in_array($assignment->status, ['in_progress', 'completed']);
+                                    $stageEditable = $stageViewable && $isMainAssignee;
+                                @endphp
                                 @if ($stageEditable)
                                     @switch($assignment->stage_key)
                                         @case('inquiry')
@@ -3172,6 +3178,10 @@ $canSkipLegalBank =
 
                                         {{-- sanction_decision is handled in sub-stages section above --}}
                                     @endswitch
+                                @elseif ($stageViewable)
+                                    {{-- Non-assignee viewer: same read-only financial detail the
+                                         assignee sees, but with NO forms/buttons (view-only). --}}
+                                    @include('newtheme.loans._stage-readonly-detail')
                                 @endif
 
                                 {{-- Active Queries Banner (main stages) --}}

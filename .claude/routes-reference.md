@@ -167,6 +167,7 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 | GET | `/loans/{loan}/timeline` | `loans.timeline` | LoanController@timeline | view_loans |
 | GET | `/customers/lookup?pan=` | `customers.lookup` | CustomerController@lookup | view_customers (global PAN lookup for convert/edit autofill) |
 | POST | `/loans/{loan}/dme` | `loans.dme.update` | LoanController@updateDme | view_loans (+ role super_admin/admin/bdh enforced in controller; requires app_number complete) |
+| POST | `/loans/{loan}/docket-date` | `loans.docket-date.update` | LoanController@updateDocketDate | view_loans + edit_docket_date (requires sanction complete; mandatory reason; logs old→new to activity_log) |
 | GET | `/loans/{loan}/edit` | `loans.edit` | LoanController@edit | edit_loan |
 | PUT | `/loans/{loan}` | `loans.update` | LoanController@update | edit_loan |
 | POST | `/loans/{loan}/status` | `loans.update-status` | LoanController@updateStatus | edit_loan |

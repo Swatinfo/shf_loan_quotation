@@ -29,7 +29,8 @@
             "mcp__laravel-boost__last-error",
             "mcp__laravel-boost__read-log-entries",
             "mcp__laravel-boost__search-docs",
-            "mcp__laravel-boost__get-absolute-url"
+            "mcp__laravel-boost__get-absolute-url",
+            "mcp__chrome-devtools__*"
         ],
         "deny": [
             "Bash(rm -rf *)",
@@ -47,6 +48,7 @@
     "plansDirectory": ".claude/plans",
     "enableAllProjectMcpServers": true,
     "enabledMcpjsonServers": [
-        "laravel-boost"
+        "laravel-boost",
+        "chrome-devtools"
     ]
 }

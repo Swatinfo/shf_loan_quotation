@@ -134,7 +134,8 @@
                                             @if (auth()->user()->hasPermission('manage_workflow_config'))
                                                 <div class="d-flex gap-1">
                                                     <button class="btn-accent-sm shf-edit-location shf-text-xs"
-                                                        data-id="{{ $city->id }}" data-name="{{ $city->name }}"
+                                                        data-id="{{ $city->id }}"
+                                                        data-name="{{ $city->name }}"
                                                         data-code="{{ $city->code }}" data-type="city"
                                                         data-parent-id="{{ $city->parent_id }}">
                                                         <svg class="shf-icon-xs" fill="none" stroke="currentColor"
@@ -336,22 +337,26 @@
                                             <div class="col-md-2">
                                                 <label class="shf-form-label d-block mb-1">City</label>
                                                 <input type="text" name="city" id="branchCityInput"
-                                                    class="shf-input" placeholder="City" value="{{ old('city') }}">
+                                                    class="shf-input" placeholder="City"
+                                                    value="{{ old('city') }}">
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="shf-form-label d-block mb-1">Phone</label>
                                                 <input type="text" name="phone" id="branchPhoneInput"
-                                                    class="shf-input" placeholder="Phone" value="{{ old('phone') }}">
+                                                    class="shf-input" placeholder="Phone"
+                                                    value="{{ old('phone') }}">
                                             </div>
                                             <div class="col-md-3">
                                                 <label class="shf-form-label d-block mb-1">City / Location</label>
-                                                <select name="location_id" id="branchLocationInput" class="shf-input">
+                                                <select name="location_id" id="branchLocationInput"
+                                                    class="shf-input">
                                                     <option value="">— Select City —</option>
                                                     @php $locStates = \App\Models\Location::with('children')->states()->active()->orderBy('name')->get(); @endphp
                                                     @foreach ($locStates as $locState)
                                                         <optgroup label="{{ $locState->name }}">
                                                             @foreach ($locState->children->where('is_active', true) as $locCity)
-                                                                <option value="{{ $locCity->id }}">{{ $locCity->name }}
+                                                                <option value="{{ $locCity->id }}">
+                                                                    {{ $locCity->name }}
                                                                 </option>
                                                             @endforeach
                                                         </optgroup>
@@ -443,7 +448,8 @@
 
                 {{-- Stage Master Tab --}}
                 <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-master-stages"{!! $activeTab !== 'master-stages' ? '' : '' !!}>
-                    <p class="text-muted mb-3">Configure which role handles each stage. Set global defaults and override per bank.</p>
+                    <p class="text-muted mb-3">Configure which role handles each stage. Set global defaults and
+                        override per bank.</p>
 
                     @php
                         $roleOptions = [
@@ -454,7 +460,8 @@
                         $activeBanksForConfig = $banks->where('is_active', true);
                     @endphp
 
-                    <form method="POST" action="{{ route('loan-settings.master-stages.save') }}" id="masterStagesForm">
+                    <form method="POST" action="{{ route('loan-settings.master-stages.save') }}"
+                        id="masterStagesForm">
                         @csrf
 
                         @foreach ($stages as $stage)
@@ -466,16 +473,19 @@
                             @endphp
 
                             <div class="shf-stage-card {{ $stage->parent_stage_key ? 'shf-stage-card--child' : '' }}">
-                                <input type="hidden" name="stages[{{ $si }}][id]" value="{{ $stage->id }}">
+                                <input type="hidden" name="stages[{{ $si }}][id]"
+                                    value="{{ $stage->id }}">
 
                                 <div class="shf-stage-header">
                                     <div class="shf-stage-header-title">
                                         @if ($stage->parent_stage_key)
                                             <span class="text-muted">↳</span>
                                         @endif
-                                        <strong class="{{ $stage->parent_stage_key ? 'fw-medium' : '' }}">{{ $stage->stage_name_en }}</strong>
+                                        <strong
+                                            class="{{ $stage->parent_stage_key ? 'fw-medium' : '' }}">{{ $stage->stage_name_en }}</strong>
                                         @if ($stage->stage_name_gu)
-                                            <small class="text-muted d-none d-sm-inline">({{ $stage->stage_name_gu }})</small>
+                                            <small
+                                                class="text-muted d-none d-sm-inline">({{ $stage->stage_name_gu }})</small>
                                         @endif
                                         @if ($stage->is_parallel)
                                             <span class="shf-badge shf-badge-blue shf-text-2xs">Parallel</span>
@@ -484,21 +494,27 @@
                                             <span class="shf-badge shf-badge-orange shf-text-2xs">Decision</span>
                                         @endif
                                         @if ($hasSubActions)
-                                            <span class="shf-badge shf-badge-orange shf-text-2xs">{{ count($stage->sub_actions) }} phases</span>
+                                            <span
+                                                class="shf-badge shf-badge-orange shf-text-2xs">{{ count($stage->sub_actions) }}
+                                                phases</span>
                                         @endif
                                     </div>
                                     @if (!$isHeaderOnly)
-                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]" value="0">
-                                        <input type="checkbox" name="stages[{{ $si }}][is_enabled]" value="1"
-                                            class="shf-toggle" {{ $stage->is_enabled ? 'checked' : '' }}>
+                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]"
+                                            value="0">
+                                        <input type="checkbox" name="stages[{{ $si }}][is_enabled]"
+                                            value="1" class="shf-toggle"
+                                            {{ $stage->is_enabled ? 'checked' : '' }}>
                                     @else
-                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]" value="1">
+                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]"
+                                            value="1">
                                     @endif
                                 </div>
 
                                 <div class="shf-stage-body">
                                     @if ($stage->description_en)
-                                        <small class="text-muted d-block shf-text-xs mb-2">{{ $stage->description_en }}</small>
+                                        <small
+                                            class="text-muted d-block shf-text-xs mb-2">{{ $stage->description_en }}</small>
                                     @endif
 
                                     @if (!$isHeaderOnly)
@@ -508,11 +524,17 @@
                                                 <div class="shf-form-label d-block mb-1">Default Phase Roles</div>
                                                 @foreach ($stage->sub_actions as $phaseIdx => $phase)
                                                     <div class="d-flex align-items-center gap-2 mb-1">
-                                                        <span class="shf-phase-num shf-role-bg-task-owner" style="width:22px;height:22px;font-size:0.65rem;">{{ $phaseIdx + 1 }}</span>
-                                                        <span class="shf-text-xs" style="min-width:140px;">{{ $phase['name'] ?? $phase['key'] }}</span>
-                                                        <select name="stages[{{ $si }}][phase_roles][{{ $phaseIdx }}]" class="shf-input-sm" style="width:160px;">
+                                                        <span class="shf-phase-num shf-role-bg-task-owner"
+                                                            style="width:22px;height:22px;font-size:0.65rem;">{{ $phaseIdx + 1 }}</span>
+                                                        <span class="shf-text-xs"
+                                                            style="min-width:140px;">{{ $phase['name'] ?? $phase['key'] }}</span>
+                                                        <select
+                                                            name="stages[{{ $si }}][phase_roles][{{ $phaseIdx }}]"
+                                                            class="shf-input-sm" style="width:160px;">
                                                             @foreach ($roleOptions as $rv => $rl)
-                                                                <option value="{{ $rv }}" {{ ($phase['role'] ?? 'task_owner') === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                                <option value="{{ $rv }}"
+                                                                    {{ ($phase['role'] ?? 'task_owner') === $rv ? 'selected' : '' }}>
+                                                                    {{ $rl }}</option>
                                                             @endforeach
                                                         </select>
                                                     </div>
@@ -522,9 +544,12 @@
                                             {{-- Single-phase: one dropdown --}}
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 <span class="shf-form-label mb-0">Default Role</span>
-                                                <select name="stages[{{ $si }}][assigned_role]" class="shf-input-sm" style="width:180px;">
+                                                <select name="stages[{{ $si }}][assigned_role]"
+                                                    class="shf-input-sm" style="width:180px;">
                                                     @foreach ($roleOptions as $rv => $rl)
-                                                        <option value="{{ $rv }}" {{ ($stage->assigned_role ?? 'task_owner') === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                        <option value="{{ $rv }}"
+                                                            {{ ($stage->assigned_role ?? 'task_owner') === $rv ? 'selected' : '' }}>
+                                                            {{ $rl }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -532,26 +557,39 @@
 
                                         {{-- Bank Configuration --}}
                                         @if ($activeBanksForConfig->isNotEmpty())
-                                            <div class="shf-collapsible shf-filter-open mt-2" data-target="#bank-config-{{ $stage->id }}">
-                                                <span class="shf-form-label mb-0 shf-clickable">Bank Configuration</span>
-                                                <svg class="shf-collapse-arrow shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            <div class="shf-collapsible shf-filter-open mt-2"
+                                                data-target="#bank-config-{{ $stage->id }}">
+                                                <span class="shf-form-label mb-0 shf-clickable">Bank
+                                                    Configuration</span>
+                                                <svg class="shf-collapse-arrow shf-icon-xs" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
                                                 @php
-                                                    $overrideCount = $activeBanksForConfig->filter(function($b) use ($stage, $bankStageConfigs) {
-                                                        return isset($bankStageConfigs[$b->id . '_' . $stage->id]);
-                                                    })->count();
+                                                    $overrideCount = $activeBanksForConfig
+                                                        ->filter(function ($b) use ($stage, $bankStageConfigs) {
+                                                            return isset($bankStageConfigs[$b->id . '_' . $stage->id]);
+                                                        })
+                                                        ->count();
                                                 @endphp
                                                 @if ($overrideCount > 0)
-                                                    <span class="shf-badge shf-badge-orange shf-text-2xs ms-1">{{ $overrideCount }} custom</span>
+                                                    <span
+                                                        class="shf-badge shf-badge-orange shf-text-2xs ms-1">{{ $overrideCount }}
+                                                        custom</span>
                                                 @endif
                                             </div>
-                                            <div id="bank-config-{{ $stage->id }}" class="mt-2" style="border-left:3px solid var(--accent-dim);padding-left:12px;">
+                                            <div id="bank-config-{{ $stage->id }}" class="mt-2"
+                                                style="border-left:3px solid var(--accent-dim);padding-left:12px;">
                                                 @foreach ($activeBanksForConfig as $bank)
                                                     @php
                                                         $bsc = $bankStageConfigs[$bank->id . '_' . $stage->id] ?? null;
                                                         $bankHasOverride = $bsc !== null;
                                                     @endphp
-                                                    <div class="d-flex align-items-start gap-2 mb-2 py-1 {{ !$loop->last ? 'border-bottom' : '' }}">
-                                                        <div style="min-width:120px;flex-shrink:0;" class="d-flex align-items-center gap-1">
+                                                    <div
+                                                        class="d-flex align-items-start gap-2 mb-2 py-1 {{ !$loop->last ? 'border-bottom' : '' }}">
+                                                        <div style="min-width:120px;flex-shrink:0;"
+                                                            class="d-flex align-items-center gap-1">
                                                             <strong class="shf-text-xs">{{ $bank->name }}</strong>
                                                         </div>
                                                         <div class="d-flex flex-wrap align-items-center gap-1">
@@ -560,15 +598,24 @@
                                                                 @foreach ($stage->sub_actions as $phaseIdx => $phase)
                                                                     @php
                                                                         $phaseDefault = $phase['role'] ?? 'task_owner';
-                                                                        $bankPhaseRole = $bsc?->phase_roles[(string)$phaseIdx] ?? $phaseDefault;
-                                                                        $phaseIsOverride = $bankPhaseRole !== $phaseDefault;
+                                                                        $bankPhaseRole =
+                                                                            $bsc?->phase_roles[(string) $phaseIdx] ??
+                                                                            $phaseDefault;
+                                                                        $phaseIsOverride =
+                                                                            $bankPhaseRole !== $phaseDefault;
                                                                     @endphp
-                                                                    <div class="d-inline-flex align-items-center gap-1 me-2 mb-1">
-                                                                        <span class="shf-text-2xs text-muted">P{{ $phaseIdx + 1 }}:</span>
-                                                                        <select name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][phase_roles][{{ $phaseIdx }}]"
-                                                                            class="shf-input-sm shf-text-xs {{ $phaseIsOverride ? 'shf-input-override' : '' }}" style="width:140px;padding:2px 4px;">
+                                                                    <div
+                                                                        class="d-inline-flex align-items-center gap-1 me-2 mb-1">
+                                                                        <span
+                                                                            class="shf-text-2xs text-muted">P{{ $phaseIdx + 1 }}:</span>
+                                                                        <select
+                                                                            name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][phase_roles][{{ $phaseIdx }}]"
+                                                                            class="shf-input-sm shf-text-xs {{ $phaseIsOverride ? 'shf-input-override' : '' }}"
+                                                                            style="width:140px;padding:2px 4px;">
                                                                             @foreach ($roleOptions as $rv => $rl)
-                                                                                <option value="{{ $rv }}" {{ $bankPhaseRole === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                                                <option value="{{ $rv }}"
+                                                                                    {{ $bankPhaseRole === $rv ? 'selected' : '' }}>
+                                                                                    {{ $rl }}</option>
                                                                             @endforeach
                                                                         </select>
                                                                     </div>
@@ -576,14 +623,19 @@
                                                             @else
                                                                 {{-- Single dropdown for this bank --}}
                                                                 @php
-                                                                    $stageDefault = $stage->assigned_role ?? 'task_owner';
+                                                                    $stageDefault =
+                                                                        $stage->assigned_role ?? 'task_owner';
                                                                     $bankRole = $bsc?->assigned_role ?? $stageDefault;
                                                                     $singleIsOverride = $bankRole !== $stageDefault;
                                                                 @endphp
-                                                                <select name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][assigned_role]"
-                                                                    class="shf-input-sm shf-text-xs {{ $singleIsOverride ? 'shf-input-override' : '' }}" style="width:160px;padding:2px 4px;">
+                                                                <select
+                                                                    name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][assigned_role]"
+                                                                    class="shf-input-sm shf-text-xs {{ $singleIsOverride ? 'shf-input-override' : '' }}"
+                                                                    style="width:160px;padding:2px 4px;">
                                                                     @foreach ($roleOptions as $rv => $rl)
-                                                                        <option value="{{ $rv }}" {{ $bankRole === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                                        <option value="{{ $rv }}"
+                                                                            {{ $bankRole === $rv ? 'selected' : '' }}>
+                                                                            {{ $rl }}</option>
                                                                     @endforeach
                                                                 </select>
                                                             @endif
@@ -602,8 +654,10 @@
                         @if (auth()->user()->hasPermission('manage_workflow_config'))
                             <div class="d-flex justify-content-end mt-3">
                                 <button type="submit" class="btn-accent">
-                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
                                     </svg>
                                     Save Stage Defaults
                                 </button>
@@ -634,7 +688,8 @@
                                         <div class="row g-3">
                                             <div class="col-md-4">
                                                 <label class="shf-form-label d-block mb-1">Bank</label>
-                                                <select name="bank_id" id="productBankInput" class="shf-input" required>
+                                                <select name="bank_id" id="productBankInput" class="shf-input"
+                                                    required>
                                                     <option value="">Select bank...</option>
                                                     @foreach ($banks as $b)
                                                         <option value="{{ $b->id }}">{{ $b->name }}
@@ -644,20 +699,21 @@
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="shf-form-label d-block mb-1">Product Name</label>
-                                                <input type="text" name="name" id="productNameInput" class="shf-input"
-                                                    placeholder="e.g. Home Loan" required>
+                                                <input type="text" name="name" id="productNameInput"
+                                                    class="shf-input" placeholder="e.g. Home Loan" required>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="shf-form-label d-block mb-1">Code (optional)</label>
-                                                <input type="text" name="code" id="productCodeInput" class="shf-input"
-                                                    placeholder="e.g. HL" maxlength="20">
+                                                <input type="text" name="code" id="productCodeInput"
+                                                    class="shf-input" placeholder="e.g. HL" maxlength="20">
                                             </div>
                                         </div>
 
                                         {{-- Payout configuration (future payout-to-loan-creator; storage only) --}}
                                         <div class="row g-3 mt-1 align-items-end">
                                             <div class="col-md-4">
-                                                <label class="shf-form-label d-block mb-1">Is PF Based? / પીએફ આધારિત?</label>
+                                                <label class="shf-form-label d-block mb-1">Is PF Based? / પીએફ
+                                                    આધારિત?</label>
                                                 <label class="d-inline-flex align-items-center gap-2 shf-text-sm">
                                                     <input type="checkbox" name="is_pf_based" value="1"
                                                         id="productPfInput" class="shf-checkbox">
@@ -665,9 +721,11 @@
                                                 </label>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="shf-form-label d-block mb-1">Max Payout Amount (₹, optional)</label>
-                                                <input type="number" name="max_payout_amount" id="productMaxPayoutInput"
-                                                    class="shf-input" min="0" step="0.01" placeholder="e.g. 50000.50">
+                                                <label class="shf-form-label d-block mb-1">Max Payout Amount (₹,
+                                                    optional)</label>
+                                                <input type="number" name="max_payout_amount"
+                                                    id="productMaxPayoutInput" class="shf-input" min="0"
+                                                    step="0.01" placeholder="e.g. 50000.50">
                                             </div>
                                         </div>
 
@@ -685,12 +743,14 @@
                                                 </button>
                                             </div>
                                             <div class="shf-text-xs text-muted mb-2">
-                                                Ranges apply to the disbursed amount. Payout per slab is a fixed ₹ amount
+                                                Ranges apply to the disbursed amount. Payout per slab is a fixed ₹
+                                                amount
                                                 or a percentage. Ranges must not overlap.
                                             </div>
                                             <div id="productSlabList"></div>
                                             {{-- NOT class="shf-validation-error" — SHF.validateForm removes those nodes on every submit --}}
-                                            <div id="productSlabError" class="shf-text-error shf-text-sm mt-1" style="display:none;"></div>
+                                            <div id="productSlabError" class="shf-text-error shf-text-sm mt-1"
+                                                style="display:none;"></div>
                                         </div>
 
                                         <div class="d-flex align-items-center gap-2 mt-3">
@@ -716,12 +776,14 @@
                         <div class="shf-stage-card">
                             <div class="shf-stage-header">
                                 <div class="shf-stage-header-title">
-                                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="shf-icon-md" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                     <strong>{{ $bank->name }}</strong>
-                                    <span class="shf-badge shf-badge-gray shf-text-2xs">{{ $bank->products->count() }}
+                                    <span
+                                        class="shf-badge shf-badge-gray shf-text-2xs">{{ $bank->products->count() }}
                                         products</span>
                                 </div>
                             </div>
@@ -747,7 +809,8 @@
                                                         locations</span>
                                                 @endif
                                                 @if ($product->is_pf_based)
-                                                    <span class="shf-badge shf-badge-orange shf-text-2xs">PF Based</span>
+                                                    <span class="shf-badge shf-badge-orange shf-text-2xs">PF
+                                                        Based</span>
                                                 @endif
                                                 @if ($product->max_payout_amount)
                                                     <span class="shf-badge shf-badge-blue shf-text-2xs">Payout cap ₹
@@ -756,9 +819,12 @@
                                                 @if ($product->payoutSlabs->isNotEmpty())
                                                     <span
                                                         class="shf-badge shf-badge-purple shf-text-2xs">{{ $product->payoutSlabs->count() }}
-                                                        payout {{ $product->payoutSlabs->count() === 1 ? 'slab' : 'slabs' }}
-                                                        · {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->first()->low_amount) }}
-                                                        – {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->last()->high_amount) }}</span>
+                                                        payout
+                                                        {{ $product->payoutSlabs->count() === 1 ? 'slab' : 'slabs' }}
+                                                        ·
+                                                        {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->first()->low_amount) }}
+                                                        –
+                                                        {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->last()->high_amount) }}</span>
                                                 @endif
                                             </div>
                                             <div class="d-flex gap-1 flex-shrink-0">
@@ -784,14 +850,16 @@
                                                     </svg> Locations</button>
                                                 @if (auth()->user()->hasPermission('manage_workflow_config'))
                                                     @php
-                                                        // Built in @php first — @json() chokes on closures inside its argument (see lessons.md).
+                                                        /* Built in @php first — @json() chokes on closures inside its argument (see lessons.md). */
                                                         $productSlabsPayload = $product->payoutSlabs
-                                                            ->map(fn ($s) => [
-                                                                'low_amount' => $s->low_amount,
-                                                                'high_amount' => $s->high_amount,
-                                                                'payout_type' => $s->payout_type,
-                                                                'payout_value' => $s->payout_value,
-                                                            ])
+                                                            ->map(
+                                                                fn($s) => [
+                                                                    'low_amount' => $s->low_amount,
+                                                                    'high_amount' => $s->high_amount,
+                                                                    'payout_type' => $s->payout_type,
+                                                                    'payout_value' => $s->payout_value,
+                                                                ],
+                                                            )
                                                             ->values();
                                                     @endphp
                                                     <button type="button"
@@ -803,8 +871,8 @@
                                                         data-pf-based="{{ $product->is_pf_based ? 1 : 0 }}"
                                                         data-max-payout="{{ $product->max_payout_amount }}"
                                                         data-slabs='@json($productSlabsPayload)'>
-                                                        <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
+                                                        <svg class="shf-icon-2xs" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2"
                                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -814,8 +882,8 @@
                                                     <button
                                                         class="btn-accent-sm shf-delete-item shf-text-xs shf-btn-danger"
                                                         data-url="{{ route('loan-settings.products.destroy', $product) }}">
-                                                        <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
+                                                        <svg class="shf-icon-2xs" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2"
                                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -842,10 +910,12 @@
                                                 @endphp
                                                 <div class="p-2 border rounded" style="background:#f8fafc;">
                                                     @if ($bank->locations->isEmpty())
-                                                        <small class="text-muted">Bank has no locations assigned. Configure
+                                                        <small class="text-muted">Bank has no locations assigned.
+                                                            Configure
                                                             bank locations first.</small>
                                                     @else
-                                                        <small class="text-muted d-block mb-2 shf-text-xs">Select cities
+                                                        <small class="text-muted d-block mb-2 shf-text-xs">Select
+                                                            cities
                                                             where this product is
                                                             available (from {{ $bank->name }}'s locations).</small>
                                                         <div class="d-flex flex-wrap gap-2">
@@ -863,7 +933,8 @@
                                                                             <label
                                                                                 class="d-flex align-items-center gap-1 fw-semibold"
                                                                                 style="font-size:0.75rem;cursor:pointer;">
-                                                                                <input type="checkbox" name="locations[]"
+                                                                                <input type="checkbox"
+                                                                                    name="locations[]"
                                                                                     value="{{ $ls->id }}"
                                                                                     class="shf-checkbox shf-icon-2xs"
                                                                                     {{ in_array($ls->id, $productLocIds) ? 'checked' : '' }}>
@@ -876,7 +947,8 @@
                                                                         @foreach ($bankCities as $lc)
                                                                             <label
                                                                                 class="d-flex align-items-center gap-1 ps-3 shf-clickable shf-text-xs">
-                                                                                <input type="checkbox" name="locations[]"
+                                                                                <input type="checkbox"
+                                                                                    name="locations[]"
                                                                                     value="{{ $lc->id }}"
                                                                                     class="shf-checkbox shf-icon-2xs"
                                                                                     {{ in_array($lc->id, $productLocIds) ? 'checked' : '' }}>
@@ -900,8 +972,8 @@
                                                         <button type="button"
                                                             class="btn-accent-outline shf-close-product-locs"
                                                             data-target="#product-locs-{{ $product->id }}"><svg
-                                                                class="shf-icon-sm" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
+                                                                class="shf-icon-sm" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                                     stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                             </svg> Cancel</button>
@@ -922,7 +994,8 @@
                 </div>
 
                 {{-- ═══ Role Permissions Tab ═══ --}}
-                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-role-permissions"{!! $activeTab !== 'role-permissions' ? '' : '' !!}>
+                <div class="settings-tab-pane p-4 shf-collapse-hidden"
+                    id="tab-role-permissions"{!! $activeTab !== 'role-permissions' ? '' : '' !!}>
                     <div class="shf-section">
                         <div class="shf-section-header">
                             <div class="shf-section-number">
@@ -942,7 +1015,8 @@
                             @php $groupedLoanPerms = $loanPermissions->groupBy('group'); @endphp
 
                             @if (auth()->user()->hasPermission('manage_workflow_config'))
-                                <form action="{{ route('loan-settings.task-role-permissions.save') }}" method="POST">
+                                <form action="{{ route('loan-settings.task-role-permissions.save') }}"
+                                    method="POST">
                                     @csrf
                                     <div class="table-responsive">
                                         <table class="table table-hover">

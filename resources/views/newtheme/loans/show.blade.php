@@ -98,6 +98,15 @@
                         {{ $loan->dme_user_id ? 'Change DME' : 'Set DME' }}
                     </button>
                 @endif
+                @if ($sanctionDone && $canEditDocketDate && $loan->status !== 'completed')
+                    <button type="button" class="btn"
+                        data-docket-change-btn
+                        data-url="{{ route('loans.docket-date.update', $loan) }}"
+                        data-current="{{ $loan->expected_docket_date?->format('d/m/Y') }}">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        {{ $loan->expected_docket_date ? 'Change Docket Date' : 'Set Docket Date' }}
+                    </button>
+                @endif
                 <a href="{{ route('loans.stages', $loan) }}" class="btn primary">
                     <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                     Stages
@@ -197,6 +206,9 @@
                     @endif
                     @if ($loan->due_date)
                         <div><span>Due Date</span><span>{{ $loan->due_date->format('d M Y') }}</span></div>
+                    @endif
+                    @if ($sanctionDone)
+                        <div><span>Docket Date</span><span id="lsDocketDate">{{ $loan->expected_docket_date?->format('d M Y') ?? '—' }}</span></div>
                     @endif
                     <div><span>Loan Number</span><span class="ls-mono">{{ $loan->loan_number }}</span></div>
                 </div>
@@ -461,5 +473,9 @@
                 });
             })();
         </script>
+    @endif
+
+    @if ($sanctionDone && $canEditDocketDate && $loan->status !== 'completed')
+        @include('newtheme.loans._docket-date-modal')
     @endif
 @endpush

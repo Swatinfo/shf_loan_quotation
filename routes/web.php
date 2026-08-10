@@ -121,6 +121,10 @@ Route::middleware(['auth'])->group(function () {
         // DME change is gated by role (super_admin/admin/bdh) inside the controller,
         // not a named permission, so it lives here rather than under edit_loan.
         Route::post('/loans/{loan}/dme', [LoanController::class, 'updateDme'])->name('loans.dme.update');
+        // Docket-date override — gated by the edit_docket_date permission. Available
+        // only once the sanction stage is complete (enforced in the controller).
+        Route::post('/loans/{loan}/docket-date', [LoanController::class, 'updateDocketDate'])
+            ->middleware('permission:edit_docket_date')->name('loans.docket-date.update');
     });
     Route::middleware('permission:edit_loan')->group(function () {
         Route::get('/loans/{loan}/edit', [LoanController::class, 'edit'])->name('loans.edit');

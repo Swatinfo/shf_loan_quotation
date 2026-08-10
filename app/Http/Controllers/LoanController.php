@@ -406,9 +406,18 @@ class LoanController extends Controller
                 ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
             : collect();
 
+        // Docket-date override UI: only after the Sanction stage is complete
+        // (when expected_docket_date is first computed) and only for holders of
+        // the edit_docket_date permission.
+        $sanctionDone = $loan->stageAssignments()
+            ->where('stage_key', 'sanction')
+            ->where('status', 'completed')
+            ->exists();
+        $canEditDocketDate = auth()->user()->canEditDocketDate();
+
         $template = 'newtheme.loans.show';
 
-        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers') + ['pageKey' => 'loans']);
+        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers', 'sanctionDone', 'canEditDocketDate') + ['pageKey' => 'loans']);
     }
 
     /**
@@ -452,6 +461,63 @@ class LoanController extends Controller
             'success' => true,
             'dme_name' => $target->name,
             'message' => 'DME updated.',
+        ]);
+    }
+
+    /**
+     * Override the loan's expected docket date. Gated by the edit_docket_date
+     * permission (route middleware) and only allowed once the Sanction stage is
+     * complete — at which point the date has first been computed. A mandatory
+     * reason is captured, and the old → new change is written to the activity log.
+     */
+    public function updateDocketDate(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $this->authorizeView($loan);
+
+        abort_unless(auth()->user()->canEditDocketDate(), 403, 'You cannot change the docket date for this loan.');
+
+        abort_if($loan->status === 'completed', 422, 'The docket date cannot be changed for a completed loan.');
+
+        $sanctionDone = $loan->stageAssignments()
+            ->where('stage_key', 'sanction')
+            ->where('status', 'completed')
+            ->exists();
+        abort_unless($sanctionDone, 422, 'The docket date can only be changed after the Sanction stage is complete.');
+
+        $validated = $request->validate([
+            'docket_date' => [
+                'bail',
+                'required',
+                'date_format:d/m/Y',
+                // Must be today or later. Checked manually because `after_or_equal:today`
+                // mis-parses the d/m/Y string (PHP reads DD/MM/YYYY as MM/DD/YYYY).
+                // `bail` above guarantees the format is valid before we parse here.
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $date = Carbon::createFromFormat('d/m/Y', $value);
+                    if (! $date || $date->startOfDay()->lt(now()->startOfDay())) {
+                        $fail('The docket date must be today or later.');
+                    }
+                },
+            ],
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $newDate = Carbon::createFromFormat('d/m/Y', $validated['docket_date'])->startOfDay();
+        $previous = $loan->expected_docket_date;
+
+        $loan->update(['expected_docket_date' => $newDate->toDateString()]);
+
+        ActivityLog::log('change_docket_date', $loan, [
+            'loan_number' => $loan->loan_number,
+            'from' => $previous?->format('d/m/Y'),
+            'to' => $newDate->format('d/m/Y'),
+            'reason' => $validated['reason'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'docket_date' => $newDate->format('d M Y'),
+            'message' => 'Docket date updated.',
         ]);
     }
 

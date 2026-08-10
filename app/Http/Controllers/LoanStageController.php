@@ -52,9 +52,17 @@ class LoanStageController extends Controller
             }
         }
 
+        // Docket-date override control: permission-gated, and only once the
+        // Sanction stage is complete (when expected_docket_date first exists).
+        $sanctionDone = $loan->stageAssignments()
+            ->where('stage_key', 'sanction')
+            ->where('status', 'completed')
+            ->exists();
+        $canEditDocketDate = auth()->user()->canEditDocketDate();
+
         $template = 'newtheme.loans.stages';
 
-        return view($template, compact('loan', 'mainStages', 'subStages', 'progress', 'allActiveUsers', 'stageRoleEligibility', 'skipAllowed') + ['pageKey' => 'loans']);
+        return view($template, compact('loan', 'mainStages', 'subStages', 'progress', 'allActiveUsers', 'stageRoleEligibility', 'skipAllowed', 'sanctionDone', 'canEditDocketDate') + ['pageKey' => 'loans']);
     }
 
     /**
@@ -798,6 +806,17 @@ class LoanStageController extends Controller
         foreach ($rules as $field => $label) {
             if (! isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
                 $errors[$field] = "{$label} is required";
+            }
+        }
+
+        // A custom docket date (offset = 0) must be today or later — never in the past.
+        if ($stageKey === 'app_number'
+            && ($data['docket_days_offset'] ?? '') === '0'
+            && ! empty($data['custom_docket_date'])
+            && ! isset($errors['custom_docket_date'])) {
+            $custom = rescue(fn () => Carbon::createFromFormat('d/m/Y', $data['custom_docket_date']), null, false);
+            if (! $custom || $custom->startOfDay()->lt(now()->startOfDay())) {
+                $errors['custom_docket_date'] = 'Custom Docket Date must be today or later';
             }
         }
 

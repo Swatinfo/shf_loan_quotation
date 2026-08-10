@@ -4,6 +4,33 @@ Current and completed tasks. Updated as work progresses.
 
 ---
 
+## DONE: Docket-date override — new permission + view + stages control (2026-08-10)
+
+Let permission-holders correct `loan_details.expected_docket_date` after sanction, with a mandatory reason logged old→new.
+
+- [x] New permission `edit_docket_date` (Loans group) in `config/permissions.php` + migration `2026_08_10_181927_add_edit_docket_date_permission` (grants admin/branch_manager/bdh; super_admin bypasses). Idempotent up/down.
+- [x] `User::canEditDocketDate()` → `hasPermission('edit_docket_date')`.
+- [x] Route `POST /loans/{loan}/docket-date` (`loans.docket-date.update`, middleware `permission:edit_docket_date`) → `LoanController@updateDocketDate`: authorizeView + permission gate + sanction-complete gate (422) + validate `docket_date` (d/m/Y) & required `reason` (min 3) → update `expected_docket_date` (NOT due_date) → `ActivityLog::log('change_docket_date', from/to/reason)`.
+- [x] Controllers pass `$sanctionDone` + `$canEditDocketDate`: `LoanController@show`, `LoanStageController@index`.
+- [x] UI: "Set/Change Docket Date" — show.blade.php details grid row (`#lsChangeDocketBtn`) + stages.blade.php header button (`#lrDocketDateBtn`). SweetAlert modal with `shf-datepicker` (dd/mm/yyyy, inited in didOpen w/ `container: Swal.getPopup()`) + mandatory reason textarea → fetch → reload.
+- [x] Tests: `LoanDocketDateUpdateTest` 7/7 (permitted+logged, today accepted, past rejected 422, reason required 422, bad date 422, pre-sanction 422, no-permission 403). Pint clean.
+- [x] Migration run on server (`migrate --force`); grant later extended to **super_admin, admin, bdh, branch_manager** (super_admin explicit; it bypasses anyway).
+- [x] **≥ today** rule on override (client + server `bail`+closure) AND app_number custom docket date (`getFieldErrors` + datepicker `min_date`).
+- [x] Modal refactored to shared `_docket-date-modal` partial (themed inputs); header button placement on show page; responsive header fix in `shf-workflow.css` (wrap ≤768px) — needed `SHF_VERSION`/`SHF_SW_VERSION` bump to `20260810193000` (SW cache).
+- [x] Browser-verified on prod (loan #177): themed modal, datepicker min-date, responsive @1280/834/390, end-to-end submit+revert.
+
+## DONE: Read-only stage detail for all viewers (2026-08-10)
+
+Non-assignee viewers now see the same main-stage financial figures the assignee sees, VIEW-ONLY.
+
+- [x] Security basis: stage-action endpoints gated by `manage_loan_stages` permission, NOT assignee → blade `$isMainAssignee` is the real guard. So expose read-only display only, never forms.
+- [x] `_stages-body.blade.php`: `$stageViewable` (status in_progress/completed) gates read-only; `$stageEditable = $stageViewable && $isMainAssignee` still gates all forms/buttons. Added `@elseif ($stageViewable) @include('newtheme.loans._stage-readonly-detail')`.
+- [x] New `_stage-readonly-detail.blade.php` partial — rate_pf/sanction/docket(+banner)/disbursement figures, ZERO forms/inputs/buttons (verified).
+- [x] Tests: `StageReadonlyDetailTest` 4/4 (figures shown + no action controls for rate_pf/sanction/docket, unknown stage renders nothing). Regression 37/37. Pint clean.
+- [ ] Live browser visual confirm pending (chrome MCP disconnected mid-session) — blade change needs no cache bump; recreate a non-assignee viewer to confirm when browser is back.
+
+---
+
 ## DONE: Email-gated loan stage reset — web + CLI (2026-07-24)
 
 Rewind a loan to an earlier stage. Engine extracted from `LoanSetStageCommand` into `LoanStageService::resetToStage()` so CLI + web share one implementation. Access gated to specific email accounts (NOT role/permission).

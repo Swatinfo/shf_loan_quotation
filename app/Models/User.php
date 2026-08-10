@@ -186,6 +186,15 @@ class User extends Authenticatable
         return in_array($this->email, config('app.stage_reset_emails', []), true);
     }
 
+    /**
+     * Whether this account may override a loan's expected docket date after the
+     * Sanction stage. Gated by the `edit_docket_date` permission.
+     */
+    public function canEditDocketDate(): bool
+    {
+        return $this->hasPermission('edit_docket_date');
+    }
+
     // ── Display Helpers ──
 
     public function getRoleLabelAttribute(): string

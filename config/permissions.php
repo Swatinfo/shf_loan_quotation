@@ -46,6 +46,7 @@ return [
             ['slug' => 'delete_loan_files', 'name' => 'Delete Loan Files', 'description' => 'Remove uploaded document files'],
             ['slug' => 'manage_loan_stages', 'name' => 'Manage Loan Stages', 'description' => 'Update stage status and assignments'],
             ['slug' => 'skip_loan_stages', 'name' => 'Skip Loan Stages', 'description' => 'Skip stages in loan workflow'],
+            ['slug' => 'edit_docket_date', 'name' => 'Edit Docket Date', 'description' => 'Override a loan\'s expected docket date after sanction (with a reason)'],
             ['slug' => 'add_remarks', 'name' => 'Add Remarks', 'description' => 'Add remarks to loan stages'],
             ['slug' => 'manage_workflow_config', 'name' => 'Manage Workflow Config', 'description' => 'Configure banks, products, branches, stage workflows'],
         ],

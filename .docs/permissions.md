@@ -18,7 +18,7 @@ Permission-based access control. 45 permissions across 7 groups, resolved throug
 | **Settings** | 8 | view_settings, edit_company_info, edit_banks, edit_documents, edit_tenures, edit_charges, edit_services, edit_gst |
 | **Quotations** | 12 | create_quotation, edit_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain, hold_quotation, cancel_quotation, resume_quotation |
 | **Users** | 5 | view_users, create_users, edit_users, delete_users, assign_roles |
-| **Loans** | 14 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, add_remarks, manage_workflow_config |
+| **Loans** | 15 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, edit_docket_date, add_remarks, manage_workflow_config |
 | **Tasks** | 1 | view_all_tasks |
 | **DVR** | 5 | view_dvr, create_dvr, edit_dvr, delete_dvr, view_all_dvr |
 | **System** | 4 | change_own_password, manage_permissions, view_activity_log, view_reports |

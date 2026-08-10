@@ -1854,6 +1854,19 @@ body.shf-more-open .shf-more-sheet {
 .page-header .head-actions > .btn {
     flex-shrink: 0;
 }
+/* On small screens the one-line scroll strip hides trailing buttons (the
+   scrollbar is intentionally hidden). Wrap onto multiple rows there instead so
+   every action stays visible. Desktop/tablet keep the single-line behavior. */
+@media (max-width: 768px) {
+    .page-header .head-actions {
+        flex-wrap: wrap;
+        white-space: normal;
+        overflow-x: visible;
+    }
+    .page-header .head-actions > .btn {
+        flex: 1 1 auto;
+    }
+}
 
 /* ========== Legacy shf-badge shims ==========
    Several controllers (DVR listing, dashboard DVR tab, loan tables) emit
