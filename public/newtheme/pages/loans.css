@@ -72,6 +72,10 @@
 }
 
 .lx-results .tbl thead th { background: var(--paper-2); }
+/* Compact columns — the loans list carries many columns, so keep cell padding
+   minimal (scoped to .lx-results so other .tbl tables are unaffected). */
+.lx-results .tbl thead th,
+.lx-results .tbl tbody td { padding: 6px 8px; }
 .lx-results .tbl tbody tr { cursor: default; }
 .lx-results .tbl tbody tr.clickable { cursor: pointer; }
 

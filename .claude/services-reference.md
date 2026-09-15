@@ -183,7 +183,7 @@ The transaction runs through `runWithLoanNumberRetry()` — retries up to 3× on
 Inside DB transaction:
 1. Re-check the already-converted guard under `lockForUpdate()` (blocks double-submit conversion)
 2. Resolve customer by PAN via `CustomerService::resolveMasterByPan` (reuse or create once — never updates an existing master), then `recordKyc()` and link `customer_kyc_details_id`
-3. Build `LoanDetail` (status=active, current_stage=document_collection)
+3. Build `LoanDetail` (status=active, current_stage=document_collection); sets `original_loan_amount = loan_amount` (as-applied snapshot; `createDirectLoan` does the same)
 4. `generateLoanNumber()` → `SHF-YYYYMM-NNNN` (monthly max compared NUMERICALLY incl. `withTrashed()`; string sort would break past 9999)
 5. Freeze `workflow_config` via `LoanStageService::buildWorkflowSnapshot()`
 6. Populate documents via `LoanDocumentService::populateFromQuotation`
@@ -264,6 +264,14 @@ Orchestration logic:
 - `autoAssignParallelSubStages(LoanDetail)` — only starts `app_number` first; rest wait
 - `findBestAssignee(stageKey, branchId, bankId, productId, creatorId, advisorId): ?int` — priority: product_stage_users → advisor → bank default per city → bank employee per branch → any bank employee → default OE for branch → creator → fallback role match
 - `transferStage(LoanDetail, string, int $toUserId, ?string $reason)` — updates assignment, creates StageTransfer; open queries whose `assigned_to_user_id` was the outgoing assignee are re-pointed to the new assignee (advisor-routed queries untouched)
+
+### Config propagation (2026-08-31)
+
+Pushes admin stage/task-owner config edits onto in-flight loans instead of only new ones.
+
+- `propagateConfigToEligibleLoans(?int $productId, ?int $bankId = null): array` — for each **eligible** loan (`where('status', '!=', STATUS_COMPLETED)` — i.e. everything except completed: active, on_hold, rejected, cancelled, disbursed-but-open all qualify; scoped by product, else bank, else all): rebuild `workflow_config` via `buildWorkflowSnapshot`, then re-point every **in_progress** stage owner that is **still on its old auto-resolved default** to the new default (phase-aware). Manual transfers are preserved (skip when current assignee ≠ old default). Chunked (100). Returns `{loans_processed, stages_reassigned}`. Called from `WorkflowConfigController::saveProductStages` (product-scoped), `LoanSettingsController::saveMasterStages` (all eligible), and `propagateConfigToAllEligibleLoans` (Sync Settings).
+- `propagateConfigToAllEligibleLoans(): array` — loops every `Product`, calls the above per product. Returns `{products, loans_processed, stages_reassigned}`. Backs the **"Sync Settings"** button (`WorkflowConfigController::syncStageConfig`).
+- Private helpers: `resyncLoanAssignments(LoanDetail): int` (per-loan engine — computes OLD assignees before rebuild, NEW after), `resyncPhaseIndex(StageAssignment): ?int` (0-based sub_actions index from phase notes; `-1` = indeterminate → skip), `reassignForConfigChange(LoanDetail, StageAssignment, int)` (sets `assigned_to`, writes StageTransfer `auto` with real old→new, re-points open queries, logs `config_reassign_stage`, notifies new owner in try/catch).
 
 ### Rejection
 

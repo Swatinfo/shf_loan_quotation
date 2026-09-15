@@ -139,19 +139,19 @@
         '</tr></thead><tbody>' +
         pt.map((t) => (
             '<tr onclick="location=\'' + t.showUrl + '\'" class="clickable">' +
-            '<td><strong>' + escapeHtml(t.title) + '</strong>' +
+            '<td data-label="Task"><strong>' + escapeHtml(t.title) + '</strong>' +
             '<div class="text-xs text-muted">' +
-            (t.loanNumber ? '<span class="font-mono" style="color:var(--accent);">' + escapeHtml(t.loanNumber) + '</span> · ' : '') +
+            (t.loanNumber ? '<span class="font-mono" style="color:var(--accent);">' + escapeHtml(t.loanNumber) + '</span>' + copyBtn(t.loanNumber) + ' · ' : '') +
             'Created by ' + escapeHtml(t.createdBy) +
             '</div>' +
             '</td>' +
-            '<td>' + pill(t.priorityLabel, t.priorityColor) + '</td>' +
-            '<td>' + pill(t.statusLabel, t.statusColor) + '</td>' +
-            '<td>' +
+            '<td data-label="Priority">' + pill(t.priorityLabel, t.priorityColor) + '</td>' +
+            '<td data-label="Status">' + pill(t.statusLabel, t.statusColor) + '</td>' +
+            '<td data-label="Due">' +
             '<div class="text-xs"' + (t.overdue ? ' style="color:var(--red);font-weight:600;"' : '') + '>' + (t.dueDate || '—') + '</div>' +
             (t.overdue ? '<div class="text-xs" style="color:var(--red);">Overdue</div>' : '') +
             '</td>' +
-            '<td><div>' + escapeHtml(t.assignee) + '</div>' + (t.assignedToMe ? '<div class="text-xs" style="color:var(--accent);">Me</div>' : '') + '</td>' +
+            '<td data-label="Assignee"><div>' + escapeHtml(t.assignee) + '</div>' + (t.assignedToMe ? '<div class="text-xs" style="color:var(--accent);">Me</div>' : '') + '</td>' +
             '</tr>'
         )).join('') + '</tbody></table>'
     ) : emptyState('✅', 'All caught up!', 'No pending personal tasks.');
@@ -166,21 +166,59 @@
         stageSel.appendChild(o);
     });
 
+    // Copy-to-clipboard button (global SHF.copyBtn handler in shf-newtheme.js).
+    function copyBtn(v) {
+        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : '';
+    }
+
+    // Application-number cell (own column) — '—' until captured at app_number stage.
+    function appCell(l) {
+        var v = l.applicationNumber;
+        return '<span class="font-mono">' + escapeHtml(v || '—') + '</span>' + copyBtn(v);
+    }
+
+    // Loan account number(s) cell — combined across tranches; '—' pre-disbursement.
+    function acctCell(l) {
+        var v = l.loanAccountNumbers;
+        return '<span class="font-mono">' + escapeHtml(v || '—') + '</span>' + copyBtn(v);
+    }
+
+    // Stage cell: a parallel entry shows one badge + owner per active sub-stage,
+    // stacked within the single row; other stages show one badge.
+    function myTaskStageCell(l) {
+        const bar = '<div class="progress thin mt-1"><div class="fill" style="width:' + l.progress + '%;background:' + barColor(l.stageBadgeClass) + ';"></div></div>';
+        if (l.type === 'parallel' && (l.subStages || []).length) {
+            const subs = l.subStages.map((s) => (
+                '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
+                badge(s.stageName, s.badgeClass) +
+                '<span class="text-xs text-muted">' + escapeHtml(s.owner) + '</span>' +
+                '</div>'
+            )).join('');
+            return subs + bar;
+        }
+        const owner = '<div style="display:flex;align-items:center;gap:6px;">' +
+            badge(l.stageName, l.stageBadgeClass) +
+            (l.owner ? '<span class="text-xs text-muted">' + escapeHtml(l.owner) + '</span>' : '') +
+            '</div>';
+        return owner + bar;
+    }
+
     function renderMyTasks() {
         const filter = stageSel.value;
-        const rows = mt.filter((l) => !filter || l.stageKey === filter);
+        const rows = mt.filter((l) => !filter || l.stageKey === filter || (l.subStageKeys && l.subStageKeys.indexOf(filter) !== -1));
         $('rows-mytasks').innerHTML = rows.length ? (
             '<table class="tbl"><thead><tr>' +
-            '<th>Loan #</th><th>Customer</th><th>Stage</th><th class="num">Amount</th><th>Bank</th>' +
+            '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Stage &amp; Owner</th><th class="num">Amount</th><th>Bank</th>' +
             '</tr></thead><tbody>' +
             rows.map((l) => (
                 '<tr onclick="location=\'' + l.showUrl + '\'" class="clickable">' +
-                '<td><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span></td>' +
-                '<td><strong>' + escapeHtml(l.customer) + '</strong><div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
-                '<td>' + badge(l.stageName, l.stageBadgeClass) +
-                '<div class="progress thin mt-1"><div class="fill" style="width:' + l.progress + '%;background:' + barColor(l.stageBadgeClass) + ';"></div></div></td>' +
-                '<td class="num tnum"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
-                '<td>' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
+                '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span>' + copyBtn(l.loanNumber) + '</td>' +
+                '<td data-label="App #">' + appCell(l) + '</td>' +
+                '<td data-label="Customer"><strong>' + escapeHtml(l.customer) + '</strong>' + copyBtn(l.customer) + '<div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
+                '<td data-label="Loan Acct #">' + acctCell(l) + '</td>' +
+                '<td data-label="Stage & Owner">' + myTaskStageCell(l) + '</td>' +
+                '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
+                '<td data-label="Bank">' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
                 '</tr>'
             )).join('') + '</tbody></table>'
         ) : emptyState('🎉', 'No assigned stages');
@@ -192,18 +230,19 @@
     const loans = D.loans || [];
     $('rows-loans').innerHTML = loans.length ? (
         '<table class="tbl"><thead><tr>' +
-        '<th>Loan #</th><th>Customer</th><th>Bank / Product</th><th class="num">Amount</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th>Stage</th><th>Owner</th>' +
+        '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Bank / Product</th><th class="num">Amount</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th>Stage &amp; Owner</th>' +
         '</tr></thead><tbody>' +
         loans.map((l) => (
             '<tr onclick="location=\'' + l.showUrl + '\'" class="clickable">' +
-            '<td><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span></td>' +
-            '<td><strong>' + escapeHtml(l.customer) + '</strong><div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
-            '<td>' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
-            '<td class="num tnum"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
-            '<td class="num tnum">' + escapeHtml(l.sanctionedFormatted || '—') + '</td>' +
-            '<td class="num tnum">' + escapeHtml(l.disbursedFormatted || '—') + '</td>' +
-            '<td>' + badge(l.stageName, l.stageBadgeClass) + '</td>' +
-            '<td>' + escapeHtml(l.owner) + '</td>' +
+            '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span>' + copyBtn(l.loanNumber) + '</td>' +
+            '<td data-label="App #">' + appCell(l) + '</td>' +
+            '<td data-label="Customer"><strong>' + escapeHtml(l.customer) + '</strong>' + copyBtn(l.customer) + '<div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
+            '<td data-label="Loan Acct #">' + acctCell(l) + '</td>' +
+            '<td data-label="Bank / Product">' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
+            '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
+            '<td class="num tnum" data-label="Sanctioned">' + escapeHtml(l.sanctionedFormatted || '—') + '</td>' +
+            '<td class="num tnum" data-label="Disbursed">' + escapeHtml(l.disbursedFormatted || '—') + '</td>' +
+            '<td data-label="Stage & Owner">' + myTaskStageCell(l) + '</td>' +
             '</tr>'
         )).join('') + '</tbody></table>'
     ) : emptyState('📂', 'No active loans');
@@ -215,7 +254,7 @@
     $('dvrSub').textContent = dvr.length + ' visits · ' + pendingFu + ' pending follow-ups · ' + overdueFu + ' overdue';
     $('rows-dvr').innerHTML = dvr.length ? (
         '<table class="tbl"><thead><tr>' +
-        '<th>Visit</th><th>Contact</th><th>Type</th><th>Purpose</th><th>Outcome</th><th>Follow-up</th>' +
+        '<th>Visit</th><th>Contact</th><th>User</th><th>Type</th><th>Purpose</th><th>Outcome</th><th>Follow-up</th>' +
         '</tr></thead><tbody>' +
         dvr.map((v) => {
             let fu;
@@ -233,13 +272,14 @@
                 fu += '<div style="margin-top:4px;">' + badge(v.followUpsTaken + ' ' + label, 'blue') + '</div>';
             }
             return '<tr onclick="location=\'' + v.showUrl + '\'" class="clickable">' +
-                '<td><div class="text-xs">' + escapeHtml(v.visitDate) + '</div></td>' +
-                '<td><strong>' + escapeHtml(v.contactName) + '</strong>' +
-                (v.contactPhone ? '<div class="text-xs text-muted font-mono">' + escapeHtml(v.contactPhone) + '</div>' : '') + '</td>' +
-                '<td>' + pill(v.contactType, 'gray') + '</td>' +
-                '<td>' + escapeHtml(v.purpose) + '</td>' +
-                '<td><div class="text-xs">' + escapeHtml(v.outcome || '—') + '</div></td>' +
-                '<td>' + fu + '</td>' +
+                '<td data-label="Visit"><div class="text-xs">' + escapeHtml(v.visitDate) + '</div></td>' +
+                '<td data-label="Contact"><strong>' + escapeHtml(v.contactName) + '</strong>' + copyBtn(v.contactName) +
+                (v.contactPhone ? '<div class="text-xs text-muted font-mono">' + escapeHtml(v.contactPhone) + copyBtn(v.contactPhone) + '</div>' : '') + '</td>' +
+                '<td data-label="User">' + escapeHtml(v.user || '—') + '</td>' +
+                '<td data-label="Type">' + pill(v.contactType, 'gray') + '</td>' +
+                '<td data-label="Purpose">' + escapeHtml(v.purpose) + '</td>' +
+                '<td data-label="Outcome"><div class="text-xs">' + escapeHtml(v.outcome || '—') + '</div></td>' +
+                '<td data-label="Follow-up">' + fu + '</td>' +
                 '</tr>';
         }).join('') + '</tbody></table>'
     ) : emptyState('📍', 'No visits yet');
@@ -256,12 +296,12 @@
             '</tr></thead><tbody>' +
             rows.map((q) => (
                 '<tr onclick="location=\'' + q.showUrl + '\'" class="clickable">' +
-                '<td><span class="font-mono" style="font-weight:600;">' + escapeHtml(q.quotNumber) + '</span></td>' +
-                '<td><strong>' + escapeHtml(q.customer) + '</strong><div class="text-xs text-muted">' + escapeHtml(q.customerType) + '</div></td>' +
-                '<td class="num tnum"><strong>' + escapeHtml(q.amountFormatted) + '</strong></td>' +
-                '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">' + (q.banks || []).map(bankChip).join('') + '</div></td>' +
-                '<td>' + pill(q.statusLabel, q.statusColor) + '</td>' +
-                '<td><div class="text-xs">' + escapeHtml(q.date || '—') + '</div></td>' +
+                '<td data-label="#"><span class="font-mono" style="font-weight:600;">' + escapeHtml(q.quotNumber) + '</span>' + copyBtn(q.quotNumber) + '</td>' +
+                '<td data-label="Customer"><strong>' + escapeHtml(q.customer) + '</strong>' + copyBtn(q.customer) + '<div class="text-xs text-muted">' + escapeHtml(q.customerType) + '</div></td>' +
+                '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(q.amountFormatted) + '</strong></td>' +
+                '<td data-label="Banks"><div style="display:flex;gap:4px;flex-wrap:wrap;">' + (q.banks || []).map(bankChip).join('') + '</div></td>' +
+                '<td data-label="Status">' + pill(q.statusLabel, q.statusColor) + '</td>' +
+                '<td data-label="Date"><div class="text-xs">' + escapeHtml(q.date || '—') + '</div></td>' +
                 '</tr>'
             )).join('') + '</tbody></table>'
         ) : emptyState('📄', 'No quotations match filter');

@@ -145,6 +145,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loan-settings/products', [WorkflowConfigController::class, 'storeProduct'])->name('loan-settings.products.store');
         Route::get('/loan-settings/products/{product}/stages', [WorkflowConfigController::class, 'productStages'])->name('loan-settings.product-stages');
         Route::post('/loan-settings/products/{product}/stages', [WorkflowConfigController::class, 'saveProductStages'])->name('loan-settings.product-stages.save');
+        Route::post('/loan-settings/sync-stage-config', [WorkflowConfigController::class, 'syncStageConfig'])->name('loan-settings.sync-stage-config');
         Route::post('/loan-settings/products/{product}/locations', [WorkflowConfigController::class, 'saveProductLocations'])->name('loan-settings.product-locations.save');
         Route::post('/loan-settings/branches', [WorkflowConfigController::class, 'storeBranch'])->name('loan-settings.branches.store');
         Route::delete('/loan-settings/branches/{branch}', [WorkflowConfigController::class, 'destroyBranch'])->name('loan-settings.branches.destroy');
@@ -170,6 +171,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loans/{loan}/stages/{stageKey}/reject', [LoanStageController::class, 'reject'])->name('loans.stages.reject');
         Route::post('/loans/{loan}/stages/{stageKey}/query', [LoanStageController::class, 'raiseQuery'])->name('loans.stages.query');
         Route::post('/loans/{loan}/stages/{stageKey}/notes', [LoanStageController::class, 'saveNotes'])->name('loans.stages.notes');
+        Route::post('/loans/{loan}/kfs/loan-amount', [LoanStageController::class, 'updateKfsLoanAmount'])->name('loans.kfs.amount.update');
         Route::post('/loans/{loan}/stages/technical_valuation/action', [LoanStageController::class, 'technicalValuationAction'])->name('loans.stages.technical-valuation-action');
         Route::post('/loans/{loan}/stages/esign/action', [LoanStageController::class, 'esignAction'])->name('loans.stages.esign-action');
         Route::post('/loans/{loan}/stages/docket/action', [LoanStageController::class, 'docketAction'])->name('loans.stages.docket-action');

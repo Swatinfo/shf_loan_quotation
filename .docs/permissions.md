@@ -18,12 +18,17 @@ Permission-based access control. 45 permissions across 7 groups, resolved throug
 | **Settings** | 8 | view_settings, edit_company_info, edit_banks, edit_documents, edit_tenures, edit_charges, edit_services, edit_gst |
 | **Quotations** | 12 | create_quotation, edit_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain, hold_quotation, cancel_quotation, resume_quotation |
 | **Users** | 5 | view_users, create_users, edit_users, delete_users, assign_roles |
-| **Loans** | 15 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, edit_docket_date, add_remarks, manage_workflow_config |
+| **Loans** | 17 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, waive_legal_verification, verify_original_documents, edit_docket_date, add_remarks, manage_workflow_config |
 | **Tasks** | 1 | view_all_tasks |
 | **DVR** | 5 | view_dvr, create_dvr, edit_dvr, delete_dvr, view_all_dvr |
 | **System** | 4 | change_own_password, manage_permissions, view_activity_log, view_reports |
 
 Additional slugs live in migrations (beyond `config/permissions.php`): `manage_customers`, `view_customers`, `impersonate_users`, `view_dashboard`, `manage_notifications`, `transfer_loan_stages`, `reject_loan`, `change_loan_status`, `view_loan_timeline`, `manage_disbursement`, `manage_valuation`, `raise_query`, `resolve_query`.
+
+**Stage-action permissions (additive):** `waive_legal_verification` and `verify_original_documents` (seeded by `2026_08_31_120000_add_legal_odv_permissions`, default-granted to admin/branch_manager/bdh/loan_advisor). They grant a fine-grained authority **on top of** the existing base logic, so a holder can act regardless of assignee and at any in_progress phase:
+- `waive_legal_verification` → complete Legal Verification without sending to bank (`legalAction complete_skip_bank`), in addition to the loan owner / branch_manager / bdh of the branch. Checked in `LoanStageController::canSkipLegalBank()`.
+- `verify_original_documents` → complete Original Document Verification ("seen original") even when not the stage assignee (blade gate; `saveNotes` itself remains `manage_loan_stages`-gated).
+Both still require `manage_loan_stages` at the route (they are stage actions) — all four default roles already have it.
 
 ## Branch-scoped visibility
 

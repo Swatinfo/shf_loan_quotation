@@ -112,7 +112,7 @@
                         @forelse ($customer->loans as $loan)
                             <div class="cxs-loan-row">
                                 <div class="cxs-loan-main">
-                                    <a href="{{ route('loans.show', $loan) }}" class="cxs-loan-link">#{{ $loan->loan_number }}</a>
+                                    <a href="{{ route('loans.show', $loan) }}" class="cxs-loan-link">#{{ $loan->loan_number }}</a>@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])
                                     <span class="cxs-loan-meta">
                                         {{ $loan->bank?->name ?? $loan->bank_name ?? '—' }}
                                         @if ($loan->branch)

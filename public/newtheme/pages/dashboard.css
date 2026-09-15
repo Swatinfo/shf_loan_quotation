@@ -34,3 +34,122 @@
         grid-template-columns: repeat(2, 1fr) !important;
     }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Dashboard result tables → stacked cards below desktop (xl / 1200px).
+   The global .tbl mobile rules (≤768px) use a 38/62 flex split that
+   overflows the viewport with rich content (long names, stage badges,
+   copy buttons) and doesn't cover tablets/landscape. Here every cell
+   stacks its data-label ABOVE a full-width, wrapping value, for the
+   Tasks / Loan Tasks / Loans / DVR / Quotations widgets — correct on
+   small phones, phones, tablets, portrait and landscape alike.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1199.98px) {
+    #rows-ptasks .tbl,
+    #rows-mytasks .tbl,
+    #rows-loans .tbl,
+    #rows-dvr .tbl,
+    #rows-quotations .tbl {
+        display: block;
+        width: 100%;
+        min-width: 0 !important;
+        border: none;
+    }
+
+    #rows-ptasks .tbl thead,
+    #rows-mytasks .tbl thead,
+    #rows-loans .tbl thead,
+    #rows-dvr .tbl thead,
+    #rows-quotations .tbl thead {
+        display: none;
+    }
+
+    #rows-ptasks .tbl tbody,
+    #rows-mytasks .tbl tbody,
+    #rows-loans .tbl tbody,
+    #rows-dvr .tbl tbody,
+    #rows-quotations .tbl tbody {
+        display: block;
+        width: 100%;
+    }
+
+    #rows-ptasks .tbl tr,
+    #rows-mytasks .tbl tr,
+    #rows-loans .tbl tr,
+    #rows-dvr .tbl tr,
+    #rows-quotations .tbl tr {
+        display: block;
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--line, #e5e7eb);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        background: #fff;
+    }
+
+    #rows-ptasks .tbl td,
+    #rows-mytasks .tbl td,
+    #rows-loans .tbl td,
+    #rows-dvr .tbl td,
+    #rows-quotations .tbl td {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        padding: 5px 0;
+        border: none;
+        text-align: left !important;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        min-width: 0;
+    }
+
+    /* Label stacked above the value */
+    #rows-ptasks .tbl td::before,
+    #rows-mytasks .tbl td::before,
+    #rows-loans .tbl td::before,
+    #rows-dvr .tbl td::before,
+    #rows-quotations .tbl td::before {
+        content: attr(data-label);
+        display: block;
+        flex: none;
+        width: auto;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ink-3, #6b7280);
+        margin-bottom: 2px;
+    }
+
+    /* First cell (loan #, task title, etc.) is the card heading — no label */
+    #rows-ptasks .tbl td:first-child,
+    #rows-mytasks .tbl td:first-child,
+    #rows-loans .tbl td:first-child,
+    #rows-dvr .tbl td:first-child,
+    #rows-quotations .tbl td:first-child {
+        font-weight: 700;
+        font-size: 15px;
+        border-bottom: 1px dashed var(--line, #e5e7eb);
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+    }
+
+    #rows-ptasks .tbl td:first-child::before,
+    #rows-mytasks .tbl td:first-child::before,
+    #rows-loans .tbl td:first-child::before,
+    #rows-dvr .tbl td:first-child::before,
+    #rows-quotations .tbl td:first-child::before {
+        display: none;
+    }
+
+    /* Value inner flex rows (stage+owner, badges) wrap instead of clipping */
+    #rows-ptasks .tbl td > div,
+    #rows-mytasks .tbl td > div,
+    #rows-loans .tbl td > div,
+    #rows-dvr .tbl td > div,
+    #rows-quotations .tbl td > div {
+        max-width: 100%;
+        flex-wrap: wrap;
+    }
+}

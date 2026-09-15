@@ -196,6 +196,103 @@
                 }
             });
 
+            // KFS — edit loan amount (original preserved server-side)
+            $(document).on('click', '.shf-kfs-amount-save', function() {
+                var $btn = $(this);
+                var $wrap = $btn.closest('.mb-3');
+                var $input = $wrap.find('.shf-kfs-amount-input');
+                var $status = $wrap.find('.shf-kfs-amount-status');
+                var amount = parseInt($input.val(), 10);
+
+                if (!amount || amount < 1) {
+                    Swal.fire('Error', 'Enter a valid loan amount.', 'error');
+                    return;
+                }
+
+                $btn.prop('disabled', true);
+                $status.text('Saving...').removeClass('text-danger text-success');
+
+                $.post($btn.data('url'), {
+                        _token: csrfToken,
+                        loan_amount: amount
+                    })
+                    .done(function(r) {
+                        if (r.success) {
+                            $status.text('Saved').addClass('text-success');
+                            if (r.formatted_original_amount) {
+                                $wrap.find('.shf-kfs-original-amount').text(r.formatted_original_amount);
+                            }
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Loan amount updated',
+                                timer: 1200,
+                                showConfirmButton: false
+                            }).then(function() {
+                                location.reload();
+                            });
+                        }
+                    })
+                    .fail(function(xhr) {
+                        $btn.prop('disabled', false);
+                        $status.text('').removeClass('text-success');
+                        Swal.fire('Error', xhr.responseJSON?.error || 'Failed to update amount', 'error');
+                    });
+            });
+
+            // KFS — complete the stage, saving + validating the loan amount first.
+            $(document).on('click', '.shf-kfs-complete', function() {
+                var $btn = $(this);
+                var amountUrl = $btn.data('amount-url');
+                var statusUrl = $btn.data('status-url');
+                var $input = $btn.closest('.card-body').find('.shf-kfs-amount-input');
+                var amount = parseInt($input.val(), 10);
+
+                if (!amount || amount < 1 || amount > 1000000000000) {
+                    Swal.fire('Error',
+                        'Enter a valid loan amount (greater than 0) before completing KFS.',
+                        'error');
+                    $input.focus();
+                    return;
+                }
+
+                $btn.prop('disabled', true);
+
+                // 1) Persist + server-validate the amount, then 2) complete the stage.
+                $.post(amountUrl, {
+                        _token: csrfToken,
+                        loan_amount: amount
+                    })
+                    .done(function() {
+                        $.post(statusUrl, {
+                                _token: csrfToken,
+                                status: 'completed'
+                            })
+                            .done(function(r) {
+                                if (r.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'KFS completed!',
+                                        text: r.message || 'Moving to next stage...',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }).then(function() {
+                                        location.reload();
+                                    });
+                                }
+                            })
+                            .fail(function(xhr) {
+                                $btn.prop('disabled', false);
+                                Swal.fire('Error', xhr.responseJSON?.error ||
+                                    'Failed to complete KFS', 'error');
+                            });
+                    })
+                    .fail(function(xhr) {
+                        $btn.prop('disabled', false);
+                        Swal.fire('Error', xhr.responseJSON?.error ||
+                            'Invalid loan amount', 'error');
+                    });
+            });
+
             // Assign
             $(document).on('change', '.shf-stage-assign', function() {
                 var userId = $(this).val(),

@@ -53,7 +53,7 @@ class DashboardController extends Controller
         $recordsTotal = (clone $query)->count();
 
         // Quotation status filter (active / on_hold / cancelled / not_cancelled / all)
-        $status = $request->input('status', 'not_cancelled');
+        $status = $request->input('status', 'active');
         if ($status === 'active') {
             $query->where('status', Quotation::STATUS_ACTIVE);
         } elseif ($status === 'on_hold') {
@@ -243,7 +243,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         $query = StageAssignment::where('assigned_to', $user->id)
             ->whereIn('status', ['pending', 'in_progress'])
-            ->whereHas('loan', fn ($q) => $q->open())
+            ->whereHas('loan', fn ($q) => $q->active())
             ->with(['loan.bank', 'loan.product', 'loan.branch', 'loan.location.parent', 'loan.stageAssignments.assignee', 'stage']);
 
         $recordsTotal = (clone $query)->count();
@@ -330,7 +330,7 @@ class DashboardController extends Controller
             $query->where('status', $request->status);
         } else {
             // Default: exclude closed loans
-            $query->whereNotIn('status', ['completed', 'rejected', 'cancelled']);
+            $query->where('status', LoanDetail::STATUS_ACTIVE);
         }
         if ($request->filled('stage')) {
             $query->where('current_stage', $request->stage);
@@ -844,8 +844,8 @@ class DashboardController extends Controller
         $hasLoanContext = $user->hasPermission('view_loans') || $user->hasWorkflowRole();
         if ($hasLoanContext) {
             $loanBase = LoanDetail::visibleTo($user);
-            $tiles[] = ['val' => (clone $loanBase)->whereNotIn('status', ['completed', 'rejected', 'cancelled'])->count(), 'lbl' => 'Active Loans', 'tone' => 'blue', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'];
-            $tiles[] = ['val' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->open())->count(), 'lbl' => 'My Tasks', 'tone' => 'amber', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'];
+            $tiles[] = ['val' => (clone $loanBase)->where('status', LoanDetail::STATUS_ACTIVE)->count(), 'lbl' => 'Active Loans', 'tone' => 'blue', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'];
+            $tiles[] = ['val' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->active())->count(), 'lbl' => 'My Tasks', 'tone' => 'amber', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'];
             $tiles[] = ['val' => (clone $loanBase)->where('status', 'completed')->count(), 'lbl' => 'Completed', 'tone' => 'green', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'];
         }
 
@@ -876,8 +876,8 @@ class DashboardController extends Controller
     {
         return [
             'personal_tasks' => GeneralTask::visibleTo($user)->withActiveLinks()->whereIn('status', ['pending', 'in_progress'])->count(),
-            'my_tasks' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->open())->count(),
-            'loans' => LoanDetail::visibleTo($user)->whereNotIn('status', ['completed', 'rejected', 'cancelled'])->count(),
+            'my_tasks' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->active())->count(),
+            'loans' => LoanDetail::visibleTo($user)->where('status', LoanDetail::STATUS_ACTIVE)->count(),
             'dvr' => DailyVisitReport::visibleTo($user)->where('follow_up_needed', true)->where('is_follow_up_done', false)->count(),
             'quotations' => Quotation::visibleTo($user)->where('status', Quotation::STATUS_ACTIVE)->whereNull('loan_id')->count(),
         ];
@@ -888,7 +888,7 @@ class DashboardController extends Controller
     {
         return [
             'branch' => optional($user->branches()->first())->name ?? '—',
-            'activeFiles' => LoanDetail::visibleTo($user)->whereNotIn('status', ['completed', 'rejected', 'cancelled'])->count(),
+            'activeFiles' => LoanDetail::visibleTo($user)->where('status', LoanDetail::STATUS_ACTIVE)->count(),
             'disbursementsToday' => LoanDetail::visibleTo($user)
                 ->where('current_stage', 'disbursement')
                 ->whereDate('updated_at', today())
@@ -935,34 +935,71 @@ class DashboardController extends Controller
     /** @return array<int,array<string,mixed>> */
     private function newthemeMyLoanTasks(User $user): array
     {
-        return StageAssignment::where('assigned_to', $user->id)
+        $assignments = StageAssignment::where('assigned_to', $user->id)
             ->whereIn('status', ['pending', 'in_progress'])
-            ->whereHas('loan', fn ($q) => $q->open())
-            ->with(['loan.bank', 'loan.product', 'stage'])
+            ->whereHas('loan', fn ($q) => $q->active())
+            ->with(['loan.bank', 'loan.product', 'loan.stageAssignments.assignee', 'loan.stageAssignments.stage', 'loan.disbursementEntries', 'stage', 'assignee'])
             ->orderByRaw("CASE WHEN status = 'in_progress' THEN 0 ELSE 1 END")
             ->orderBy('updated_at', 'desc')
-            ->limit(20)
-            ->get()
-            ->map(function (StageAssignment $a) {
-                $loan = $a->loan;
-                $stageName = optional($a->stage)->stage_name_en ?? ucwords(str_replace('_', ' ', $a->stage_key));
+            ->limit(60)
+            ->get();
 
-                return [
-                    'loanNumber' => $loan->loan_number,
-                    'customer' => $loan->customer_name,
-                    'customerType' => LoanDetail::CUSTOMER_TYPE_LABELS[$loan->customer_type] ?? ucfirst((string) $loan->customer_type),
-                    'amountFormatted' => $loan->formatted_amount,
-                    'stageKey' => $a->stage_key,
-                    'stageName' => $stageName,
-                    'stageBadgeClass' => $this->newthemeStageBadgeColor($a->stage_key),
-                    'progress' => $this->newthemeStageProgress($a->stage_key),
-                    'bank' => $this->newthemeBankBlock($loan->bank, $loan->bank_name),
-                    'productName' => optional($loan->product)->name,
-                    'ageDays' => optional($loan->updated_at)->diffInDays(now()) ?? 0,
-                    'showUrl' => route('loans.show', $loan),
-                    'stagesUrl' => route('loans.stages', $loan),
-                ];
-            })
+        // Parallel sub-stage assignments collapse into ONE entry per loan (all active
+        // sub-stages + their owners combined); everything else stays one entry each.
+        [$parallel, $regular] = $assignments->partition(
+            fn (StageAssignment $a) => $a->parent_stage_key === 'parallel_processing'
+        );
+
+        $entries = collect();
+
+        $sharedLoanFields = fn (LoanDetail $loan): array => [
+            'loanNumber' => $loan->loan_number,
+            'applicationNumber' => $loan->application_number,
+            'loanAccountNumbers' => $loan->loan_account_numbers,
+            'customer' => $loan->customer_name,
+            'customerType' => LoanDetail::CUSTOMER_TYPE_LABELS[$loan->customer_type] ?? ucfirst((string) $loan->customer_type),
+            'amountFormatted' => $loan->formatted_amount,
+            'bank' => $this->newthemeBankBlock($loan->bank, $loan->bank_name),
+            'productName' => optional($loan->product)->name,
+            'showUrl' => route('loans.show', $loan),
+            'stagesUrl' => route('loans.stages', $loan),
+        ];
+
+        foreach ($regular as $a) {
+            $loan = $a->loan;
+            $entries->push(array_merge($sharedLoanFields($loan), [
+                'type' => 'single',
+                '_sortInProgress' => $a->status === 'in_progress' ? 0 : 1,
+                '_sortDate' => optional($a->updated_at)->getTimestamp() ?? 0,
+                'stageKey' => $a->stage_key,
+                'stageName' => optional($a->stage)->stage_name_en ?? $this->newthemeStageName($a->stage_key),
+                'stageBadgeClass' => $this->newthemeStageBadgeColor($a->stage_key),
+                'progress' => $this->newthemeStageProgress($a->stage_key),
+                'owner' => optional($a->assignee)->name ?? '—',
+            ]));
+        }
+
+        foreach ($parallel->groupBy(fn (StageAssignment $a) => $a->loan_id) as $group) {
+            $loan = $group->first()->loan;
+            $subStages = $this->parallelSubStages($loan);
+
+            $entries->push(array_merge($sharedLoanFields($loan), [
+                'type' => 'parallel',
+                '_sortInProgress' => $group->contains(fn ($a) => $a->status === 'in_progress') ? 0 : 1,
+                '_sortDate' => optional($group->max('updated_at'))->getTimestamp() ?? 0,
+                'stageKey' => 'parallel_processing',
+                'stageName' => 'Parallel Processing',
+                'stageBadgeClass' => $this->newthemeStageBadgeColor('parallel_processing'),
+                'progress' => $this->newthemeStageProgress('parallel_processing'),
+                'subStages' => $subStages,
+                'subStageKeys' => array_column($subStages, 'stageKey'),
+            ]));
+        }
+
+        return $entries
+            ->sortBy([['_sortInProgress', 'asc'], ['_sortDate', 'desc']])
+            ->take(20)
+            ->map(fn (array $e) => collect($e)->except(['_sortInProgress', '_sortDate'])->toArray())
             ->values()
             ->toArray();
     }
@@ -971,20 +1008,23 @@ class DashboardController extends Controller
     private function newthemeLoans(User $user): array
     {
         return LoanDetail::visibleTo($user)
-            ->whereNotIn('status', ['completed', 'rejected', 'cancelled'])
-            ->with(['bank', 'product', 'creator', 'advisor'])
+            ->where('status', LoanDetail::STATUS_ACTIVE)
+            ->with(['bank', 'product', 'creator', 'advisor', 'stageAssignments.assignee', 'stageAssignments.stage', 'disbursementEntries'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get()
             ->map(function (LoanDetail $loan) {
-                return [
+                $base = [
                     'loanNumber' => $loan->loan_number,
+                    'applicationNumber' => $loan->application_number,
+                    'loanAccountNumbers' => $loan->loan_account_numbers,
                     'customer' => $loan->customer_name,
                     'customerType' => LoanDetail::CUSTOMER_TYPE_LABELS[$loan->customer_type] ?? ucfirst((string) $loan->customer_type),
                     'amountFormatted' => $loan->formatted_amount,
                     'sanctionedFormatted' => $loan->formatted_sanctioned_amount ?? '—',
                     'disbursedFormatted' => $loan->formatted_disbursed_amount ?? '—',
                     'stageKey' => $loan->current_stage,
+                    'progress' => $this->newthemeStageProgress($loan->current_stage),
                     'stageName' => $this->newthemeStageName($loan->current_stage),
                     'stageBadgeClass' => $this->newthemeStageBadgeColor($loan->current_stage),
                     'bank' => $this->newthemeBankBlock($loan->bank, $loan->bank_name),
@@ -993,7 +1033,46 @@ class DashboardController extends Controller
                     'showUrl' => route('loans.show', $loan),
                     'stagesUrl' => route('loans.stages', $loan),
                 ];
+
+                // Parallel processing: break out the active sub-stages + their owners
+                // as one combined row (matches My Loan Tasks + the loans list).
+                if ($loan->current_stage === 'parallel_processing') {
+                    $subStages = $this->parallelSubStages($loan);
+                    if (! empty($subStages)) {
+                        return array_merge($base, [
+                            'type' => 'parallel',
+                            'stageName' => 'Parallel Processing',
+                            'subStages' => $subStages,
+                            'subStageKeys' => array_column($subStages, 'stageKey'),
+                        ]);
+                    }
+                }
+
+                return array_merge($base, ['type' => 'single']);
             })
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Active parallel sub-stages of a loan (in_progress) as {stageKey, stageName,
+     * badgeClass, owner} — the combined-row payload shared by the My Loan Tasks and
+     * Active Loans dashboard widgets.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function parallelSubStages(LoanDetail $loan): array
+    {
+        return $loan->stageAssignments
+            ->where('parent_stage_key', 'parallel_processing')
+            ->where('status', 'in_progress')
+            ->sortBy('stage_key')
+            ->map(fn (StageAssignment $sa) => [
+                'stageKey' => $sa->stage_key,
+                'stageName' => optional($sa->stage)->stage_name_en ?? $this->newthemeStageName($sa->stage_key),
+                'badgeClass' => $this->newthemeStageBadgeColor($sa->stage_key),
+                'owner' => optional($sa->assignee)->name ?? '—',
+            ])
             ->values()
             ->toArray();
     }
@@ -1036,6 +1115,12 @@ class DashboardController extends Controller
         };
 
         return DailyVisitReport::visibleTo($user)
+            // Hide visits whose follow-up is completed (done) — keep visits with no
+            // follow-up needed and those with a still-pending follow-up.
+            ->where(function ($q) {
+                $q->where('follow_up_needed', false)
+                    ->orWhere(fn ($q2) => $q2->where('follow_up_needed', true)->where('is_follow_up_done', false));
+            })
             ->with(['user'])
             ->orderBy('visit_date', 'desc')
             ->limit(15)
@@ -1079,6 +1164,7 @@ class DashboardController extends Controller
     {
         return Quotation::visibleTo($user)
             ->where('status', '!=', Quotation::STATUS_CANCELLED)
+            ->whereNull('loan_id') // hide quotations already converted to loans
             ->with(['user', 'banks', 'loan'])
             ->orderBy('created_at', 'desc')
             ->limit(15)
@@ -1124,7 +1210,7 @@ class DashboardController extends Controller
     {
         $stages = Stage::query()->mainStages()->get();
         $loanCounts = LoanDetail::visibleTo($user)
-            ->whereNotIn('status', ['completed', 'rejected', 'cancelled'])
+            ->where('status', LoanDetail::STATUS_ACTIVE)
             ->selectRaw('current_stage, COUNT(*) as c')
             ->groupBy('current_stage')
             ->pluck('c', 'current_stage')
@@ -1188,7 +1274,7 @@ class DashboardController extends Controller
     private function newthemeOpenQueries(User $user): array
     {
         $query = StageQuery::query()->active()
-            ->whereHas('loan', fn ($q) => $q->open())
+            ->whereHas('loan', fn ($q) => $q->active())
             ->with(['loan', 'raisedByUser.roles']);
 
         // Admins (view_all_loans) keep full oversight; everyone else is scoped to
@@ -1242,6 +1328,7 @@ class DashboardController extends Controller
         $banks = Bank::query()->active()->get();
 
         $monthlyLoans = LoanDetail::visibleTo($user)
+            ->where('status', LoanDetail::STATUS_ACTIVE)
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->select('bank_id')

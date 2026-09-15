@@ -138,7 +138,7 @@
                                     @if ($dvr->loan->bank_name)
                                         <span class="ds-muted"> ({{ $dvr->loan->bank_name }})</span>
                                     @endif
-                                </a>
+                                </a>@include('newtheme.partials.copy-btn', ['value' => $dvr->loan->loan_number])
                             </div>
                         @endif
                         @if ($dvr->quotation)

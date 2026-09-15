@@ -62,9 +62,9 @@
                     <div class="lx-field">
                         <label class="lbl">Status</label>
                         <select id="lxStatus" class="select">
-                            <option value="" selected>All Status</option>
+                            <option value="all">All Status</option>
                             @foreach (\App\Models\LoanDetail::STATUS_LABELS as $key => $label)
-                                <option value="{{ $key }}">
+                                <option value="{{ $key }}" @selected($key === \App\Models\LoanDetail::STATUS_ACTIVE)>
                                     {{ $label['label'] }}</option>
                             @endforeach
                         </select>

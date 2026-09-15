@@ -32,9 +32,22 @@ class LoanSetStageCommand extends Command
 
     /** Ordered stage keys for sequential flow (includes parallel subs in sequence) */
     private const STAGE_ORDER = [
-        'inquiry', 'document_selection', 'document_collection',
-        'app_number', 'bsm_osv', 'legal_verification', 'original_document_verification', 'technical_valuation', 'sanction_decision',
-        'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement', 'otc_clearance',
+        'inquiry',
+        'document_selection',
+        'document_collection',
+        'app_number',
+        'bsm_osv',
+        'legal_verification',
+        'original_document_verification',
+        'technical_valuation',
+        'sanction_decision',
+        'rate_pf',
+        'sanction',
+        'docket',
+        'kfs',
+        'esign',
+        'disbursement',
+        'otc_clearance',
     ];
 
     /** Stage name labels */
@@ -140,9 +153,11 @@ class LoanSetStageCommand extends Command
         // Locate a matching menu option so we can run the same prior-stage check.
         $choice = null;
         foreach ($this->menuOptions as $num => $opt) {
-            if ($opt['stage_key'] === $stage
+            if (
+                $opt['stage_key'] === $stage
                 && ($opt['phase'] ?? null) === $phase
-                && ($opt['variant'] ?? null) === $variant) {
+                && ($opt['variant'] ?? null) === $variant
+            ) {
                 $choice = $num;
                 break;
             }
@@ -495,8 +510,7 @@ class LoanSetStageCommand extends Command
     private function checkStageDataComplete(string $stageKey, array $notes, StageAssignment $assignment): ?string
     {
         return match ($stageKey) {
-            'app_number' => empty($notes['application_number']) ? 'application_number missing' :
-                (! isset($notes['docket_days_offset']) || $notes['docket_days_offset'] === '' ? 'docket_days_offset missing' : null),
+            'app_number' => empty($notes['application_number']) ? 'application_number missing' : (! isset($notes['docket_days_offset']) || $notes['docket_days_offset'] === '' ? 'docket_days_offset missing' : null),
             'bsm_osv' => null, // Simple complete — no phase or data required
             'legal_verification' => (($notes['legal_phase'] ?? '') !== '3' && ($notes['legal_phase'] ?? '') !== 'completed_skip_bank'
                 ? 'phase is '.($notes['legal_phase'] ?? 'none').', expected 3 or completed_skip_bank' : null),
@@ -506,14 +520,8 @@ class LoanSetStageCommand extends Command
             'technical_valuation' => null, // Validated by valuation_details table
             'sanction_decision' => empty($notes['decision_action']) ? 'no decision made' : null,
             'rate_pf' => (($notes['rate_pf_phase'] ?? '') !== '3' ? 'phase is '.($notes['rate_pf_phase'] ?? 'none').', expected 3' : null),
-            'sanction' => (($notes['sanction_phase'] ?? '') !== '3' ? 'phase is '.($notes['sanction_phase'] ?? 'none').', expected 3' :
-                (empty($notes['sanction_date']) ? 'sanction_date missing' : null)),
-            'docket' => (($notes['docket_phase'] ?? '') !== '2' ? 'phase is '.($notes['docket_phase'] ?? 'none').', expected 2' :
-                (empty($notes['login_date']) ? 'login_date missing' :
-                    (empty($notes['sanctioned_amount']) ? 'sanctioned_amount missing' :
-                        (empty($notes['sanctioned_rate']) ? 'sanctioned_rate missing' :
-                            (empty($notes['tenure_months']) ? 'tenure_months missing' :
-                                (empty($notes['emi_amount']) ? 'emi_amount missing' : null)))))),
+            'sanction' => (($notes['sanction_phase'] ?? '') !== '3' ? 'phase is '.($notes['sanction_phase'] ?? 'none').', expected 3' : (empty($notes['sanction_date']) ? 'sanction_date missing' : null)),
+            'docket' => (($notes['docket_phase'] ?? '') !== '2' ? 'phase is '.($notes['docket_phase'] ?? 'none').', expected 2' : (empty($notes['login_date']) ? 'login_date missing' : (empty($notes['sanctioned_amount']) ? 'sanctioned_amount missing' : (empty($notes['sanctioned_rate']) ? 'sanctioned_rate missing' : (empty($notes['tenure_months']) ? 'tenure_months missing' : (empty($notes['emi_amount']) ? 'emi_amount missing' : null)))))),
             'esign' => (($notes['esign_phase'] ?? '') !== '4' ? 'phase is '.($notes['esign_phase'] ?? 'none').', expected 4' : null),
             'otc_clearance' => empty($notes['handover_date']) ? 'handover_date missing' : null,
             default => null,

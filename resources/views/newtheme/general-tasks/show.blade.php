@@ -70,7 +70,7 @@
                         <span style="margin-left:8px;">·
                             <a href="{{ route('loans.show', $task->loan_detail_id) }}" style="color:inherit;text-decoration:underline;">
                                 #{{ $task->loan->loan_number }}
-                            </a>
+                            </a>@include('newtheme.partials.copy-btn', ['value' => $task->loan->loan_number])
                         </span>
                     @endif
                 </div>
@@ -116,7 +116,7 @@
                                     @if ($task->loan->bank_name)
                                         <span class="ts-muted"> ({{ $task->loan->bank_name }})</span>
                                     @endif
-                                </a>
+                                </a>@include('newtheme.partials.copy-btn', ['value' => $task->loan->loan_number])
                             </div>
                         @endif
                     </div>

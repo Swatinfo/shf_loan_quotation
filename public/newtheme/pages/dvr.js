@@ -53,6 +53,11 @@
     }
 
     /* ======= Row actions (newtheme icon strip) ======= */
+    // Copy-to-clipboard button (global SHF.copyBtn handler in shf-newtheme.js).
+    function dvrCopy(v) {
+        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : '';
+    }
+
     function buildActions(v) {
         var items = '<a class="dx-act tone-info" href="' + escapeHtml(URLS.showUrlBase + '/' + v.id) + '" title="View" aria-label="View">' +
             '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></a>';
@@ -80,8 +85,8 @@
         var body = data.map(function (v) {
             return '<tr>' +
                 '<td data-label="Visit Date">' + escapeHtml(v.visit_date) + '</td>' +
-                '<td data-label="Contact"><strong>' + v.contact_name + '</strong>' +
-                    (v.contact_phone ? '<div class="text-xs text-muted">' + v.contact_phone + '</div>' : '') + '</td>' +
+                '<td data-label="Contact"><strong>' + v.contact_name + '</strong>' + dvrCopy(v.contact_name) +
+                    (v.contact_phone ? '<div class="text-xs text-muted">' + v.contact_phone + dvrCopy(v.contact_phone) + '</div>' : '') + '</td>' +
                 '<td data-label="Type">' + escapeHtml(v.contact_type) + '</td>' +
                 '<td data-label="Purpose">' + escapeHtml(v.purpose) + '</td>' +
                 '<td data-label="Loan">' + (v.loan_info || '—') + '</td>' +
@@ -96,7 +101,8 @@
         mobileEl.innerHTML = data.map(function (v) {
             return '<div class="dx-m-card">' +
                 '<div class="m-hd">' +
-                    '<div style="min-width:0;flex:1;"><strong>' + v.contact_name + '</strong>' +
+                    '<div style="min-width:0;flex:1;"><strong>' + v.contact_name + '</strong>' + dvrCopy(v.contact_name) +
+                    (v.contact_phone ? '<div class="text-xs text-muted">' + v.contact_phone + dvrCopy(v.contact_phone) + '</div>' : '') +
                     '<div class="text-xs text-muted">' + escapeHtml(v.visit_date) + '</div></div>' +
                     '<div class="flex-shrink-0">' + buildActions(v) + '</div>' +
                 '</div>' +
@@ -182,11 +188,15 @@
         });
     }
     document.getElementById('dxFilter').addEventListener('click', function () { state.start = 0; load(); });
+    // The View select defaults by capability (All for admins, My Branch for
+    // BM/BDH, else My Visits) — capture it so Clear restores that, not index 0.
+    var defaultView = (document.getElementById('dxView') || {}).value || 'my_visits';
     document.getElementById('dxClear').addEventListener('click', function () {
         ['dxView', 'dxSearch', 'dxContactType', 'dxPurpose', 'dxFollowUp', 'dxUser', 'dxDateFrom', 'dxDateTo'].forEach(function (id) {
             var el = document.getElementById(id);
             if (!el) { return; }
-            if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
+            if (id === 'dxView') { el.value = defaultView; }
+            else if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
             else {
                 el.value = '';
                 if (window.jQuery && jQuery(el).data('datepicker')) { jQuery(el).datepicker('clearDates'); }

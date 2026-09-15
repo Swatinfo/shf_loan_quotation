@@ -13,6 +13,7 @@ use App\Models\ProductStage;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
+use App\Services\LoanStageService;
 use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -172,8 +173,16 @@ class LoanSettingsController extends Controller
             'bank_overrides_changed' => count($changedBankStages),
         ]);
 
+        // Master-stage roles affect all banks/products — push onto every eligible loan.
+        $sync = app(LoanStageService::class)->propagateConfigToEligibleLoans(null, null);
+
+        $message = 'Stage defaults saved';
+        if ($sync['stages_reassigned'] > 0) {
+            $message .= " — {$sync['stages_reassigned']} active loan stage(s) reassigned.";
+        }
+
         return redirect()->route('loan-settings.index', ['tab' => 'master-stages'])
-            ->with('success', 'Stage defaults saved');
+            ->with('success', $message);
     }
 
     public function storeLocation(Request $request)

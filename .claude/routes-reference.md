@@ -146,6 +146,7 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 | POST | `/loan-settings/products` | `loan-settings.products.store` | WorkflowConfigController@storeProduct |
 | GET | `/loan-settings/products/{product}/stages` | `loan-settings.product-stages` | WorkflowConfigController@productStages |
 | POST | `/loan-settings/products/{product}/stages` | `loan-settings.product-stages.save` | WorkflowConfigController@saveProductStages |
+| POST | `/loan-settings/sync-stage-config` | `loan-settings.sync-stage-config` | WorkflowConfigController@syncStageConfig (Sync Settings — re-apply config to all eligible loans; `manage_workflow_config`) |
 | POST | `/loan-settings/products/{product}/locations` | `loan-settings.product-locations.save` | WorkflowConfigController@saveProductLocations |
 | POST | `/loan-settings/branches` | `loan-settings.branches.store` | WorkflowConfigController@storeBranch |
 | DELETE | `/loan-settings/branches/{branch}` | `loan-settings.branches.destroy` | WorkflowConfigController@destroyBranch |
@@ -188,6 +189,7 @@ Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions:
 | POST | `/loans/{loan}/stages/{stageKey}/reject` | `loans.stages.reject` | LoanStageController@reject |
 | POST | `/loans/{loan}/stages/{stageKey}/query` | `loans.stages.query` | LoanStageController@raiseQuery |
 | POST | `/loans/{loan}/stages/{stageKey}/notes` | `loans.stages.notes` | LoanStageController@saveNotes |
+| POST | `/loans/{loan}/kfs/loan-amount` | `loans.kfs.amount.update` | LoanStageController@updateKfsLoanAmount (KFS owner/admin edits loan_amount; original preserved; `manage_loan_stages` + assignee check) |
 | POST | `/loans/{loan}/stages/{stageKey}/skip` | `loans.stages.skip` | LoanStageController@skip (perm: skip_loan_stages) |
 | GET | `/loans/{loan}/stages/{stageKey}/eligible-users` | `loans.stages.eligible-users` | LoanStageController@eligibleUsers |
 | POST | `/loans/{loan}/stages/technical_valuation/action` | `loans.stages.technical-valuation-action` | LoanStageController@technicalValuationAction |

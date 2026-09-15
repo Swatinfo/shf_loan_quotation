@@ -20,6 +20,31 @@
  *     radio-adjacent-checkbox auto-check, SHF.initAmountFields, etc.
  *     Each page-specific bit lives in its own page JS file.
  */
+// ── Parse-time helpers ─────────────────────────────────────────────────
+// Defined OUTSIDE the DOM-ready callback so page scripts that render
+// synchronously at load (e.g. dashboard.js's IIFE) can use SHF.copyBtn
+// before jQuery's ready fires. The click handler is registered on ready
+// below (clicks only happen after ready, so that's fine).
+window.SHF = window.SHF || {};
+
+SHF.escapeHtml = SHF.escapeHtml || function (s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+// SHF.copyBtn(value) — HTML for a small copy button. Empty for blank/'—'.
+SHF.copyBtn = SHF.copyBtn || function (value) {
+    if (value == null || value === '' || value === '—') { return ''; }
+    var v = SHF.escapeHtml(value);
+    return '<button type="button" class="shf-copy-btn" data-copy="' + v +
+        '" title="Copy" aria-label="Copy">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+        '<rect x="9" y="9" width="11" height="11" rx="2"></rect>' +
+        '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>' +
+        '</button>';
+};
+
 $(function () {
     'use strict';
 
@@ -233,6 +258,40 @@ $(function () {
         if (!SHF.validateForm($container, rules)) { return false; }
         return $.post(url, data);
     };
+
+    // ── Copy-to-clipboard ──────────────────────────────────────────────
+    // SHF.copyBtn / SHF.escapeHtml are defined at parse time (top of file).
+    // Delegated handler: copy data-copy, flash a "copied" state. stopPropagation
+    // so it never triggers a row's click-to-navigate.
+    $(document).on('click', '.shf-copy-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var btn = this;
+        var text = btn.getAttribute('data-copy') || '';
+        if (!text) { return; }
+        var flash = function () {
+            btn.classList.add('shf-copied');
+            setTimeout(function () { btn.classList.remove('shf-copied'); }, 1200);
+        };
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(flash).catch(function () {});
+                return;
+            }
+        } catch (err) {}
+        // Fallback for non-secure contexts / older browsers.
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            flash();
+        } catch (err2) {}
+    });
 
     // Clear validation errors on field input/change
     $(document).on('input change', '.is-invalid', function () {

@@ -43,15 +43,12 @@ class LoanController extends Controller
         $banks = Bank::active()->orderBy('name')->get();
         $branches = Branch::active()->orderBy('name')->get();
         $isBankEmployee = $user->hasRole('bank_employee');
-        // Bank employees participate in these stages (via default_role or phase actions)
-        $bankEmployeeStages = ['bsm_osv', 'rate_pf', 'sanction', 'legal_verification', 'esign'];
-        // Non-bank-employees see top-level stages plus bsm_osv (a parallel sub-stage)
-        // so they can filter for loans currently sitting at BSM/OSV.
+        // Show every enabled stage in the filter, including all parallel sub-stages,
+        // ordered by workflow sequence. The `parallel_processing` parent is a container
+        // (never a filterable target), so it's excluded. Sub-stage selections match
+        // loans currently AT that sub-stage; top-level selections match completed.
         $stages = Stage::where('is_enabled', true)
-            ->when($isBankEmployee, fn ($q) => $q->whereIn('stage_key', $bankEmployeeStages))
-            ->when(! $isBankEmployee, fn ($q) => $q->where(
-                fn ($w) => $w->whereNull('parent_stage_key')->orWhere('stage_key', 'bsm_osv')
-            ))
+            ->where('stage_key', '!=', 'parallel_processing')
             ->orderBy('sequence_order')
             ->get();
 
@@ -86,13 +83,19 @@ class LoanController extends Controller
         $canEdit = $user->hasPermission('edit_loan');
         $canDelete = $user->hasPermission('delete_loan');
 
-        $query = LoanDetail::visibleTo($user)->with(['creator', 'advisor', 'bank', 'branch', 'product', 'location.parent', 'stageAssignments.assignee.roles']);
+        $query = LoanDetail::visibleTo($user)->with(['creator', 'advisor', 'bank', 'branch', 'product', 'location.parent', 'stageAssignments.assignee.roles', 'disbursementEntries']);
 
         $recordsTotal = (clone $query)->count();
 
-        // Custom filters
+        // Custom filters. Default to ACTIVE loans only — on_hold / cancelled /
+        // rejected / completed appear only when the user explicitly selects that
+        // status (or "all") from the filter. Pass status=all to see everything.
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            if ($request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+        } else {
+            $query->where('status', LoanDetail::STATUS_ACTIVE);
         }
         if ($request->filled('customer_type')) {
             $query->where('customer_type', $request->customer_type);
@@ -106,19 +109,21 @@ class LoanController extends Controller
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
-        // Stage + date range filter on stage COMPLETION activity, not on
-        // loan_details.created_at. With a stage selected we match loans that
-        // have COMPLETED that stage (optionally with its completion date inside
-        // the range). With only a date range we match the loan's LATEST stage
-        // completion, so it surfaces in the window where it last moved.
+        // Stage filter:
+        //  - stage only            → loans CURRENTLY AT that stage (its assignment
+        //    is in_progress). This is what the dropdown means to users: "show loans
+        //    sitting at KFS", NOT "loans that ever finished KFS". Works uniformly for
+        //    top-level stages and parallel sub-stage keys (both have an in_progress
+        //    assignment while active).
+        //  - stage + date range    → reporting: loans that COMPLETED that stage
+        //    within the window (completed_at). The date range is completion activity.
+        //  - date range only       → the loan's LATEST stage completion in the window.
         $stage = $request->filled('stage') ? $request->stage : null;
         $dateFrom = $request->filled('date_from') ? $request->date_from : null;
         $dateTo = $request->filled('date_to') ? $request->date_to : null;
 
-        if ($stage !== null) {
-            // "Loans where this stage is completed" — one closure matches a
-            // single completed stage_assignments row (works for top-level and
-            // parallel sub-stage keys alike); date bounds apply to its completed_at.
+        if ($stage !== null && ($dateFrom !== null || $dateTo !== null)) {
+            // Reporting: completed that stage inside the date window.
             $query->whereHas('stageAssignments', function ($q) use ($stage, $dateFrom, $dateTo) {
                 $q->where('stage_key', $stage)->where('status', 'completed');
                 if ($dateFrom !== null) {
@@ -127,6 +132,11 @@ class LoanController extends Controller
                 if ($dateTo !== null) {
                     $q->whereDate('completed_at', '<=', $dateTo);
                 }
+            });
+        } elseif ($stage !== null) {
+            // Loans currently sitting AT this stage — its assignment is in_progress.
+            $query->whereHas('stageAssignments', function ($q) use ($stage) {
+                $q->where('stage_key', $stage)->where('status', 'in_progress');
             });
         } elseif ($dateFrom !== null || $dateTo !== null) {
             // Date range without a stage → filter on the loan's most-recent
@@ -228,6 +238,7 @@ class LoanController extends Controller
         if ($search !== '' && $search !== null) {
             $query->where(function ($q) use ($search) {
                 $q->where('loan_number', 'like', "%{$search}%")
+                    ->orWhere('application_number', 'like', "%{$search}%")
                     ->orWhere('customer_name', 'like', "%{$search}%")
                     ->orWhere('bank_name', 'like', "%{$search}%")
                     ->orWhere('customer_phone', 'like', "%{$search}%")
@@ -300,6 +311,9 @@ class LoanController extends Controller
             return [
                 'loan_number' => $loan->loan_number.($isOverdue ? '<br><small class="text-danger fw-bold" title="Docket expected by '.$docketInfo.'">⚠ Docket Overdue</small>' : ($docketInfo ? '<br><small class="text-muted" title="Expected docket date">📅 '.$docketInfo.'</small>' : '')),
                 'customer_name' => $loan->customer_name,
+                'loan_number_raw' => $loan->loan_number,
+                'application_number' => $loan->application_number ?? '—',
+                'loan_account_numbers' => $loan->loan_account_numbers ?: '—',
                 'show_url' => route('loans.show', $loan),
                 'stages_url' => route('loans.stages', $loan),
                 'bank_name' => $loan->bank_name ?? '—',

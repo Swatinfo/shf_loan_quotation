@@ -147,6 +147,14 @@ class LoanStageController extends Controller
                     if (! $loan->valuationDetails()->where('valuation_type', 'property')->whereNotNull('final_valuation')->exists()) {
                         return response()->json(['error' => 'Cannot complete — fill the valuation form first.'], 422);
                     }
+                } elseif ($stageKey === 'kfs') {
+                    // The loan amount is editable at KFS — it must be a valid positive
+                    // figure to complete (server-authoritative, even if the client
+                    // skipped the amount-save step).
+                    $amount = (int) $loan->loan_amount;
+                    if ($amount < 1 || $amount > 1000000000000) {
+                        return response()->json(['error' => 'Cannot complete — enter a valid loan amount first.'], 422);
+                    }
                 } elseif (! $this->isStageDataComplete($stageKey, $assignment)) {
                     $missingFields = $this->getFieldErrors($stageKey, $assignment->getNotesData());
                     if (! empty($missingFields)) {
@@ -882,6 +890,11 @@ class LoanStageController extends Controller
         if ($user->hasRole('super_admin')) {
             return true;
         }
+        // Permission-based waive: holders can complete-without-bank at any phase,
+        // regardless of assignee (in addition to the base owner/BM/BDH authority).
+        if ($user->hasPermission('waive_legal_verification')) {
+            return true;
+        }
         if ($loan->created_by === $user->id || $loan->assigned_advisor === $user->id) {
             return true;
         }
@@ -1164,6 +1177,63 @@ class LoanStageController extends Controller
             ->first();
 
         return $bankEmployee?->id;
+    }
+
+    /**
+     * Edit the loan amount at the KFS stage. The as-applied figure is preserved
+     * on `original_loan_amount`; only the working `loan_amount` changes here.
+     * Allowed for the KFS stage assignee or admin/super_admin, while KFS is
+     * in_progress and the loan is active/on_hold.
+     */
+    public function updateKfsLoanAmount(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $this->authorizeView($loan);
+
+        $user = auth()->user();
+        $kfs = $loan->stageAssignments()->where('stage_key', 'kfs')->first();
+
+        if (! $kfs || $kfs->status !== 'in_progress') {
+            return response()->json(['error' => 'The KFS stage is not active for this loan.'], 422);
+        }
+
+        if (! in_array($loan->status, [LoanDetail::STATUS_ACTIVE, LoanDetail::STATUS_ON_HOLD], true)) {
+            return response()->json(['error' => 'Loan amount can only be changed while the loan is active or on hold.'], 422);
+        }
+
+        $isAdmin = $user->hasRole('super_admin') || $user->hasRole('admin');
+        if (! $isAdmin && $kfs->assigned_to !== $user->id) {
+            return response()->json(['error' => 'Only the KFS stage owner can change the loan amount.'], 403);
+        }
+
+        $validated = $request->validate([
+            'loan_amount' => 'required|numeric|min:1|max:1000000000000',
+        ]);
+
+        $newAmount = (int) $validated['loan_amount'];
+        $oldAmount = (int) $loan->loan_amount;
+
+        $updates = ['loan_amount' => $newAmount];
+        // Preserve the as-applied amount the first time it's edited (legacy loans
+        // created before original_loan_amount existed have a null column).
+        if ($loan->original_loan_amount === null) {
+            $updates['original_loan_amount'] = $oldAmount;
+        }
+        $loan->update($updates);
+
+        ActivityLog::log('change_loan_amount', $loan, [
+            'loan_number' => $loan->loan_number,
+            'stage_key' => 'kfs',
+            'old_amount' => $oldAmount,
+            'new_amount' => $newAmount,
+        ]);
+
+        $loan->refresh();
+
+        return response()->json([
+            'success' => true,
+            'formatted_amount' => $loan->formatted_amount,
+            'formatted_original_amount' => $loan->formatted_original_amount,
+        ]);
     }
 
     private function authorizeView(LoanDetail $loan): void

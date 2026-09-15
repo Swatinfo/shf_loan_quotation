@@ -24,7 +24,7 @@
                     <span class="sep">/</span>
                     <a href="{{ route('loans.index') }}">Loans</a>
                     <span class="sep">/</span>
-                    <a href="{{ route('loans.show', $loan) }}">#{{ $loan->loan_number }}</a>
+                    <a href="{{ route('loans.show', $loan) }}">#{{ $loan->loan_number }}</a>@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])
                     <span class="sep">/</span>
                     <span>Valuation</span>
                 </div>

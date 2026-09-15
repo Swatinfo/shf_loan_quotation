@@ -54,7 +54,7 @@
                     <span class="sep">/</span>
                     <span>#{{ $loan->loan_number }}</span>
                 </div>
-                <h1>Loan #{{ $loan->loan_number }}</h1>
+                <h1>Loan #{{ $loan->loan_number }}@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])</h1>
                 <div class="sub">
                     <strong>{{ $loan->customer_name }}</strong>
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
@@ -210,7 +210,13 @@
                     @if ($sanctionDone)
                         <div><span>Docket Date</span><span id="lsDocketDate">{{ $loan->expected_docket_date?->format('d M Y') ?? '—' }}</span></div>
                     @endif
-                    <div><span>Loan Number</span><span class="ls-mono">{{ $loan->loan_number }}</span></div>
+                    <div><span>Loan Number</span><span class="ls-mono">{{ $loan->loan_number }}@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])</span></div>
+                    @if ($loan->application_number)
+                        <div><span>Application Number</span><span class="ls-mono">{{ $loan->application_number }}@include('newtheme.partials.copy-btn', ['value' => $loan->application_number])</span></div>
+                    @endif
+                    @if ($loan->loan_account_numbers)
+                        <div><span>Loan Account #</span><span class="ls-mono">{{ $loan->loan_account_numbers }}@include('newtheme.partials.copy-btn', ['value' => $loan->loan_account_numbers])</span></div>
+                    @endif
                 </div>
             </div>
         </div>

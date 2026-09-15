@@ -33,7 +33,7 @@
                 </div>
                 <h1>Documents</h1>
                 <div class="sub">
-                    <strong>#{{ $loan->loan_number }}</strong>
+                    <strong>#{{ $loan->loan_number }}</strong>@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])
                     @if ($loan->customer_name)
                         · {{ $loan->customer_name }}
                     @endif

@@ -847,8 +847,11 @@
                                                                     @break
                                                                 @endswitch
                                                             </div>
-                                                        @elseif($sub->status === 'in_progress' && $isSubAssignee)
-                                                            {{-- In-progress: show editable form (only for assignee) --}}
+                                                        @elseif($sub->status === 'in_progress' && ($isSubAssignee || ($sub->stage_key === 'original_document_verification' && auth()->user()->hasPermission('verify_original_documents'))))
+                                                            {{-- In-progress: show editable form for the assignee, plus ODV
+                                                                 for holders of verify_original_documents (any assignee). The
+                                                                 inner switch self-selects by stage_key, so only the matching
+                                                                 stage's form renders. --}}
                                                             @switch($sub->stage_key)
                                                                 @case('app_number')
                                                                     @include(
@@ -956,6 +959,7 @@ $authUser = auth()->user();
 $canSkipLegalBank =
     $authUser &&
     ($authUser->hasRole('super_admin') ||
+        $authUser->hasPermission('waive_legal_verification') ||
         $authUser->id ===
             $loan->created_by ||
         $authUser->id ===
@@ -1437,6 +1441,46 @@ $canSkipLegalBank =
                                                                     </div>
                                                                 @break
                                                             @endswitch
+                                                        @endif
+
+                                                        {{-- Legal waive — available at ANY in_progress phase, even to
+                                                             non-assignees, for holders of waive_legal_verification (plus the
+                                                             base owner / BM / BDH authority). Complements the Phase-1 assignee
+                                                             button above without duplicating it. --}}
+                                                        @if ($sub->stage_key === 'legal_verification' && $sub->status === 'in_progress' && $loan->status === 'active')
+                                                            @php
+                                                                $lwUser = auth()->user();
+                                                                $lwPhase = $sub->getNotesData()['legal_phase'] ?? '1';
+                                                                $legalWaiveAllowed =
+                                                                    $lwUser &&
+                                                                    ($lwUser->hasRole('super_admin') ||
+                                                                        $lwUser->hasPermission('waive_legal_verification') ||
+                                                                        $loan->created_by === $lwUser->id ||
+                                                                        $loan->assigned_advisor === $lwUser->id ||
+                                                                        ($lwUser->hasAnyRole(['branch_manager', 'bdh']) &&
+                                                                            $loan->branch_id &&
+                                                                            $lwUser->branches()->where('branches.id', $loan->branch_id)->exists()));
+                                                                // The Phase-1 assignee already sees the waive in the panel above.
+                                                                $lwAlreadyShown = $isSubAssignee && $lwPhase === '1';
+                                                            @endphp
+                                                            @if ($legalWaiveAllowed && ! $lwAlreadyShown)
+                                                                <div class="mt-2 border-top pt-2">
+                                                                    <small class="text-muted d-block mb-1">Complete Legal
+                                                                        Verification without sending to bank (waive). Original
+                                                                        Document Verification is marked complete automatically.</small>
+                                                                    <button class="btn-accent-outline btn-accent-sm shf-legal-action"
+                                                                        data-loan-id="{{ $loan->id }}"
+                                                                        data-action="complete_skip_bank">
+                                                                        <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2"
+                                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                        </svg>
+                                                                        Waive Legal
+                                                                    </button>
+                                                                </div>
+                                                            @endif
                                                         @endif
 
                                                         @if ($sub->status === 'pending')
@@ -2886,12 +2930,34 @@ $canSkipLegalBank =
                                         @case('kfs')
                                             @if ($assignment->status === 'in_progress')
                                                 <div class="mt-2 border-top pt-2">
+                                                    {{-- Editable loan amount (KFS owner). Original applied amount is preserved. --}}
+                                                    <div class="mb-3">
+                                                        <label class="shf-form-label d-block mb-1">Loan Amount</label>
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                            <input type="number" min="1" step="1"
+                                                                class="shf-input shf-input-sm shf-kfs-amount-input"
+                                                                value="{{ (int) $loan->loan_amount }}"
+                                                                style="max-width:200px">
+                                                            <button type="button" class="btn-accent-sm shf-kfs-amount-save"
+                                                                data-url="{{ route('loans.kfs.amount.update', $loan) }}">
+                                                                Save Amount
+                                                            </button>
+                                                            <span class="shf-kfs-amount-status small text-muted"></span>
+                                                        </div>
+                                                        @if ($loan->original_loan_amount !== null)
+                                                            <small class="text-muted d-block mt-1">Original applied:
+                                                                <strong
+                                                                    class="shf-kfs-original-amount">{{ $loan->formatted_original_amount }}</strong>
+                                                            </small>
+                                                        @endif
+                                                    </div>
                                                     <small class="text-muted d-block mb-2">Review the KFS for this loan, then
-                                                        click
-                                                        below to complete.</small>
-                                                    <button class="btn-accent-sm shf-stage-action"
-                                                        data-loan-id="{{ $loan->id }}" data-stage="kfs"
-                                                        data-action="completed">
+                                                        click below to complete. The loan amount above is saved and
+                                                        validated on completion.</small>
+                                                    <button class="btn-accent-sm shf-kfs-complete"
+                                                        data-loan-id="{{ $loan->id }}"
+                                                        data-amount-url="{{ route('loans.kfs.amount.update', $loan) }}"
+                                                        data-status-url="{{ route('loans.stages.status', [$loan, 'kfs']) }}">
                                                         <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"

@@ -1,4 +1,21 @@
-# Frontend (CSS + JS)
+# Frontend
+
+## Copy-to-clipboard button (global)
+
+`SHF.copyBtn(value)` (in `public/newtheme/assets/shf-newtheme.js`, loaded globally) returns the HTML for
+a small `.shf-copy-btn` that copies `value` to the clipboard; a delegated click handler (same file) does
+the copy (`navigator.clipboard` with an `execCommand` fallback), flashes a ✓, and `stopPropagation`s so
+it never triggers a row's click-to-navigate. Blade sites use the partial
+`@include('newtheme.partials.copy-btn', ['value' => …])`; JS-built table cells call `SHF.copyBtn(v)` (via
+a local `copyBtn()` wrapper). Empty values / `—` render nothing. CSS: `.shf-copy-btn` in `shf-extras.css`.
+Used beside every loan number, quotation `#id`, application number, loan account number (across loan
+listings, show pages, reports), customer name/mobile/email/PAN (customer listing), and DVR contact
+name/phone (DVR page + dashboard). Button is `--accent` (orange). **`SHF.copyBtn`/`SHF.escapeHtml` are
+defined at parse time (top of `shf-newtheme.js`, outside `$(function)`)** so page scripts that render
+synchronously as a parse-time IIFE (e.g. `dashboard.js`) can call it during initial render — a helper
+defined only in DOM-ready would be `undefined` at that point (this was the "no copy button on dashboard"
+bug). The delegated click handler stays in `$(function)` since clicks only happen after ready.
+ (CSS + JS)
 
 Bootstrap 5.3 + jQuery 3.7, local vendor files, no build step. Newtheme is the only theme: all views under `resources/views/newtheme/`, all assets under `public/newtheme/`. The pre-newtheme source is preserved in `.ignore/old_code_backup/` (tracked in git).
 

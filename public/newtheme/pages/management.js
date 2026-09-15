@@ -165,7 +165,7 @@
 
     /* ---------- Exceptions ---------- */
     function loanLink(r) {
-        return '<td class="mg-ex-loan"><a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number) + '</a></td>';
+        return '<td class="mg-ex-loan"><a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number) + '</a>' + (window.SHF && SHF.copyBtn ? SHF.copyBtn(r.loan_number) : '') + '</td>';
     }
 
     function renderExceptions(ex) {

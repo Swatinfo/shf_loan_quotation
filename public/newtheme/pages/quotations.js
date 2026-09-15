@@ -129,10 +129,13 @@
                     '\'" class="clickable">' +
                     '<td data-label="#"><span class="font-mono" style="font-weight:600;">#' +
                     q.id +
-                    "</span></td>" +
+                    "</span>" +
+                    (window.SHF && SHF.copyBtn ? SHF.copyBtn(q.id) : "") +
+                    "</td>" +
                     '<td data-label="Customer"><strong>' +
                     escapeHtml(q.customer_name) +
                     "</strong>" +
+                    (window.SHF && SHF.copyBtn ? SHF.copyBtn(q.customer_name) : "") +
                     (q.referral_name || q.referral_type_label
                         ? '<div class="text-xs text-muted">Ref: ' +
                           escapeHtml(q.referral_name || "—") +
@@ -498,8 +501,8 @@
     document.getElementById("qxClear").addEventListener("click", function () {
         document.getElementById("qxSearch").value = "";
         document.getElementById("qxType").value = "";
-        document.getElementById("qxStatus").value = "all";
-        document.getElementById("qxLoanStatus").value = "all";
+        document.getElementById("qxStatus").value = "active";
+        document.getElementById("qxLoanStatus").value = "not_converted";
         document.getElementById("qxDateFrom").value = "";
         document.getElementById("qxDateTo").value = "";
         if (canViewAll && document.getElementById("qxCreatedBy")) {
@@ -554,7 +557,7 @@
         var defaults = {
             search: "",
             customer_type: "",
-            status: "not_cancelled",
+            status: "active",
             loan_status: "not_converted",
             date_from: "",
             date_to: "",

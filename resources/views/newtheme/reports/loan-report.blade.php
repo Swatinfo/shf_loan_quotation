@@ -134,11 +134,11 @@
                 <div class="lr-total-val" id="lrTotalCount">—</div>
             </div>
             <div class="lr-total-card">
-                <div class="lr-total-lbl" id="lrTotalSanctionedLbl">Total Sanctioned</div>
+                <div class="lr-total-lbl">Total Sanctioned</div>
                 <div class="lr-total-val" id="lrTotalSanctioned">—</div>
             </div>
             <div class="lr-total-card">
-                <div class="lr-total-lbl" id="lrTotalDisbursedLbl">Total Disbursed</div>
+                <div class="lr-total-lbl">Total Disbursed</div>
                 <div class="lr-total-val" id="lrTotalDisbursed">—</div>
             </div>
         </div>

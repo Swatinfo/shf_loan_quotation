@@ -63,7 +63,7 @@ class LoanDetail extends Model
     protected $fillable = [
         'loan_number', 'quotation_id', 'customer_id', 'customer_kyc_details_id', 'branch_id', 'bank_id', 'product_id', 'location_id',
         'customer_name', 'customer_type', 'customer_phone', 'customer_email', 'date_of_birth', 'pan_number',
-        'loan_amount', 'sanctioned_amount', 'disbursed_amount', 'status', 'is_sanctioned', 'current_stage', 'bank_name', 'roi_min', 'roi_max',
+        'loan_amount', 'original_loan_amount', 'sanctioned_amount', 'disbursed_amount', 'status', 'is_sanctioned', 'current_stage', 'bank_name', 'roi_min', 'roi_max',
         'total_charges', 'application_number', 'assigned_bank_employee',
         'due_date', 'expected_docket_date', 'rejected_at', 'rejected_by', 'rejected_stage', 'rejection_reason',
         'status_reason', 'status_changed_at', 'status_changed_by',
@@ -74,6 +74,7 @@ class LoanDetail extends Model
     {
         return [
             'loan_amount' => 'integer',
+            'original_loan_amount' => 'integer',
             'sanctioned_amount' => 'integer',
             'disbursed_amount' => 'integer',
             'is_sanctioned' => 'boolean',
@@ -345,6 +346,34 @@ class LoanDetail extends Model
     public function getFormattedAmountAttribute(): string
     {
         return "₹\u{00A0}".$this->formatIndianNumber($this->loan_amount);
+    }
+
+    /**
+     * Distinct loan account number(s) across the loan's active disbursement
+     * tranches, comma-joined; empty string before any disbursement. There is no
+     * single account-number column — it is captured per tranche.
+     */
+    public function getLoanAccountNumbersAttribute(): string
+    {
+        return $this->disbursementEntries
+            ->where('is_active', true)
+            ->pluck('loan_account_number')
+            ->map(fn ($n) => trim((string) $n))
+            ->filter()
+            ->unique()
+            ->values()
+            ->implode(', ');
+    }
+
+    /**
+     * Formatted original (as-applied) loan amount, or null when not captured.
+     * Diverges from loan_amount only when someone edits the amount at KFS.
+     */
+    public function getFormattedOriginalAmountAttribute(): ?string
+    {
+        return $this->original_loan_amount !== null
+            ? "₹\u{00A0}".$this->formatIndianNumber($this->original_loan_amount)
+            : null;
     }
 
     /**

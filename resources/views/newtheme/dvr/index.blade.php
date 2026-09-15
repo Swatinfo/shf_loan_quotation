@@ -57,12 +57,12 @@
                     <div class="dx-field">
                         <label class="lbl">View</label>
                         <select id="dxView" class="select">
-                            <option value="my_visits">My Visits</option>
+                            <option value="my_visits" @selected(! $canViewAll && ! $isBdh && ! $isBranchManager)>My Visits</option>
                             @if ($isBdh || $isBranchManager)
-                                <option value="my_branch">My Branch</option>
+                                <option value="my_branch" @selected(! $canViewAll)>My Branch</option>
                             @endif
                             @if ($canViewAll)
-                                <option value="all">All</option>
+                                <option value="all" selected>All</option>
                             @endif
                         </select>
                     </div>

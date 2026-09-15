@@ -52,6 +52,11 @@
         return '<span class="' + cls + '">' + n + '</span>';
     }
 
+    // Copy-to-clipboard button (global SHF.copyBtn handler in shf-newtheme.js).
+    function cxCopy(v) {
+        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : '';
+    }
+
     function renderRows(data) {
         if (!data.length) {
             rowsEl.innerHTML = '<div class="cx-loader" style="padding:36px 24px;"><div style="font-size:30px;margin-bottom:6px;">👥</div><div style="font-weight:600;color:var(--ink-3);">No customers match the search</div></div>';
@@ -71,10 +76,10 @@
 
         var body = data.map(function (c) {
             return '<tr>' +
-                '<td data-label="Name"><strong>' + c.customer_name + '</strong></td>' +
-                '<td data-label="Mobile">' + (c.mobile || '—') + '</td>' +
-                '<td data-label="Email">' + (c.email || '—') + '</td>' +
-                '<td data-label="PAN">' + (c.pan_number || '—') + '</td>' +
+                '<td data-label="Name"><strong>' + c.customer_name + '</strong>' + cxCopy(c.customer_name) + '</td>' +
+                '<td data-label="Mobile">' + (c.mobile || '—') + cxCopy(c.mobile) + '</td>' +
+                '<td data-label="Email">' + (c.email || '—') + cxCopy(c.email) + '</td>' +
+                '<td data-label="PAN">' + (c.pan_number || '—') + cxCopy(c.pan_number) + '</td>' +
                 '<td class="num" data-label="Loans">' + loanCountBadge(c.loans_count) + '</td>' +
                 '<td data-label="Added">' + escapeHtml(c.created_at || '') + '</td>' +
                 '<td class="col-actions" data-label="Actions">' + buildActions(c) + '</td>' +
@@ -86,12 +91,12 @@
         mobileEl.innerHTML = data.map(function (c) {
             return '<div class="cx-m-card">' +
                 '<div class="m-hd">' +
-                    '<div style="min-width:0;flex:1;"><strong>' + c.customer_name + '</strong>' +
-                    '<div class="text-xs text-muted">' + (c.mobile || '—') + '</div></div>' +
+                    '<div style="min-width:0;flex:1;"><strong>' + c.customer_name + '</strong>' + cxCopy(c.customer_name) +
+                    '<div class="text-xs text-muted">' + (c.mobile || '—') + cxCopy(c.mobile) + '</div></div>' +
                     '<div class="flex-shrink-0">' + loanCountBadge(c.loans_count) + '</div>' +
                 '</div>' +
-                (c.email ? '<div class="m-row"><span class="k">Email</span><span class="v">' + c.email + '</span></div>' : '') +
-                (c.pan_number ? '<div class="m-row"><span class="k">PAN</span><span class="v">' + c.pan_number + '</span></div>' : '') +
+                (c.email ? '<div class="m-row"><span class="k">Email</span><span class="v">' + c.email + cxCopy(c.email) + '</span></div>' : '') +
+                (c.pan_number ? '<div class="m-row"><span class="k">PAN</span><span class="v">' + c.pan_number + cxCopy(c.pan_number) + '</span></div>' : '') +
                 '<div class="m-row"><span class="k">Added</span><span class="v">' + escapeHtml(c.created_at || '') + '</span></div>' +
                 '<div class="cx-m-actions">' + buildActions(c) + '</div>' +
             '</div>';

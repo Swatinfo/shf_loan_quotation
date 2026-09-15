@@ -8,6 +8,7 @@ use App\Models\BankStageConfig;
 use App\Models\Branch;
 use App\Models\LoanDetail;
 use App\Models\LoanProgress;
+use App\Models\Product;
 use App\Models\ProductStage;
 use App\Models\Stage;
 use App\Models\StageAssignment;
@@ -1305,6 +1306,215 @@ class LoanStageService
         return $assignment->fresh();
     }
 
+    // ── Config Propagation ──
+
+    /**
+     * Re-apply the current stage/task-owner config to every eligible loan.
+     *
+     * Eligible = any loan that is NOT completed (active, on_hold, rejected,
+     * cancelled, and disbursed-but-open all qualify). For each loan the frozen
+     * workflow_config snapshot is rebuilt from live config and its currently
+     * in_progress stage owners are re-pointed — but ONLY when the stage is still
+     * on its auto-resolved default. Manually-transferred stages are always
+     * preserved (config never overwrites a hand-transfer). Rejected/cancelled
+     * loans usually have no in_progress stages, so re-pointing is a no-op there,
+     * but their snapshot is refreshed so a later reactivation uses current config.
+     *
+     * Shared by all three entry points: saveProductStages (product-scoped),
+     * saveMasterStages (all eligible), and the "Sync Settings" button.
+     *
+     * @return array{loans_processed:int, stages_reassigned:int}
+     */
+    public function propagateConfigToEligibleLoans(?int $productId, ?int $bankId = null): array
+    {
+        $query = LoanDetail::query()
+            ->where('status', '!=', LoanDetail::STATUS_COMPLETED);
+
+        if ($productId) {
+            $query->where('product_id', $productId);
+        } elseif ($bankId) {
+            $query->where('bank_id', $bankId);
+        }
+
+        $loansProcessed = 0;
+        $stagesReassigned = 0;
+
+        $query->with('stageAssignments')->chunkById(100, function ($loans) use (&$loansProcessed, &$stagesReassigned) {
+            foreach ($loans as $loan) {
+                $loansProcessed++;
+                $stagesReassigned += $this->resyncLoanAssignments($loan);
+            }
+        });
+
+        return ['loans_processed' => $loansProcessed, 'stages_reassigned' => $stagesReassigned];
+    }
+
+    /**
+     * Manual "Sync Settings": loop every product and re-apply config to its
+     * eligible loans, one product at a time.
+     *
+     * @return array{products:int, loans_processed:int, stages_reassigned:int}
+     */
+    public function propagateConfigToAllEligibleLoans(): array
+    {
+        $totals = ['products' => 0, 'loans_processed' => 0, 'stages_reassigned' => 0];
+
+        Product::query()->each(function (Product $product) use (&$totals) {
+            $result = $this->propagateConfigToEligibleLoans($product->id, null);
+            $totals['products']++;
+            $totals['loans_processed'] += $result['loans_processed'];
+            $totals['stages_reassigned'] += $result['stages_reassigned'];
+        });
+
+        return $totals;
+    }
+
+    /**
+     * Rebuild one loan's workflow_config snapshot and re-point its in_progress
+     * stage owners that are still on the old auto-resolved default.
+     *
+     * @return int number of stages reassigned
+     */
+    private function resyncLoanAssignments(LoanDetail $loan): int
+    {
+        // 1. Resolve the OLD auto-assignee for each in_progress stage while the
+        //    loan still carries the pre-change snapshot.
+        $plan = [];
+        foreach ($loan->stageAssignments as $assignment) {
+            if ($assignment->status !== 'in_progress' || $assignment->stage_key === 'parallel_processing') {
+                continue;
+            }
+
+            $phaseIndex = $this->resyncPhaseIndex($assignment);
+            if ($phaseIndex === -1) {
+                continue; // indeterminate phase — leave it alone
+            }
+
+            $normalizedPhase = $phaseIndex === null ? null : $phaseIndex;
+            $role = $normalizedPhase !== null
+                ? $this->getLoanPhaseRole($loan, $assignment->stage_key, $normalizedPhase)
+                : $this->getLoanStageRole($loan, $assignment->stage_key);
+
+            $oldUserId = $this->findUserForRole($role, $loan, $assignment->stage_key, $normalizedPhase);
+
+            $plan[] = [
+                'assignment' => $assignment,
+                'phase' => $normalizedPhase,
+                'old_user' => $oldUserId,
+            ];
+        }
+
+        // 2. Rebuild + persist the fresh snapshot from live config.
+        $loan->workflow_config = $this->buildWorkflowSnapshot(
+            $loan->bank_id, $loan->product_id, $loan->branch_id, $loan->location_id
+        );
+        $loan->save();
+
+        // 3. Re-point each stage still on its old default to the new default.
+        $reassigned = 0;
+        foreach ($plan as $entry) {
+            /** @var StageAssignment $assignment */
+            $assignment = $entry['assignment'];
+            $oldUserId = $entry['old_user'];
+            $currentUserId = $assignment->assigned_to;
+
+            // Preserve manual transfers: only touch stages still on the old default.
+            if (! $oldUserId || $currentUserId !== $oldUserId) {
+                continue;
+            }
+
+            $phase = $entry['phase'];
+            $role = $phase !== null
+                ? $this->getLoanPhaseRole($loan, $assignment->stage_key, $phase)
+                : $this->getLoanStageRole($loan, $assignment->stage_key);
+
+            $newUserId = $this->findUserForRole($role, $loan, $assignment->stage_key, $phase);
+
+            if (! $newUserId || $newUserId === $currentUserId) {
+                continue;
+            }
+
+            $this->reassignForConfigChange($loan, $assignment, $newUserId);
+            $reassigned++;
+        }
+
+        return $reassigned;
+    }
+
+    /**
+     * Current phase index (0-based sub_actions index) for an in_progress stage.
+     * Returns null for single-phase stages, or -1 when the phase is
+     * indeterminate (non-numeric marker) and the stage should be skipped.
+     */
+    private function resyncPhaseIndex(StageAssignment $assignment): ?int
+    {
+        $noteKey = match ($assignment->stage_key) {
+            'bsm_osv' => 'bsm_osv_phase',
+            'legal_verification' => 'legal_phase',
+            'rate_pf' => 'rate_pf_phase',
+            'sanction' => 'sanction_phase',
+            'docket' => 'docket_phase',
+            'esign' => 'esign_phase',
+            default => null,
+        };
+
+        if (! $noteKey) {
+            return null; // single-phase stage
+        }
+
+        $phase = $assignment->getNotesData()[$noteKey] ?? null;
+        if ($phase === null || $phase === '') {
+            return 0; // entry phase
+        }
+        if (! is_numeric($phase)) {
+            return -1; // e.g. 'completed_skip_bank' — skip
+        }
+
+        return max(0, (int) $phase - 1);
+    }
+
+    /**
+     * Re-point a stage assignment to a new owner as a config-driven change:
+     * writes the transfer ledger (real old → new), re-points open queries that
+     * followed the outgoing owner, logs, and notifies the new owner.
+     */
+    private function reassignForConfigChange(LoanDetail $loan, StageAssignment $assignment, int $toUserId): void
+    {
+        $fromUserId = $assignment->assigned_to;
+        $assignment->update(['assigned_to' => $toUserId]);
+
+        StageTransfer::create([
+            'stage_assignment_id' => $assignment->id,
+            'loan_id' => $loan->id,
+            'stage_key' => $assignment->stage_key,
+            'transferred_from' => $fromUserId,
+            'transferred_to' => $toUserId,
+            'reason' => 'Config change: stage owner updated',
+            'transfer_type' => 'auto',
+        ]);
+
+        if ($fromUserId) {
+            StageQuery::where('loan_id', $loan->id)
+                ->where('stage_key', $assignment->stage_key)
+                ->whereIn('status', ['pending', 'responded'])
+                ->where('assigned_to_user_id', $fromUserId)
+                ->update(['assigned_to_user_id' => $toUserId]);
+        }
+
+        ActivityLog::log('config_reassign_stage', $assignment, [
+            'loan_number' => $loan->loan_number,
+            'stage_key' => $assignment->stage_key,
+            'from_user' => User::find($fromUserId)?->name,
+            'to_user' => User::find($toUserId)?->name,
+        ]);
+
+        try {
+            app(NotificationService::class)->notifyStageAssignment($loan, $assignment->stage_key, $toUserId);
+        } catch (\Throwable $e) {
+            \Log::warning('Config reassign notify failed: '.$e->getMessage());
+        }
+    }
+
     // ── Rejection ──
 
     /**
@@ -1551,9 +1761,22 @@ class LoanStageService
 
     /** Full stage flow order including parallel subs in sequence. */
     private const RESET_STAGE_ORDER = [
-        'inquiry', 'document_selection', 'document_collection',
-        'app_number', 'bsm_osv', 'legal_verification', 'original_document_verification', 'technical_valuation', 'sanction_decision',
-        'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement', 'otc_clearance',
+        'inquiry',
+        'document_selection',
+        'document_collection',
+        'app_number',
+        'bsm_osv',
+        'legal_verification',
+        'original_document_verification',
+        'technical_valuation',
+        'sanction_decision',
+        'rate_pf',
+        'sanction',
+        'docket',
+        'kfs',
+        'esign',
+        'disbursement',
+        'otc_clearance',
     ];
 
     /**

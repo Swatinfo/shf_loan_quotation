@@ -14,6 +14,7 @@ use App\Models\ProductStageUser;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
+use App\Services\LoanStageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -340,8 +341,35 @@ class WorkflowConfigController extends Controller
             'bank_name' => $product->bank->name,
         ]);
 
+        // Push the new config onto eligible in-flight loans of this product.
+        $sync = app(LoanStageService::class)->propagateConfigToEligibleLoans($product->id, null);
+
+        $message = 'Stage configuration saved for '.$product->name;
+        if ($sync['stages_reassigned'] > 0) {
+            $message .= " — {$sync['stages_reassigned']} active loan stage(s) reassigned.";
+        }
+
         return redirect(route('loan-settings.index').'#products')
-            ->with('success', 'Stage configuration saved for '.$product->name);
+            ->with('success', $message);
+    }
+
+    /**
+     * "Sync Settings" — re-apply the current stage/task-owner config to every
+     * eligible in-flight loan (not completed/rejected/cancelled, not disbursed),
+     * one product at a time. Manual transfers are preserved.
+     */
+    public function syncStageConfig()
+    {
+        $result = app(LoanStageService::class)->propagateConfigToAllEligibleLoans();
+
+        ActivityLog::log('sync_stage_config', null, [
+            'products' => $result['products'],
+            'loans_processed' => $result['loans_processed'],
+            'stages_reassigned' => $result['stages_reassigned'],
+        ]);
+
+        return redirect(route('loan-settings.index').'?tab=products#products')
+            ->with('success', "Settings synced across {$result['products']} product(s): {$result['stages_reassigned']} stage(s) reassigned on {$result['loans_processed']} active loan(s).");
     }
 
     public function storeBranch(Request $request)

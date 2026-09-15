@@ -34,6 +34,16 @@ Strategy per request class:
 
 Cache version is `SHF_SW_VERSION` at the top of `sw.js`. Bump it to invalidate all caches.
 
+### Logout wipes device state
+The SW listens for a `{type:'shf-clear-cache'}` `postMessage` and deletes every cache. The logout-form
+interceptor in `newtheme/layouts/app.blade.php` (before submitting) posts that message, deletes caches
+page-side, and runs `localStorage.clear()` + `sessionStorage.clear()` — so a shared device starts clean
+for the next user. It also captures the Web Push endpoint into a hidden `push_endpoint` field; the
+server `AuthenticatedSessionController::destroy()` deletes that subscription (`dropCurrentPushSubscription`,
+alongside the FCM `dropCurrentDeviceToken`) as a backstop to the async `SHFPush.cleanupOnLogout()`
+unsubscribe. The next user's login re-keys any leftover endpoint to them (`updatePushSubscription`), so
+they receive only their own notifications. All steps are guarded so they never block logout.
+
 **Deploy rule (2026-07-04):** whenever any file under `public/` (CSS/JS) changes, bump BOTH `SHF_SW_VERSION` in `sw.js` AND `SHF_VERSION` in the server `.env` (then `php artisan config:clear`). The `?v=` query on asset links comes from `config('app.shf_version')`; the SW caches assets keyed by full URL including that query. If neither is bumped, stale-while-revalidate still self-heals — but only on the *next* page load after the background refetch, so users see one stale render post-deploy. Bumping the versions makes the first load correct.
 
 ## Offline shell — `public/offline.html`

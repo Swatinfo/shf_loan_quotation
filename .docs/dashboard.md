@@ -33,8 +33,19 @@ All tabs are permission-gated for visibility. Default selection is **data-driven
 ### Tab list
 
 - **Personal Tasks** — general tasks created by / assigned to the user (see `general-tasks.md`)
-- **Loan Tasks** — current stage assignments for loans the user is working on
-- **Active Loans** — loans the user created / advises / is currently assigned to a stage of
+- **Loan Tasks** — current stage assignments for loans the user is working on. A loan in
+  `parallel_processing` collapses into a **single entry** (not one row per sub-stage): the entry
+  (`type: 'parallel'`) carries a `subStages[]` array of every active parallel sub-stage + its owner,
+  rendered as stacked badge+owner lines in one row. Non-parallel assignments are `type: 'single'`.
+  Built in `DashboardController::newthemeMyLoanTasks()` (groups parallel assignments by loan); rendered
+  by `public/newtheme/pages/dashboard.js` (`myTaskStageCell`).
+- **Active Loans** — loans the user created / advises / is currently assigned to a stage of. Like
+  My Loan Tasks, a loan in `parallel_processing` renders as one row combining its active sub-stages +
+  owners (`type: 'parallel'` + `subStages[]`, built via `DashboardController::parallelSubStages()`);
+  the Stage cell reuses the shared `myTaskStageCell()` JS helper (the separate Owner column was folded
+  in). Both tabs also show the loan's **application number** and **loan account number** as their own
+  columns (**App #** = `applicationNumber`; **Loan Acct #** = `loanAccountNumbers`, distinct
+  active-tranche numbers, `—` pre-disbursement), each with a copy button (as does the loan number).
 - **Quotations** — user's recent quotations, with conversion status
 - **DVR** — user's recent visits + pending follow-ups
 - **Activity Log** — (admin / `view_activity_log` only) recent audit events

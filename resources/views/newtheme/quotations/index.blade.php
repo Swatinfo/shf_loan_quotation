@@ -71,22 +71,22 @@
                     <div class="qx-field">
                         <label class="lbl">Status</label>
                         <select id="qxStatus" class="select">
+                            <option value="active" selected>Active</option>
                             <option value="not_cancelled">Active + On Hold</option>
-                            <option value="active">Active</option>
                             <option value="on_hold">On Hold</option>
                             <option value="cancelled">Cancelled</option>
-                            <option value="all" selected>All Statuses</option>
+                            <option value="all">All Statuses</option>
                         </select>
                     </div>
                     <div class="qx-field">
                         <label class="lbl">Loan Status</label>
                         <select id="qxLoanStatus" class="select">
-                            <option value="not_converted">Not Converted</option>
+                            <option value="not_converted" selected>Not Converted</option>
                             <option value="converted">All Converted</option>
                             <option value="active">Loan Active</option>
                             <option value="completed">Loan Completed</option>
                             <option value="rejected">Loan Rejected</option>
-                            <option value="all" selected>All Quotations</option>
+                            <option value="all">All Quotations</option>
                         </select>
                     </div>
                     <div class="qx-field">

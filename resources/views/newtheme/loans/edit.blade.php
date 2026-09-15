@@ -19,7 +19,7 @@
                     <span class="sep">/</span>
                     <span>Edit</span>
                 </div>
-                <h1>Edit Loan #{{ $loan->loan_number }}</h1>
+                <h1>Edit Loan #{{ $loan->loan_number }}@include('newtheme.partials.copy-btn', ['value' => $loan->loan_number])</h1>
                 <div class="sub">
                     <strong>{{ $loan->customer_name }}</strong>
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif

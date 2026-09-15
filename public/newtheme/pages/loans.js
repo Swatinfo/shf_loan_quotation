@@ -37,6 +37,11 @@
         });
     }
 
+    // Copy-to-clipboard button (global SHF.copyBtn handler in shf-newtheme.js).
+    function copyBtn(v) {
+        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : "";
+    }
+
     function convertDate(val) {
         if (!val) {
             return "";
@@ -101,6 +106,8 @@
             '<table class="tbl"><thead><tr>' +
             "<th>Loan #</th>" +
             "<th>Customer</th>" +
+            "<th>App #</th>" +
+            "<th>Loan Acct #</th>" +
             "<th>Bank / Product</th>" +
             '<th class="num">Amount</th>' +
             '<th class="num">Sanctioned</th>' +
@@ -125,12 +132,24 @@
                     (l.stages_url || "#") +
                     '" class="font-mono" style="font-weight:600;color:var(--accent);text-decoration:none;" title="Open loan stages">' +
                     (l.loan_number || "") +
-                    "</a></td>" +
+                    "</a>" +
+                    copyBtn(l.loan_number_raw) +
+                    "</td>" +
                     '<td data-label="Customer"><a href="' +
                     (l.show_url || "#") +
                     '" style="font-weight:600;color:inherit;text-decoration:none;" title="Open loan details"><strong>' +
                     escapeHtml(l.customer_name || "") +
-                    "</strong></a></td>" +
+                    "</strong></a>" +
+                    copyBtn(l.customer_name) +
+                    "</td>" +
+                    '<td data-label="App #" class="font-mono">' +
+                    escapeHtml(l.application_number || "—") +
+                    copyBtn(l.application_number) +
+                    "</td>" +
+                    '<td data-label="Loan Acct #" class="font-mono">' +
+                    escapeHtml(l.loan_account_numbers || "—") +
+                    copyBtn(l.loan_account_numbers) +
+                    "</td>" +
                     '<td data-label="Bank / Product">' +
                     (l.bank_product || "") +
                     "</td>" +
@@ -183,15 +202,26 @@
                     '" style="color:inherit;text-decoration:none;"><strong>' +
                     escapeHtml(l.customer_name || "") +
                     "</strong></a>" +
+                    copyBtn(l.customer_name) +
                     '<div class="text-xs text-muted font-mono"><a href="' +
                     (l.stages_url || "#") +
                     '" style="color:var(--accent);text-decoration:none;">' +
                     (l.loan_number || "") +
-                    "</a></div></div>" +
+                    "</a>" +
+                    copyBtn(l.loan_number_raw) +
+                    "</div></div>" +
                     '<div class="flex-shrink-0">' +
                     (l.status_label || "") +
                     "</div>" +
                     "</div>" +
+                    '<div class="m-row"><span class="k">App #</span><span class="v">' +
+                    escapeHtml(l.application_number || "—") +
+                    copyBtn(l.application_number) +
+                    "</span></div>" +
+                    '<div class="m-row"><span class="k">Loan Acct #</span><span class="v">' +
+                    escapeHtml(l.loan_account_numbers || "—") +
+                    copyBtn(l.loan_account_numbers) +
+                    "</span></div>" +
                     '<div class="m-row"><span class="k">Amount</span><span class="v">' +
                     (l.amount_info || escapeHtml(l.formatted_amount || "")) +
                     "</span></div>" +
@@ -445,6 +475,12 @@
                     }
                 }
             });
+            // Status defaults to Active (not "All") — the list shows active loans
+            // by default; on_hold/cancelled/rejected only when explicitly chosen.
+            var statusEl = document.getElementById("lxStatus");
+            if (statusEl) {
+                statusEl.value = "active";
+            }
             if (docketDateWrap) {
                 docketDateWrap.classList.add("lx-hidden");
             }
@@ -507,10 +543,10 @@
             return;
         }
         var f = readFilters();
-        // Defaults: all filters empty (the list now shows every status by
-        // default so loans don't "disappear" when they leave the active state).
+        // Defaults: Active status (the list shows active loans by default;
+        // other statuses only when explicitly selected), other filters empty.
         var defaults = {
-            status: "",
+            status: "active",
             customer_type: "",
             bank_id: "",
             product_id: "",

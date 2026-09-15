@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use App\Models\User;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -51,16 +51,14 @@ class AuthenticatedSessionController extends Controller
             ]);
 
             $this->dropCurrentDeviceToken($request, $user);
+            $this->dropCurrentPushSubscription($request, $user);
         }
-
 
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
-
-
 
         return redirect('/');
     }
@@ -79,6 +77,21 @@ class AuthenticatedSessionController extends Controller
         // }
         if ($token) {
             $user->deviceTokens()->where('token', $token)->delete();
+        }
+    }
+
+    /**
+     * Backstop for the logout interceptor: if the browser posted its Web Push
+     * endpoint, delete that subscription server-side so the logged-out user stops
+     * receiving pushes on this device even if the async /api/push/unsubscribe call
+     * was dropped. Scoped to this user + exact endpoint so other devices stay
+     * subscribed. (The next user's login re-keys any leftover endpoint to them.)
+     */
+    private function dropCurrentPushSubscription(Request $request, User $user): void
+    {
+        $endpoint = $request->input('push_endpoint');
+        if ($endpoint) {
+            $user->pushSubscriptions()->where('endpoint', $endpoint)->delete();
         }
     }
 }

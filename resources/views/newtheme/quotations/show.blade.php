@@ -32,7 +32,7 @@
                     <span class="sep">/</span>
                     <span>#{{ $quotation->id }}</span>
                 </div>
-                <h1>Quotation #{{ $quotation->id }}</h1>
+                <h1>Quotation #{{ $quotation->id }}@include('newtheme.partials.copy-btn', ['value' => $quotation->id])</h1>
                 <div class="sub">
                     <strong>{{ $quotation->customer_name }}</strong>
                     @if ($quotation->customer_type)

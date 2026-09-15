@@ -110,6 +110,10 @@ Only writes `bank_stage_configs` rows when overrides **differ** from master; oth
 
 Multi-tier user resolution: branch → city → state → global default. See `user-assignment.md`.
 
+**Auto-propagation on save**: after writing config, `saveProductStages` (scoped to that product) and `saveMasterStages` (all eligible loans) call `LoanStageService::propagateConfigToEligibleLoans()`. This rebuilds `loan_details.workflow_config` and re-points the **in_progress** stage owners of eligible loans — **eligible = any loan whose `status != 'completed'`** (active/on_hold/rejected/cancelled/disbursed-but-open) — that are **still on their auto-resolved default**; manually-transferred stages are preserved. The new owner is notified; the reassignment count is appended to the success flash.
+
+**"Sync Settings" button** (Products & Stages tab): `POST /loan-settings/sync-stage-config` (`loan-settings.sync-stage-config`, `manage_workflow_config`) → `WorkflowConfigController::syncStageConfig()` → `propagateConfigToAllEligibleLoans()` loops every product and re-applies current config to its eligible loans. Native `confirm()` guard (this page has no Bootstrap/Swal).
+
 ### Role Permissions (Loans group only)
 
 `saveTaskRolePermissions` — role × Loans-group permission matrix. Clears only Loans permissions per role, syncs selected. Does **not** touch non-Loans permissions (they're managed on `/permissions`).

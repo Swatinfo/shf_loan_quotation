@@ -24,7 +24,9 @@ Complete list: `.claude/routes-reference.md`. Summary:
 
 - `scopeVisibleTo(User)` — visibility rules (see below)
 - `scopeActive()` — `status = 'active'`
-- `formattedAmount` — `₹ X,XX,XXX` (requested/applied amount, `loan_amount`)
+- `formattedAmount` — `₹ X,XX,XXX` (working amount, `loan_amount`)
+- `formattedOriginalAmount` — `₹ X,XX,XXX` from `original_loan_amount` (the as-applied amount snapshotted at loan creation), or `null`. Diverges from `loan_amount` only after a KFS-stage edit.
+- `loanAccountNumbers` — distinct `loan_account_number`s across the loan's **active** disbursement tranches (`disbursementEntries` where `is_active`), comma-joined; empty string before disbursement. There is no single account-number column — it's captured per tranche. Surfaced as a "Loan Acct #" column on the loans list + dashboard My-Tasks/Active-Loans widgets, and on the loan show page.
 - `formattedSanctionedAmount`, `formattedDisbursedAmount` — Indian-formatted from the `sanctioned_amount` / `disbursed_amount` columns, or `null` when unset. Shown as separate **Sanctioned** and **Disbursed** columns in the loans list and dashboard loans widget (`—` when empty). Columns are populated at write time (docket login / disbursement), not parsed from stage notes.
 - `statusLabel`, `statusColor`, `customerTypeLabel`
 - `currentStageName`, `currentOwner` (advisor/creator), `currentTaskOwners` (collection of every active-stage assignee — all in-progress parallel sub-stage owners during `parallel_processing`), `currentTaskOwner` (first of those), `timeWithCurrentOwner`, `totalLoanTime`
@@ -137,6 +139,14 @@ Rendered sections (conditional on state):
 
 Status dropdown: Put on hold / Cancel / Reactivate (permissions-gated).
 
+## Editable loan amount at KFS
+
+The **KFS stage owner** (its `stage_assignments.assigned_to`) or an **admin/super_admin** can change the loan's working `loan_amount` while KFS is `in_progress` and the loan is active/on_hold. The as-applied amount is preserved on `original_loan_amount` (snapshotted at loan creation in `LoanConversionService`; backfilled for existing loans by migration, and set on first edit for any legacy null).
+
+- Endpoint: `POST /loans/{loan}/kfs/loan-amount` (`loans.kfs.amount.update`, `LoanStageController::updateKfsLoanAmount`, `permission:manage_loan_stages` + server-side assignee/admin check). Validates `loan_amount` numeric ≥1 ≤1e12 (no cap vs `sanctioned_amount`). Logs `change_loan_amount` (old→new). Returns `{success, formatted_amount, formatted_original_amount}`.
+- UI: an editable amount input + "Save Amount" on the KFS stage card (`_stages-body.blade.php` `@case('kfs')`, inside the `$stageEditable` gate so only the assignee/admin see it), with the original shown read-only. JS handler `.shf-kfs-amount-save` in `_stages-scripts.blade.php`.
+- **Completion also saves + validates the amount.** The "KFS Complete" button (`.shf-kfs-complete`) first POSTs the current amount to `loans.kfs.amount.update` (server-validates) and only completes the stage on success. Server-authoritative too: `updateStatus` blocks kfs completion when `loan_amount` is not a valid positive figure (≥1, ≤1e12), regardless of client path. Test: `tests/Feature/KfsLoanAmountTest.php`.
+
 ## Timeline
 
 `/loans/{id}/timeline` — rendered via `LoanTimelineService::getTimeline($loan)` merging:
@@ -227,10 +237,13 @@ Each tranche is also mirrored into the **`disbursement_entries` table** (json en
 
 `GET /loans/data` — server-side DataTables. Filter fields:
 
-- `status` (default "active"), `customer_type`, `bank_id`, `branch_id`, `role` (admin/mgr only — filters by who currently owns the loan)
+- `status` — **defaults to `active`** (2026-08-31): `loanData()` filters to `active` when no status is passed; an explicit status shows that status; `status=all` shows everything. The `#lxStatus` select defaults to Active and carries an `all` option; `loans.js` Clear resets to `active`. *(Reverses the 2026-07-07 "show all statuses by default" — on_hold/cancelled/rejected/completed now appear only when chosen.)* Dashboard loan widgets + my-loan-tasks + pipeline-by-stage + bank-mix-MTD likewise count **active only** (`->active()` / `where('status','active')`), and `GeneralTask::scopeWithActiveLinks` hides tasks whose linked loan is not active.
 - `product_id` — plain `where` on `loan_details.product_id` (loans with null product drop out when active). UI: `lxProduct` select, visible to all roles; options are all active products labeled "Product — Bank" (bank employees with a `task_bank_id` get only their bank's products). Selecting a Bank narrows the product options client-side via `data-bank-id` (stale selection is cleared; Clear resets the cascade).
 - `user` (admin/mgr only — `lxUser` dropdown of all active users) — filters by the **current task owner**: loans where the user is the assignee of the current-stage assignment, OR (only while `current_stage = parallel_processing`) the assignee of any in-progress sub-stage. Matches the Task Owner column exactly, including loans with multiple active parallel owners.
-- `stage` — matches loans that have **completed** the selected stage (`whereHas('stageAssignments', stage_key = value AND status = 'completed')`, working for top-level and parallel sub-stage keys alike). When `date_from`/`date_to` are also present, the range applies to that stage's `completed_at` (all bounds in one closure, so a single completed row must satisfy the whole range). *(Was "loans currently sitting at this stage"; now "loans where this stage is completed".)*
+- `stage` — semantics depend on whether a date range is also present (uniform across top-level stages **and** parallel sub-stage keys):
+  - **Stage only** → loans **currently AT** that stage: `whereHas('stageAssignments', stage_key = value AND status = 'in_progress')`. This is what the dropdown means to users — "show loans sitting at KFS", NOT "loans that ever finished KFS". *(Fixes the bug where filtering KFS also returned loans already at disbursement/OTC, which had merely completed KFS.)*
+  - **Stage + `date_from`/`date_to`** → reporting: loans that **completed** that stage within the window (`status = 'completed'`, bounds on `completed_at`).
+  - **Dropdown** (`LoanController::index` `$stages`): lists **all** enabled stages except the `parallel_processing` parent, ordered by `sequence_order`, for **all** roles (the old bank-employee-only / `bsm_osv`-only restrictions were removed).
 - `docket` — consolidated filter with two flavors:
   - **Date-range options** (`overdue / due_today / due_soon / due_15 / due_month / custom`) operate on an **effective docket date** computed inline as `COALESCE(loan_details.expected_docket_date, app_number.notes.custom_docket_date, today + app_number.notes.docket_days_offset)`. Pre-sanction loans surface using their tentative `today + offset` so users can plan ahead; the authoritative column itself is only written when `sanction` completes (`LoanStageService::handleStageCompletion`).
 
@@ -241,11 +254,11 @@ Each tranche is also mirrored into the **`disbursement_entries` table** (json en
   - `custom` pairs with `docket_date` (yyyy-mm-dd) to filter on effective date ≤ that date.
 - `date_from` / `date_to` — filter on **stage-completion activity**, not `loan_details.created_at`. With a `stage` selected, the range applies to that stage's `completed_at` (see above). Without a stage, the range matches the loan's **latest** stage completion via a correlated subquery `DATE((SELECT MAX(completed_at) FROM stage_assignments WHERE loan_id = loan_details.id))` (portable across MySQL + SQLite), so a loan surfaces only in the window where it last moved.
 
-Search: `loan_number`, `customer_name`, `bank_name`, `customer_phone`, `customer_email`. UI exposes this via the always-visible search input in the results-card header (debounced 250 ms, sent as the standard `search[value]` DataTables param).
+Search: `loan_number`, `application_number`, `customer_name`, `bank_name`, `customer_phone`, `customer_email`. UI exposes this via the always-visible search input in the results-card header (debounced 250 ms, sent as the standard `search[value]` DataTables param).
 
-**Index page stage dropdown**: non-bank-employees see top-level stages plus `bsm_osv` (a parallel sub-stage). Bank employees see their fixed set (`bsm_osv`, `rate_pf`, `sanction`, `legal_verification`, `esign`). Add another sub-stage to the non-bank-employee dropdown by extending the `orWhere('stage_key', 'bsm_osv')` clause in `LoanController::index` — the backend `whereHas` already handles any sub-stage generically.
+**Index-page stage dropdown** now shows every enabled stage (top-level + all parallel sub-stages) — see the `stage` filter above.
 
-Results include formatted amount, docket urgency badges, stage badge (with role suffix), **Owner** (`current_owner` = advisor/creator + time-with-owner), **Task Owner** (`current_task_owners` joined by `, ` → plain text `task_owner_info`; lists every active-stage assignee, i.e. all in-progress parallel sub-stage owners during `parallel_processing`), status, actions (edit/delete per permission).
+Results include **App #** (`application_number`, `—` when unset — column + mobile-card row in `loans.js`), formatted amount, docket urgency badges, stage badge (with role suffix), **Owner** (`current_owner` = advisor/creator + time-with-owner), **Task Owner** (`current_task_owners` joined by `, ` → plain text `task_owner_info`; lists every active-stage assignee, i.e. all in-progress parallel sub-stage owners during `parallel_processing`), status, actions (edit/delete per permission). Column padding is compacted (`.lx-results .tbl` = `6px 8px`, scoped so other `.tbl` tables are unaffected).
 
 ## Branch manager / BDH notes
 

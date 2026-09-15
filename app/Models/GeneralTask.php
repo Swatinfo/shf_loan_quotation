@@ -138,12 +138,13 @@ class GeneralTask extends Model
     }
 
     /**
-     * Hide tasks whose linked loan or quotation has been cancelled.
-     * Tasks with no link (or with an active link) are unaffected.
+     * Hide tasks whose linked loan is NOT active (on_hold / cancelled / rejected /
+     * completed) or whose linked quotation is cancelled. Tasks with no link — or
+     * with an active loan link — are unaffected.
      */
     public function scopeWithActiveLinks($query): void
     {
-        $query->whereDoesntHave('loan', fn ($q) => $q->where('status', LoanDetail::STATUS_CANCELLED))
+        $query->whereDoesntHave('loan', fn ($q) => $q->where('status', '!=', LoanDetail::STATUS_ACTIVE))
             ->whereDoesntHave('quotation', fn ($q) => $q->where('status', Quotation::STATUS_CANCELLED));
     }
 

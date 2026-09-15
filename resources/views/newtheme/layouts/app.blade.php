@@ -528,6 +528,42 @@
                     var guard = setTimeout(submit, 800);
 
                     var tasks = [];
+
+                    // Wipe this device's local state so the NEXT user starts clean:
+                    // SW caches + all localStorage/sessionStorage (tab prefs, push
+                    // prefs, dismissed banners). Synchronous parts run immediately so
+                    // they complete even if the 800ms guard submits first.
+                    try {
+                        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({ type: 'shf-clear-cache' });
+                        }
+                    } catch (e) {}
+                    try { localStorage.clear(); } catch (e) {}
+                    try { sessionStorage.clear(); } catch (e) {}
+                    if (window.caches && caches.keys) {
+                        tasks.push(caches.keys().then(function (keys) {
+                            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                        }).catch(function () {}));
+                    }
+
+                    // Capture the Web Push endpoint so the server can drop the
+                    // subscription reliably (backstop for the async unsubscribe below),
+                    // ensuring the next user on this device gets only their own pushes.
+                    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                        tasks.push(navigator.serviceWorker.ready
+                            .then(function (reg) { return reg.pushManager.getSubscription(); })
+                            .then(function (sub) {
+                                if (sub && sub.endpoint && !form.querySelector('input[name="push_endpoint"]')) {
+                                    var pe = document.createElement('input');
+                                    pe.type = 'hidden';
+                                    pe.name = 'push_endpoint';
+                                    pe.value = sub.endpoint;
+                                    form.appendChild(pe);
+                                }
+                            })
+                            .catch(function () {}));
+                    }
+
                     if (window.SHFPush && typeof window.SHFPush.cleanupOnLogout === 'function') {
                         tasks.push(window.SHFPush.cleanupOnLogout());
                     }

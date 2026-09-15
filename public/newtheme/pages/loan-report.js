@@ -119,9 +119,10 @@
             '<th>Status</th>' +
             '</tr></thead><tbody>';
         var body = rows.map(function (r) {
-            var loanCell = r.stages_url
+            var copy = window.SHF && SHF.copyBtn ? SHF.copyBtn(r.loan_number) : '';
+            var loanCell = (r.stages_url
                 ? '<a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number || '—') + '</a>'
-                : escapeHtml(r.loan_number || '—');
+                : escapeHtml(r.loan_number || '—')) + copy;
             return '<tr>' +
                 '<td class="lr-loan">' + loanCell + '</td>' +
                 '<td>' + escapeHtml(r.customer_name || '—') + '</td>' +
@@ -144,12 +145,6 @@
         if (elTotalCount) { elTotalCount.textContent = totals.count != null ? String(totals.count) : '—'; }
         if (elTotalSanctioned) { elTotalSanctioned.textContent = totals.sanctioned || '—'; }
         if (elTotalDisbursed) { elTotalDisbursed.textContent = totals.disbursed || '—'; }
-        // Period totals cover BOTH milestones (management-funnel semantics) —
-        // surface each milestone's loan count in its card label.
-        var sLbl = document.getElementById('lrTotalSanctionedLbl');
-        var dLbl = document.getElementById('lrTotalDisbursedLbl');
-        if (sLbl) { sLbl.textContent = 'Total Sanctioned' + (totals.sanctioned_count != null ? ' (' + totals.sanctioned_count + ' loans)' : ''); }
-        if (dLbl) { dLbl.textContent = 'Total Disbursed' + (totals.disbursed_count != null ? ' (' + totals.disbursed_count + ' loans)' : ''); }
     }
 
     function refresh() {

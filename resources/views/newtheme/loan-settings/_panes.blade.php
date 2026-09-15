@@ -669,6 +669,21 @@
                 {{-- Products & Stages Tab --}}
                 <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-products"{!! $activeTab !== 'products' ? '' : '' !!}>
                     @if (auth()->user()->hasPermission('manage_workflow_config'))
+                        <div class="shf-card p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="shf-text-sm shf-text-gray">
+                                <strong>Sync Settings</strong> — re-apply the current stage &amp; task-owner
+                                configuration to all active loans (not completed or disbursed). Manually
+                                transferred stages are preserved.
+                            </div>
+                            <form method="POST" action="{{ route('loan-settings.sync-stage-config') }}"
+                                class="m-0"
+                                onsubmit="return confirm('Re-apply the current stage configuration to all active loans? Manually transferred stages will be kept.');">
+                                @csrf
+                                <button type="submit" class="btn-accent btn-accent-sm shf-text-nowrap">
+                                    Sync Settings
+                                </button>
+                            </form>
+                        </div>
                         <div class="shf-add-form-wrapper mb-3">
                             <button class="shf-add-form-toggle collapsed" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#productFormCollapse" aria-expanded="false">

@@ -361,7 +361,8 @@ Per-bank rate/charge row per quotation. FK `quotation_id` CASCADE. Fields: bank_
 | customer_email | string | nullable |
 | date_of_birth | date | nullable |
 | pan_number | varchar(10) | nullable, uppercase |
-| loan_amount | unsignedBigInt | requested/applied amount |
+| loan_amount | unsignedBigInt | working amount — editable by the KFS stage owner |
+| original_loan_amount | unsignedBigInt | nullable — as-applied amount snapshotted at loan creation; preserved when `loan_amount` is edited at KFS |
 | sanctioned_amount | unsignedBigInt | nullable — mirrored from docket-login notes (sanction stage = legacy fallback) |
 | disbursed_amount | unsignedBigInt | nullable — mirrored from `disbursement_details.amount_disbursed` |
 | status | string | INDEX — active / on_hold / completed / rejected / cancelled |

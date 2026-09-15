@@ -115,7 +115,7 @@ Each action endpoint reads current phase from `stage_assignments.notes`, does th
 ## Why this matters in practice
 
 - **Never hardcode** users to stages. Always go through the snapshot or resolver.
-- **After changing role/user defaults**: existing loans keep their snapshot until a transfer or re-init. If you need to migrate a batch, build a console command that rebuilds `workflow_config` for affected loans.
+- **After changing role/user defaults**: config saves now **auto-propagate** onto eligible loans — **eligible = every loan whose `status != 'completed'`** (active, on_hold, rejected, cancelled, and disbursed-but-open all qualify; only completed is skipped). `saveProductStages` (product-scoped), `saveMasterStages` (Stage Master, all eligible), and the **"Sync Settings"** button (`POST loan-settings.sync-stage-config` → `propagateConfigToAllEligibleLoans()`, per-product) all call `LoanStageService::propagateConfigToEligibleLoans()`, which rebuilds `workflow_config` and re-points open stage owners **that are still on their auto-resolved default** (manual transfers preserved), notifying the new owner. Rejected/cancelled loans usually have no in_progress stages (re-point is a no-op) but their snapshot is refreshed for a later reactivation.
 - **When a user is deactivated**: their assigned stages are not automatically reassigned. A BM / BDH must transfer each. Adding an auto-reassignment on `is_active=false` would be a reasonable feature to add in the future.
 
 ## See also

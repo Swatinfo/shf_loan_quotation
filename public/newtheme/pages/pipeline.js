@@ -138,7 +138,7 @@
 
     function cellsFor(status, r) {
         var base = [
-            '<td class="pl-loan">' + (r.stages_url ? '<a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number) + '</a>' : escapeHtml(r.loan_number)) + '</td>',
+            '<td class="pl-loan">' + (r.stages_url ? '<a href="' + escapeHtml(r.stages_url) + '">' + escapeHtml(r.loan_number) + '</a>' : escapeHtml(r.loan_number)) + (window.SHF && SHF.copyBtn ? SHF.copyBtn(r.loan_number) : '') + '</td>',
             '<td>' + escapeHtml(r.customer_name || '—') + '</td>',
             '<td class="pl-muted">' + escapeHtml(r.bank_product || '—') + '</td>',
             '<td class="pl-muted">' + escapeHtml(r.branch_name || '—') + '</td>',

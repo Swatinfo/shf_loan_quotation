@@ -6,7 +6,7 @@
 //  If offline, any page/API request returns the offline shell or 503,
 //  so stale data is never shown.
 // ============================================================
-var SHF_SW_VERSION = "20260810193000";
+var SHF_SW_VERSION = "20260831200000";
 var STATIC_CACHE = "shf-static-" + SHF_SW_VERSION;
 var OFFLINE_URL = "/offline.html";
 
@@ -68,6 +68,23 @@ self.addEventListener("activate", function (event) {
                 return self.clients.claim();
             }),
     );
+});
+
+// Message channel — the page asks us to wipe every cache on logout so the next
+// user on this device starts with a clean slate.
+self.addEventListener("message", function (event) {
+    var data = event.data || {};
+    if (data.type === "shf-clear-cache") {
+        event.waitUntil(
+            caches.keys().then(function (keys) {
+                return Promise.all(
+                    keys.map(function (key) {
+                        return caches.delete(key);
+                    }),
+                );
+            }),
+        );
+    }
 });
 
 // Fetch routing.

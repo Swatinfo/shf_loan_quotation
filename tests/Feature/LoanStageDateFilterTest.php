@@ -15,9 +15,10 @@ use Tests\TestCase;
 /**
  * Loan-list (`loans.data`) date-range + stage filter semantics.
  *
- * The date range filters on stage COMPLETION activity, not loan_details.created_at:
- *  - Stage selected  -> loans that COMPLETED that stage (date bounds apply to its completed_at).
- *  - Date range only -> the loan's LATEST stage completion falls in the range.
+ * Semantics:
+ *  - Stage only          -> loans CURRENTLY AT that stage (assignment in_progress).
+ *  - Stage + date range  -> reporting: loans that COMPLETED that stage in the window (completed_at).
+ *  - Date range only     -> the loan's LATEST stage completion falls in the range.
  */
 class LoanStageDateFilterTest extends TestCase
 {
@@ -113,28 +114,35 @@ class LoanStageDateFilterTest extends TestCase
             ->assertJsonPath('recordsFiltered', 0);
     }
 
-    /** Stage selected without a date: loans that completed that stage show regardless of when. */
-    public function test_stage_only_matches_completed_stage_any_date(): void
+    /**
+     * Stage selected without a date → loans CURRENTLY AT that stage (in_progress),
+     * NOT loans that merely finished it. A loan past the stage (completed) must not
+     * match — this is the fix for "filter KFS shows disbursement/OTC loans".
+     */
+    public function test_stage_only_matches_loans_currently_at_stage(): void
     {
         $admin = $this->admin();
-        $done = $this->makeLoan($admin);
-        $this->completeStage($done, 'otc_clearance', '2026-05-10 10:00:00');
-        // A loan currently IN PROGRESS at OTC must NOT match "stage completed".
-        $inProgress = $this->makeLoan($admin);
+
+        // Currently AT OTC → matches.
+        $atOtc = $this->makeLoan($admin);
         StageAssignment::create([
-            'loan_id' => $inProgress->id,
+            'loan_id' => $atOtc->id,
             'stage_key' => 'otc_clearance',
             'status' => 'in_progress',
             'started_at' => '2026-05-10 10:00:00',
         ]);
+
+        // Already COMPLETED OTC (loan moved past it) → must NOT match.
+        $pastOtc = $this->makeLoan($admin);
+        $this->completeStage($pastOtc, 'otc_clearance', '2026-05-10 10:00:00');
 
         $response = $this->actingAs($admin)
             ->getJson(route('loans.data', ['stage' => 'otc_clearance']))
             ->assertOk();
 
         $response->assertJsonPath('recordsFiltered', 1);
-        $this->assertStringContainsString($done->loan_number, $this->loanNumbers($response));
-        $this->assertStringNotContainsString($inProgress->loan_number, $this->loanNumbers($response));
+        $this->assertStringContainsString($atOtc->loan_number, $this->loanNumbers($response));
+        $this->assertStringNotContainsString($pastOtc->loan_number, $this->loanNumbers($response));
     }
 
     /** Date range only → matches on the loan's LATEST stage completion. */
