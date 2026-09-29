@@ -42,8 +42,13 @@ class DashboardController extends Controller
         $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
         $from = $request->filled('from') ? (string) $request->query('from') : null;
         $to = $request->filled('to') ? (string) $request->query('to') : null;
+        $filters = [
+            'bank_id' => $request->query('bank_id'),
+            'product_id' => $request->query('product_id'),
+            'branch_id' => $request->query('branch_id'),
+        ];
 
-        return response()->json($service->build($user, $period, $userId, $from, $to));
+        return response()->json($service->build($user, $period, $userId, $from, $to, $filters));
     }
 
     /**
@@ -751,6 +756,9 @@ class DashboardController extends Controller
         return [
             'canFilterByUser' => $service->canFilterByUser($user),
             'userOptions' => $service->userOptions($user),
+            'bankOptions' => $service->bankOptions(),
+            'productOptions' => $service->productOptions(),
+            'branchOptions' => $service->branchOptions($user),
             'defaultPeriod' => LoanPipelineBreakdownService::DEFAULT_PERIOD,
             'periods' => [
                 ['value' => 'month', 'label' => 'Current Month'],

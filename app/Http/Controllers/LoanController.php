@@ -104,6 +104,13 @@ class LoanController extends Controller
                 (string) $request->query('brk_bucket'),
                 $request->filled('brk_from') ? (string) $request->query('brk_from') : null,
                 $request->filled('brk_to') ? (string) $request->query('brk_to') : null,
+                // The bank/product/branch filters are the native loans-list params
+                // (applied below too); pass them so the ID set matches exactly.
+                [
+                    'bank_id' => $request->query('bank_id'),
+                    'product_id' => $request->query('product_id'),
+                    'branch_id' => $request->query('branch_id'),
+                ],
             );
             $query->whereIn('id', $ids ?: [-1]);
         }

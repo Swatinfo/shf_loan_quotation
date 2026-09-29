@@ -349,6 +349,9 @@
         const fromEl = $('sbFrom');
         const toEl = $('sbTo');
         const applyBtn = $('sbApply');
+        const branchSel = $('sbBranch');
+        const bankSel = $('sbBank');
+        const productSel = $('sbProduct');
 
         // period options
         periodSel.innerHTML = (meta.periods || []).map((p) =>
@@ -361,6 +364,34 @@
             userSel.innerHTML = '<option value="">— My scope —</option>' +
                 meta.userOptions.map((u) => '<option value="' + u.id + '">' + escapeHtml(u.name) + '</option>').join('');
         }
+
+        // branch options (shown only when the user has ≥1 branch to pick from)
+        if ((meta.branchOptions || []).length) {
+            branchSel.style.display = '';
+            branchSel.innerHTML = '<option value="">All branches</option>' +
+                meta.branchOptions.map((b) => '<option value="' + b.id + '">' + escapeHtml(b.name) + '</option>').join('');
+        }
+
+        // bank options + Bank → Product cascade
+        const allProducts = meta.productOptions || [];
+        bankSel.innerHTML = '<option value="">All banks</option>' +
+            (meta.bankOptions || []).map((b) => '<option value="' + b.id + '">' + escapeHtml(b.name) + '</option>').join('');
+
+        function syncProducts() {
+            const bank = bankSel.value;
+            if (!bank) {
+                productSel.innerHTML = '<option value="">All products</option>';
+                productSel.value = '';
+                productSel.disabled = true;
+                return;
+            }
+            productSel.disabled = false;
+            productSel.innerHTML = '<option value="">All products</option>' +
+                allProducts.filter((p) => String(p.bank_id) === String(bank))
+                    .map((p) => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
+            productSel.value = '';
+        }
+        syncProducts();
 
         // dd/mm/yyyy → yyyy-mm-dd for the request
         const toIso = (val) => {
@@ -436,6 +467,9 @@
             if (uid) { q += '&user_id=' + encodeURIComponent(uid); }
             if (from) { q += '&from=' + encodeURIComponent(from); }
             if (to) { q += '&to=' + encodeURIComponent(to); }
+            if (branchSel.value) { q += '&branch_id=' + encodeURIComponent(branchSel.value); }
+            if (bankSel.value) { q += '&bank_id=' + encodeURIComponent(bankSel.value); }
+            if (productSel.value) { q += '&product_id=' + encodeURIComponent(productSel.value); }
 
             const token = ++inFlight;
             host.innerHTML = '<div class="sb-loading text-xs text-muted">Loading…</div>';
@@ -466,6 +500,9 @@
         });
         userSel.addEventListener('change', load);
         applyBtn.addEventListener('click', load);
+        branchSel.addEventListener('change', load);
+        bankSel.addEventListener('change', function () { syncProducts(); load(); });
+        productSel.addEventListener('change', load);
 
         syncControls();
         load();

@@ -398,6 +398,41 @@ class StageBreakdownTest extends TestCase
         $this->assertSame(800000, $this->tile($this->service->build($owner, 'all'), 'disbursement', 'entry')['amount']);
     }
 
+    public function test_bank_and_product_filters(): void
+    {
+        $owner = $this->makeUser();
+        $bankB = Bank::create(['name' => 'BankB-'.uniqid(), 'is_active' => true]);
+        $productB = Product::create(['name' => 'ProdB-'.uniqid(), 'bank_id' => $bankB->id, 'is_active' => true]);
+
+        $a = $this->makeLoan($owner, ['bank_id' => $this->bank->id, 'product_id' => $this->product->id]);
+        $this->assign($a, 'technical_valuation', 'in_progress');
+        $b = $this->makeLoan($owner, ['bank_id' => $bankB->id, 'product_id' => $productB->id]);
+        $this->assign($b, 'technical_valuation', 'in_progress');
+
+        $up = fn (array $filters = []) => $this->tile(
+            $this->service->build($owner, 'month', null, null, null, $filters), 'technical', 'under_process'
+        )['count'];
+
+        $this->assertSame(2, $up());                                                          // no filter
+        $this->assertSame(1, $up(['bank_id' => $this->bank->id]));                             // bank A only
+        $this->assertSame(1, $up(['bank_id' => $bankB->id, 'product_id' => $productB->id]));    // bank B + its product
+        $this->assertSame(0, $up(['bank_id' => $this->bank->id, 'product_id' => $productB->id])); // mismatched pair
+    }
+
+    public function test_branch_filter(): void
+    {
+        $owner = $this->makeUser();
+        $branchB = Branch::create(['name' => 'BranchB-'.uniqid(), 'is_active' => true]);
+
+        $a = $this->makeLoan($owner); // default branch
+        $this->assign($a, 'technical_valuation', 'in_progress');
+        $b = $this->makeLoan($owner, ['branch_id' => $branchB->id]);
+        $this->assign($b, 'technical_valuation', 'in_progress');
+
+        $byBranch = $this->service->build($owner, 'month', null, null, null, ['branch_id' => $this->branch->id]);
+        $this->assertSame(1, $this->tile($byBranch, 'technical', 'under_process')['count']);
+    }
+
     public function test_advisor_scope_is_own_only_and_user_filter_ignored(): void
     {
         $advisor = $this->makeUser('loan_advisor');

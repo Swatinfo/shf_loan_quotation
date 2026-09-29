@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Bank;
+use App\Models\Branch;
 use App\Models\LoanDetail;
+use App\Models\Product;
 use App\Models\StageAssignment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -90,23 +93,75 @@ class LoanPipelineBreakdownService
     }
 
     /**
+     * Active banks for the Bank filter.
+     *
+     * @return array<int,array{id:int,name:string}>
+     */
+    public function bankOptions(): array
+    {
+        return Bank::active()->orderBy('name')->get(['id', 'name'])
+            ->map(fn (Bank $b) => ['id' => $b->id, 'name' => $b->name])->all();
+    }
+
+    /**
+     * Active products with their bank (drives the Bank → Product cascade).
+     *
+     * @return array<int,array{id:int,name:string,bank_id:int}>
+     */
+    public function productOptions(): array
+    {
+        return Product::active()->orderBy('name')->get(['id', 'name', 'bank_id'])
+            ->map(fn (Product $p) => ['id' => $p->id, 'name' => $p->name, 'bank_id' => (int) $p->bank_id])->all();
+    }
+
+    /**
+     * Branches for the Branch filter — all for view_all_loans, the requester's own
+     * branches otherwise.
+     *
+     * @return array<int,array{id:int,name:string}>
+     */
+    public function branchOptions(User $requester): array
+    {
+        $query = Branch::active()->orderBy('name');
+        if (! $requester->hasPermission('view_all_loans')) {
+            $branchIds = $requester->branches()->pluck('branches.id')->all();
+            $query->whereIn('id', $branchIds ?: [-1]);
+        }
+
+        return $query->get(['id', 'name'])
+            ->map(fn (Branch $b) => ['id' => $b->id, 'name' => $b->name])->all();
+    }
+
+    /**
+     * @param  array<string,mixed>  $filters
+     * @return array{bank_id:?int,product_id:?int,branch_id:?int}
+     */
+    private function normalizeFilters(array $filters): array
+    {
+        $int = fn (string $k) => isset($filters[$k]) && $filters[$k] !== '' && $filters[$k] !== null ? (int) $filters[$k] : null;
+
+        return ['bank_id' => $int('bank_id'), 'product_id' => $int('product_id'), 'branch_id' => $int('branch_id')];
+    }
+
+    /**
      * Full block payload for the requester at the given period / optional target user.
      *
      * @return array{range:array{from:?string,to:string,label:string},blocks:array<int,array<string,mixed>>}
      */
-    public function build(User $requester, string $period = self::DEFAULT_PERIOD, ?int $userId = null, ?string $from = null, ?string $to = null): array
+    public function build(User $requester, string $period = self::DEFAULT_PERIOD, ?int $userId = null, ?string $from = null, ?string $to = null, array $filters = []): array
     {
         $window = $this->resolveWindow($period, $from, $to);
         $userId = $this->resolveTargetUser($requester, $userId);
+        $filters = $this->normalizeFilters($filters);
 
         $blocks = [];
         if ($userId !== null) {
             // A specific user was picked → show that user's OWN involvement, one block.
             $name = User::find($userId)?->name ?? 'User';
-            $blocks[] = $this->buildBlock($requester, 'own', $userId, $window, 'Selected: '.$name);
+            $blocks[] = $this->buildBlock($requester, 'own', $userId, $window, 'Selected: '.$name, $filters);
         } else {
             foreach ($this->allowedScopes($requester) as $s) {
-                $blocks[] = $this->buildBlock($requester, $s['scope'], null, $window, $s['label']);
+                $blocks[] = $this->buildBlock($requester, $s['scope'], null, $window, $s['label'], $filters);
             }
         }
 
@@ -121,14 +176,15 @@ class LoanPipelineBreakdownService
      *
      * @return array<int,int>
      */
-    public function loanIdsFor(User $requester, string $scope, ?int $userId, string $period, string $section, string $bucket, ?string $from = null, ?string $to = null): array
+    public function loanIdsFor(User $requester, string $scope, ?int $userId, string $period, string $section, string $bucket, ?string $from = null, ?string $to = null, array $filters = []): array
     {
         $window = $this->resolveWindow($period, $from, $to);
         $userId = $this->resolveTargetUser($requester, $userId);
         $scope = $this->authorizeScope($requester, $scope, $userId);
+        $filters = $this->normalizeFilters($filters);
 
         $ids = [];
-        foreach ($this->loans($requester, $scope, $userId, $window) as $loan) {
+        foreach ($this->loans($requester, $scope, $userId, $window, $filters) as $loan) {
             $classified = $this->classifyLoan($loan)[$section] ?? null;
             // The derived "Total Disbursed" tile matches any loan in Entry OR OTC.
             $matches = $bucket === 'total' && $section === 'disbursement'
@@ -237,14 +293,18 @@ class LoanPipelineBreakdownService
     /**
      * @param  array{period:string,from:?string,to:?string,label:string}  $window
      */
-    private function buildBlock(User $requester, string $scope, ?int $userId, array $window, string $label): array
+    /**
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     * @param  array{bank_id:?int,product_id:?int,branch_id:?int}  $filters
+     */
+    private function buildBlock(User $requester, string $scope, ?int $userId, array $window, string $label, array $filters): array
     {
-        $key = sprintf('shf.stagebrk.%d.%s.%s.%s.%s.%s', $requester->id, $scope, $userId ?? 0, $window['period'], $window['from'] ?? '-', $window['to'] ?? '-');
+        $key = sprintf('shf.stagebrk.%d.%s.%s.%s.%s.%s.%s.%s.%s', $requester->id, $scope, $userId ?? 0, $window['period'], $window['from'] ?? '-', $window['to'] ?? '-', $filters['bank_id'] ?? '-', $filters['product_id'] ?? '-', $filters['branch_id'] ?? '-');
 
-        return Cache::remember($key, self::CACHE_TTL, function () use ($requester, $scope, $userId, $window, $label) {
-            $loans = $this->loans($requester, $scope, $userId, $window);
+        return Cache::remember($key, self::CACHE_TTL, function () use ($requester, $scope, $userId, $window, $label, $filters) {
+            $loans = $this->loans($requester, $scope, $userId, $window, $filters);
 
-            return $this->aggregate($loans, $scope, $userId, $window, $label);
+            return $this->aggregate($loans, $scope, $userId, $window, $label, $filters);
         });
     }
 
@@ -252,9 +312,10 @@ class LoanPipelineBreakdownService
      * Fetch the cohort of loans for a scope, eager-loading everything the classifier needs.
      *
      * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     * @param  array{bank_id:?int,product_id:?int,branch_id:?int}  $filters
      * @return Collection<int,LoanDetail>
      */
-    private function loans(User $requester, string $scope, ?int $userId, array $window): Collection
+    private function loans(User $requester, string $scope, ?int $userId, array $window, array $filters = []): Collection
     {
         // NOTE: no created_at filter here — each bucket is date-gated by its OWN stage
         // event date (see bucketInWindow), with a created_at fallback for pending rows.
@@ -267,6 +328,17 @@ class LoanPipelineBreakdownService
             ]);
 
         $this->applyScope($query, $requester, $scope, $userId);
+
+        // Bank / Product / Branch filters (AND-combined with the scope).
+        if (! empty($filters['bank_id'])) {
+            $query->where('bank_id', $filters['bank_id']);
+        }
+        if (! empty($filters['product_id'])) {
+            $query->where('product_id', $filters['product_id']);
+        }
+        if (! empty($filters['branch_id'])) {
+            $query->where('branch_id', $filters['branch_id']);
+        }
 
         return $query->get();
     }
@@ -298,8 +370,9 @@ class LoanPipelineBreakdownService
      * Roll the classified cohort up into the block's sections + bucket tiles.
      *
      * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     * @param  array{bank_id:?int,product_id:?int,branch_id:?int}  $filters
      */
-    private function aggregate(Collection $loans, string $scope, ?int $userId, array $window, string $label): array
+    private function aggregate(Collection $loans, string $scope, ?int $userId, array $window, string $label, array $filters): array
     {
         $defs = $this->sectionDefs();
 
@@ -366,6 +439,11 @@ class LoanPipelineBreakdownService
                         'brk_to' => $window['period'] === 'custom' ? $window['to'] : null,
                         'brk_scope' => $scope,
                         'brk_user' => $userId,
+                        // Native loans-list filters — the list already honours these and
+                        // shows them selected (they also pre-filter loanIdsFor).
+                        'bank_id' => $filters['bank_id'],
+                        'product_id' => $filters['product_id'],
+                        'branch_id' => $filters['branch_id'],
                     ], fn ($v) => $v !== null && $v !== '')),
                 ];
             }

@@ -140,7 +140,12 @@ carries no count badge.
   Management report. The active range is shown in the card header.
 - The Disbursement section carries a derived **Total Disbursed** tile = Cheque/Transfer
   Entry + OTC Clearance (disjoint, so no double count); it's excluded from the section
-  subtotal and reconciles with the Management report's "Disbursed." The window is applied **per bucket by that
+  subtotal and reconciles with the Management report's "Disbursed."
+- **Bank / Product / Branch filters** (AND-combined with scope/user/date): Bank →
+  Product cascade (Product disabled until a Bank is picked, then limited to that bank's
+  products); Branch options are scoped (all for `view_all_loans`, the user's own branches
+  otherwise). These reuse the loans-list's native `bank_id`/`product_id`/`branch_id`
+  params, so the tile click-through carries them and the list shows them selected. The window is applied **per bucket by that
   bucket's own stage-event date** (not one created-at cohort): sanction/technical/legal
   `completed_at` or `started_at`, tranche `disbursement_date` (Entry + OTC), query raised
   date, hold/withdrawn `status_changed_at` — with a **loan `created_at` fallback** for

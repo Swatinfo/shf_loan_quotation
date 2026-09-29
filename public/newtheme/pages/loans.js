@@ -624,6 +624,21 @@
         if (brkCard) {
             brkCard.classList.remove("collapsed");
         }
+        // Reflect any bank / product / branch filters carried in the deep-link so the
+        // panel shows them selected (the count already matches via the loan-id set).
+        var brkParams = new URLSearchParams(location.search);
+        var setSel = function (id, val, cascade) {
+            var el = document.getElementById(id);
+            if (el && val) {
+                el.value = val;
+                if (cascade) { cascade(); }
+            }
+        };
+        setSel("lxBranch", brkParams.get("branch_id"));
+        setSel("lxBank", brkParams.get("bank_id"), function () {
+            if (typeof syncProductOptions === "function") { syncProductOptions(); }
+        });
+        setSel("lxProduct", brkParams.get("product_id"));
 
         var dateText = (brk.from || brk.to)
             ? (brk.from || "…") + " → " + (brk.to || "…")
