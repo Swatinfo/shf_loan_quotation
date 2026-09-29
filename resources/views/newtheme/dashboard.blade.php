@@ -46,9 +46,10 @@
                         <div class="t">Stage status breakdown <span class="sub" id="sbRange">—</span></div>
                         <div class="actions sb-filters">
                             <select id="sbUser" class="sb-select" style="display:none;"></select>
+                            <select id="sbPeriod" class="sb-select"></select>
                             <input type="text" id="sbFrom" class="sb-select shf-datepicker sb-date" placeholder="Start date" autocomplete="off" style="display:none;">
                             <input type="text" id="sbTo" class="sb-select shf-datepicker sb-date" placeholder="End date" autocomplete="off" style="display:none;">
-                            <select id="sbPeriod" class="sb-select"></select>
+                            <button type="button" id="sbApply" class="btn sm primary sb-apply" style="display:none;">Apply</button>
                         </div>
                     </div>
                     <div class="card-bd">

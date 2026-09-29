@@ -348,6 +348,7 @@
 
         const fromEl = $('sbFrom');
         const toEl = $('sbTo');
+        const applyBtn = $('sbApply');
 
         // period options
         periodSel.innerHTML = (meta.periods || []).map((p) =>
@@ -409,18 +410,23 @@
             btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         });
 
+        // Show/hide the custom-range inputs + Apply button for the current period.
+        function syncControls() {
+            const custom = periodSel.value === 'custom';
+            fromEl.style.display = custom ? '' : 'none';
+            toEl.style.display = custom ? '' : 'none';
+            applyBtn.style.display = custom ? '' : 'none';
+        }
+
         let inFlight = 0;
         function load() {
             const period = periodSel.value || meta.defaultPeriod || '30';
             const custom = period === 'custom';
-            fromEl.style.display = custom ? '' : 'none';
-            toEl.style.display = custom ? '' : 'none';
-
             const from = custom ? toIso(fromEl.value) : '';
             const to = custom ? toIso(toEl.value) : '';
             // Custom range needs at least one bound before we query.
             if (custom && !from && !to) {
-                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date.</div>';
+                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
                 return;
             }
 
@@ -447,10 +453,20 @@
                 });
         }
 
-        periodSel.addEventListener('change', load);
+        // Presets + user filter load immediately; custom range waits for Apply
+        // (the datepicker's date-pick doesn't fire a reliable native change event).
+        periodSel.addEventListener('change', function () {
+            syncControls();
+            if (periodSel.value === 'custom') {
+                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
+            } else {
+                load();
+            }
+        });
         userSel.addEventListener('change', load);
-        fromEl.addEventListener('change', load);
-        toEl.addEventListener('change', load);
+        applyBtn.addEventListener('click', load);
+
+        syncControls();
         load();
     })();
 

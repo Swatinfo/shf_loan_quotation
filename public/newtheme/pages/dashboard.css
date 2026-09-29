@@ -159,6 +159,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .sb-select {
@@ -170,6 +171,10 @@
     padding: 6px 10px;
     max-width: 170px;
     cursor: pointer;
+}
+
+.sb-apply {
+    white-space: nowrap;
 }
 
 #sbRange {
@@ -325,8 +330,31 @@
     #stageBreakdown .sb-tiles {
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     }
-    .sb-select {
-        max-width: 130px;
+}
+
+/* Phone: let the header wrap so every filter (user / period / dates / Apply)
+   is visible, and give the controls room instead of clipping in the header row. */
+@media (max-width: 767.98px) {
+    #dash-panel-stage-breakdown .card-hd {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    #dash-panel-stage-breakdown .sb-filters {
+        width: 100%;
+        gap: 6px;
+    }
+
+    #dash-panel-stage-breakdown .sb-select,
+    #dash-panel-stage-breakdown .sb-date {
+        flex: 1 1 46%;
+        max-width: none;
+        min-width: 0;
+        padding: 8px 10px;
+    }
+
+    #dash-panel-stage-breakdown .sb-apply {
+        flex: 1 1 100%;
     }
 }
 
