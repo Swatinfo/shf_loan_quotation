@@ -134,6 +134,44 @@ $(function () {
     };
 
     // ─────────────────────────────────────────────────────────────
+    // SHF.initAmountFields — verbatim copy from shf-app.js. Auto-wires
+    // every `.shf-amount-input`: Indian-comma formatting on the visible
+    // box + syncing the raw integer into the sibling hidden `.shf-amount-raw`
+    // (the field that actually submits) + bilingual amount words. Without
+    // this, pages that load only this global file (loan create/edit) never
+    // copy a typed amount into `name="loan_amount"`, so edits are silently
+    // dropped. The per-element `shf-amount-bound` guard makes it a no-op on
+    // fields already wired by shf-app.js, so pages loading both never double-bind.
+    // ─────────────────────────────────────────────────────────────
+    SHF.initAmountFields = function () {
+        $('.shf-amount-input').each(function () {
+            if ($(this).data('shf-amount-bound')) { return; }
+            $(this).data('shf-amount-bound', true);
+            var $input = $(this);
+            var $wrap = $input.closest('.shf-amount-wrap');
+            var $hidden = $wrap.find('.shf-amount-raw');
+            var $words = $wrap.find('[data-amount-words]');
+
+            function update() {
+                var raw = parseInt($input.val().replace(/[^0-9]/g, ''), 10);
+                if (isNaN(raw) || $input.val().trim() === '') {
+                    $input.val('');
+                    $hidden.val('');
+                    if ($words.length) { $words.text(''); }
+                } else {
+                    $input.val(raw === 0 ? '0' : SHF.formatIndianNumber(raw));
+                    $hidden.val(raw);
+                    if ($words.length) { $words.text(raw > 0 ? SHF.bilingualAmountWords(raw) : ''); }
+                }
+            }
+
+            $input.on('input', update);
+            if ($input.val()) { update(); }
+        });
+    };
+    SHF.initAmountFields();
+
+    // ─────────────────────────────────────────────────────────────
     // SHF.validateForm — verbatim copy from shf-app.js (keep
     // behaviour identical so forms validate the same everywhere).
     // ─────────────────────────────────────────────────────────────

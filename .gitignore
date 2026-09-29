@@ -42,3 +42,6 @@ public/css/_backup/
 # SQLite (tests use in-memory :memory:; app uses MySQL — no committed DB file)
 *.sqlite
 *.sqlite-journal
+
+# Local snapshot of the live server code (reference only — never pushed)
+/live_code/

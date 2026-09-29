@@ -192,6 +192,7 @@
 
     {{-- SHF core helpers — a focused subset of shf-app.js (validateForm,
          formatIndianNumber, numberToWordsEn/Gu + bilingualAmountWords,
+         initAmountFields (.shf-amount-input → hidden .shf-amount-raw sync),
          auto-clear .is-invalid, textarea auto-expand,
          password toggle, toast dismiss, saved-msg fade, confirm-delete).
          The full shf-app.js ships a mobile FAB binding that double-bound with
