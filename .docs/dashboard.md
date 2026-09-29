@@ -134,9 +134,13 @@ carries no count badge.
   for `view_all_loans`, branch users for BM/BDH) narrows to one user's own data. Scope
   and selected-user are re-authorised server-side — a forged `scope`/`user_id` is
   silently downgraded, never leaked.
-- **Filters**: date window — Last 30 (default) / 60 / 90 / 180 / All time / **Custom**
-  (start + end date via the shared datepicker, applied by an **Apply** button). The
-  active range is shown in the card header. The window is applied **per bucket by that
+- **Filters**: date window — **Current Month** (default) / Last Month / Current Quarter /
+  Current Half Year / All time / **Custom** (start + end date via the shared datepicker,
+  applied by an **Apply** button). Calendar periods (not rolling days), matching the
+  Management report. The active range is shown in the card header.
+- The Disbursement section carries a derived **Total Disbursed** tile = Cheque/Transfer
+  Entry + OTC Clearance (disjoint, so no double count); it's excluded from the section
+  subtotal and reconciles with the Management report's "Disbursed." The window is applied **per bucket by that
   bucket's own stage-event date** (not one created-at cohort): sanction/technical/legal
   `completed_at` or `started_at`, tranche `disbursement_date` (Entry + OTC), query raised
   date, hold/withdrawn `status_changed_at` — with a **loan `created_at` fallback** for

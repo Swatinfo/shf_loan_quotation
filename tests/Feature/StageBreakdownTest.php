@@ -268,6 +268,33 @@ class StageBreakdownTest extends TestCase
         $this->assertSame(0, $this->tile($b, 'legal', 'not_initiated')['count']);
     }
 
+    public function test_disbursement_total_tile_equals_entry_plus_otc(): void
+    {
+        $owner = $this->makeUser();
+        // Entry loan (disbursed, not OTC-cleared)
+        $e = $this->makeLoan($owner, ['current_stage' => 'disbursement']);
+        $this->assign($e, 'docket', 'completed');
+        $this->entry($e, 400000);
+        // OTC loan (OTC cleared + disbursed)
+        $o = $this->makeLoan($owner, ['status' => 'active']);
+        $this->assign($o, 'otc_clearance', 'completed');
+        $this->entry($o, 600000);
+
+        $b = $this->service->build($owner);
+        $entry = $this->tile($b, 'disbursement', 'entry');
+        $otc = $this->tile($b, 'disbursement', 'otc');
+        $total = $this->tile($b, 'disbursement', 'total');
+
+        $this->assertSame($entry['count'] + $otc['count'], $total['count']);
+        $this->assertSame($entry['amount'] + $otc['amount'], $total['amount']);
+        $this->assertSame(['count' => 2, 'amount' => 1000000], $total);
+
+        // Derived total must NOT double-count into the section subtotal.
+        $section = collect($b['blocks'][0]['sections'])->firstWhere('key', 'disbursement');
+        $this->assertSame(2, $section['subtotalCount']);
+        $this->assertSame(1000000, $section['subtotalAmount']);
+    }
+
     public function test_spill_amount_falls_back_to_loan_amount_without_sanctioned(): void
     {
         $owner = $this->makeUser();
@@ -319,22 +346,25 @@ class StageBreakdownTest extends TestCase
         $this->assertStringContainsString('–', $b['range']['label']); // "d M Y – d M Y"
     }
 
+    /** A 20-day custom window ending today (robust regardless of calendar month). */
+    private function window20(User $owner): array
+    {
+        return $this->service->build($owner, 'custom', null, now()->subDays(20)->toDateString(), now()->toDateString());
+    }
+
     public function test_in_progress_bucket_dates_by_started_at(): void
     {
         $owner = $this->makeUser();
-        // started recently → in the 30-day window
+        // started 5 days ago → inside the 20-day window
         $recent = $this->makeLoan($owner);
-        $this->assign($recent, 'technical_valuation', 'in_progress', now()->toDateTimeString());
+        $this->assign($recent, 'technical_valuation', 'in_progress', now()->subDays(5)->toDateTimeString());
 
-        // started 60 days ago (created date is irrelevant now) → out of the 30-day window
+        // started 40 days ago (created date is irrelevant now) → outside it
         $old = $this->makeLoan($owner);
-        $this->assign($old, 'technical_valuation', 'in_progress', now()->subDays(60)->toDateTimeString());
+        $this->assign($old, 'technical_valuation', 'in_progress', now()->subDays(40)->toDateTimeString());
 
-        $b30 = $this->service->build($owner, '30');
-        $this->assertSame(1, $this->tile($b30, 'technical', 'under_process')['count']);
-
-        $bAll = $this->service->build($owner, 'all');
-        $this->assertSame(2, $this->tile($bAll, 'technical', 'under_process')['count']);
+        $this->assertSame(1, $this->tile($this->window20($owner), 'technical', 'under_process')['count']);
+        $this->assertSame(2, $this->tile($this->service->build($owner, 'all'), 'technical', 'under_process')['count']);
     }
 
     public function test_pending_bucket_falls_back_to_loan_created_at(): void
@@ -343,13 +373,13 @@ class StageBreakdownTest extends TestCase
         // In the parallel phase, technical pending (no started_at) → dated by created_at.
         $recent = $this->makeLoan($owner, ['current_stage' => 'parallel_processing']);
         $this->assign($recent, 'technical_valuation', 'pending');
-        LoanDetail::where('id', $recent->id)->update(['created_at' => now()->subDays(10)]);
+        LoanDetail::where('id', $recent->id)->update(['created_at' => now()->subDays(5)]);
 
         $old = $this->makeLoan($owner, ['current_stage' => 'parallel_processing']);
         $this->assign($old, 'technical_valuation', 'pending');
-        LoanDetail::where('id', $old->id)->update(['created_at' => now()->subDays(60)]);
+        LoanDetail::where('id', $old->id)->update(['created_at' => now()->subDays(40)]);
 
-        $this->assertSame(1, $this->tile($this->service->build($owner, '30'), 'technical', 'not_initiated')['count']);
+        $this->assertSame(1, $this->tile($this->window20($owner), 'technical', 'not_initiated')['count']);
         $this->assertSame(2, $this->tile($this->service->build($owner, 'all'), 'technical', 'not_initiated')['count']);
     }
 
@@ -358,12 +388,12 @@ class StageBreakdownTest extends TestCase
         $owner = $this->makeUser();
         $loan = $this->makeLoan($owner, ['current_stage' => 'disbursement']);
         $this->assign($loan, 'docket', 'completed');
-        $this->entry($loan, 500000, now()->subDays(5)->toDateString());   // in the 30-day window
-        $this->entry($loan, 300000, now()->subDays(50)->toDateString());  // outside it
+        $this->entry($loan, 500000, now()->subDays(5)->toDateString());   // inside the 20-day window
+        $this->entry($loan, 300000, now()->subDays(40)->toDateString());  // outside it
 
-        $t30 = $this->tile($this->service->build($owner, '30'), 'disbursement', 'entry');
-        $this->assertSame(1, $t30['count']);
-        $this->assertSame(500000, $t30['amount']); // only the in-window tranche
+        $t = $this->tile($this->window20($owner), 'disbursement', 'entry');
+        $this->assertSame(1, $t['count']);
+        $this->assertSame(500000, $t['amount']); // only the in-window tranche
 
         $this->assertSame(800000, $this->tile($this->service->build($owner, 'all'), 'disbursement', 'entry')['amount']);
     }
@@ -378,13 +408,13 @@ class StageBreakdownTest extends TestCase
         $this->assign($foreign, 'technical_valuation', 'in_progress');
 
         // Advisor gets a single 'own' block; passing another user id is ignored.
-        $build = $this->service->build($advisor, '30', $other->id);
+        $build = $this->service->build($advisor, 'month', $other->id);
         $this->assertCount(1, $build['blocks']);
         $this->assertSame('own', $build['blocks'][0]['scope']);
         $this->assertSame(0, $this->tile($build, 'technical', 'under_process')['count']);
 
         // Forged 'all' scope in a click-through is downgraded to the advisor's own scope.
-        $ids = $this->service->loanIdsFor($advisor, 'all', null, '30', 'technical', 'under_process');
+        $ids = $this->service->loanIdsFor($advisor, 'all', null, 'month', 'technical', 'under_process');
         $this->assertNotContains($foreign->id, $ids);
     }
 
@@ -431,11 +461,11 @@ class StageBreakdownTest extends TestCase
         $this->assertSame('branch', $build['blocks'][1]['scope']);
 
         // Picking an outsider (not in branch) is rejected → falls back to the two blocks.
-        $rejected = $this->service->build($bm->fresh('roles'), '30', $outsider->id);
+        $rejected = $this->service->build($bm->fresh('roles'), 'month', $outsider->id);
         $this->assertCount(2, $rejected['blocks']);
 
         // Picking a branch member → single "Selected" block of that user's own data.
-        $selected = $this->service->build($bm->fresh('roles'), '30', $member->id);
+        $selected = $this->service->build($bm->fresh('roles'), 'month', $member->id);
         $this->assertCount(1, $selected['blocks']);
         $this->assertStringContainsString('Selected', $selected['blocks'][0]['label']);
     }

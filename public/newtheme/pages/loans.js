@@ -32,7 +32,7 @@
             bucket: p.get("brk_bucket"),
             scope: p.get("brk_scope") || "own",
             user: p.get("brk_user") || "",
-            period: p.get("brk_period") || "30",
+            period: p.get("brk_period") || "month",
             from: p.get("brk_from") || "",
             to: p.get("brk_to") || "",
         };

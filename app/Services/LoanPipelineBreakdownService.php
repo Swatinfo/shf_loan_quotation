@@ -25,10 +25,10 @@ use Illuminate\Support\Facades\Cache;
  */
 class LoanPipelineBreakdownService
 {
-    /** Allowed date-cohort windows (days). 'all' = no lower bound, 'custom' = from/to. */
-    public const PERIODS = ['30', '60', '90', '180', 'all', 'custom'];
+    /** Calendar periods. 'all' = no lower bound, 'custom' = explicit from/to. */
+    public const PERIODS = ['month', 'last_month', 'quarter', 'half', 'all', 'custom'];
 
-    public const DEFAULT_PERIOD = '30';
+    public const DEFAULT_PERIOD = 'month';
 
     private const CACHE_TTL = 60; // seconds
 
@@ -129,8 +129,13 @@ class LoanPipelineBreakdownService
 
         $ids = [];
         foreach ($this->loans($requester, $scope, $userId, $window) as $loan) {
-            if (($this->classifyLoan($loan)[$section] ?? null) === $bucket
-                && $this->bucketInWindow($loan, $section, $bucket, $window)) {
+            $classified = $this->classifyLoan($loan)[$section] ?? null;
+            // The derived "Total Disbursed" tile matches any loan in Entry OR OTC.
+            $matches = $bucket === 'total' && $section === 'disbursement'
+                ? in_array($classified, ['entry', 'otc'], true)
+                : $classified === $bucket;
+
+            if ($matches && $this->bucketInWindow($loan, $section, $bucket, $window)) {
                 $ids[] = (int) $loan->id;
             }
         }
@@ -198,15 +203,35 @@ class LoanPipelineBreakdownService
             return ['period' => 'all', 'from' => null, 'to' => null, 'label' => 'All time (up to '.$now->format('d M Y').')'];
         }
 
-        $days = in_array($period, ['30', '60', '90', '180'], true) ? (int) $period : (int) self::DEFAULT_PERIOD;
-        $f = $now->subDays($days)->startOfDay();
+        // Calendar windows.
+        [$f, $t] = match ($period) {
+            'last_month' => [$now->subMonthNoOverflow()->startOfMonth(), $now->subMonthNoOverflow()->endOfMonth()],
+            'quarter' => [$now->startOfQuarter(), $now->endOfQuarter()],
+            'half' => $this->halfYear($now),
+            default => [$now->startOfMonth(), $now->endOfMonth()], // 'month'
+        };
+        $period = in_array($period, ['last_month', 'quarter', 'half'], true) ? $period : 'month';
 
         return [
-            'period' => (string) $days,
+            'period' => $period,
             'from' => $f->toDateString(),
-            'to' => $now->toDateString(),
-            'label' => $f->format('d M Y').' – '.$now->format('d M Y'),
+            'to' => $t->toDateString(),
+            'label' => $f->format('d M Y').' – '.$t->format('d M Y'),
         ];
+    }
+
+    /**
+     * Current half-year: Jan 1–Jun 30, or Jul 1–Dec 31.
+     *
+     * @return array{0:CarbonImmutable,1:CarbonImmutable}
+     */
+    private function halfYear(CarbonImmutable $now): array
+    {
+        if ($now->month <= 6) {
+            return [$now->startOfYear(), $now->startOfYear()->addMonths(6)->subDay()->endOfDay()];
+        }
+
+        return [$now->startOfYear()->addMonths(6), $now->endOfYear()];
     }
 
     /**
@@ -306,6 +331,12 @@ class LoanPipelineBreakdownService
             }
         }
 
+        // Derived "Total Disbursed" tile = Entry + OTC (they're disjoint, so no double count).
+        $acc['disbursement']['total'] = [
+            'count' => $acc['disbursement']['entry']['count'] + $acc['disbursement']['otc']['count'],
+            'amount' => $acc['disbursement']['entry']['amount'] + $acc['disbursement']['otc']['amount'],
+        ];
+
         $sections = [];
         foreach ($defs as $sectionKey => $section) {
             $tiles = [];
@@ -314,13 +345,19 @@ class LoanPipelineBreakdownService
             foreach ($section['buckets'] as $bucketKey => $bucketLabel) {
                 $c = $acc[$sectionKey][$bucketKey]['count'];
                 $a = $acc[$sectionKey][$bucketKey]['amount'];
-                $subCount += $c;
-                $subAmount += $a;
+                // 'total' is a derived summary (Entry+OTC) — render it, but don't let it
+                // double-count into the section subtotal.
+                $derived = $bucketKey === 'total';
+                if (! $derived) {
+                    $subCount += $c;
+                    $subAmount += $a;
+                }
                 $tiles[] = [
                     'key' => $bucketKey,
                     'label' => $bucketLabel,
                     'count' => $c,
                     'amount' => $a,
+                    'derived' => $derived,
                     'url' => route('loans.index', array_filter([
                         'brk_section' => $sectionKey,
                         'brk_bucket' => $bucketKey,
@@ -534,9 +571,9 @@ class LoanPipelineBreakdownService
      */
     private function bucketInWindow(LoanDetail $loan, string $section, string $bucket, array $window): bool
     {
-        // The disbursed-money buckets are dated per-tranche: include iff ≥1 tranche in
-        // window (so Entry + OTC reconcile with the Management report's "Disbursed").
-        if ($section === 'disbursement' && ($bucket === 'entry' || $bucket === 'otc')) {
+        // The disbursed-money buckets (and the derived Total) are dated per-tranche:
+        // include iff ≥1 tranche in window (so they reconcile with the report's "Disbursed").
+        if ($section === 'disbursement' && in_array($bucket, ['entry', 'otc', 'total'], true)) {
             return $this->hasTrancheInWindow($loan, $window);
         }
 
@@ -692,6 +729,9 @@ class LoanPipelineBreakdownService
                     'logged_in' => 'Logged In',
                     'entry' => 'Cheque / Transfer Entry',
                     'otc' => 'OTC Clearance',
+                    // Derived summary tile = Entry + OTC (all disbursed money in window).
+                    // Excluded from the section subtotal; reconciles with the Management report.
+                    'total' => 'Total Disbursed',
                 ],
             ],
         ];

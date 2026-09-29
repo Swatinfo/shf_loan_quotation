@@ -374,7 +374,8 @@
 
         function tile(b) {
             const zero = !b.count ? ' sb-tile-zero' : '';
-            return '<a class="sb-tile' + zero + '" href="' + escapeHtml(b.url) + '">' +
+            const total = b.derived ? ' sb-tile-total' : '';
+            return '<a class="sb-tile' + zero + total + '" href="' + escapeHtml(b.url) + '">' +
                 '<span class="sb-tile-lbl">' + escapeHtml(b.label) + '</span>' +
                 '<span class="sb-tile-count">' + Number(b.count).toLocaleString('en-IN') + '</span>' +
                 '<span class="sb-tile-amt">₹ ' + fmtAmt(b.amount) + '</span>' +
@@ -420,7 +421,7 @@
 
         let inFlight = 0;
         function load() {
-            const period = periodSel.value || meta.defaultPeriod || '30';
+            const period = periodSel.value || meta.defaultPeriod || 'month';
             const custom = period === 'custom';
             const from = custom ? toIso(fromEl.value) : '';
             const to = custom ? toIso(toEl.value) : '';

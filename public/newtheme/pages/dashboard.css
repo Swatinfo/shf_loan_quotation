@@ -326,6 +326,23 @@
     color: var(--ink-4);
 }
 
+/* Derived "Total Disbursed" tile = Entry + OTC — accent-tinted summary. */
+#stageBreakdown .sb-tile-total {
+    background: var(--accent-soft, #fef0ea);
+    border-color: var(--accent);
+    border-left-color: var(--accent);
+    opacity: 1;
+}
+
+#stageBreakdown .sb-tile-total .sb-tile-lbl {
+    color: var(--accent-deep, #d94a1f);
+}
+
+#stageBreakdown .sb-tile-total .sb-tile-count,
+#stageBreakdown .sb-tile-total .sb-tile-amt {
+    color: var(--accent-deep, #d94a1f);
+}
+
 @media (max-width: 991.98px) {
     #stageBreakdown .sb-tiles {
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
