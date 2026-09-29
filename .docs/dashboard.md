@@ -134,9 +134,15 @@ carries no count badge.
   for `view_all_loans`, branch users for BM/BDH) narrows to one user's own data. Scope
   and selected-user are re-authorised server-side — a forged `scope`/`user_id` is
   silently downgraded, never leaked.
-- **Filters**: created-at cohort — Last 30 (default) / 60 / 90 / 180 / All time /
-  **Custom** (start + end date via the shared datepicker). The active date range is
-  shown in the card header.
+- **Filters**: date window — Last 30 (default) / 60 / 90 / 180 / All time / **Custom**
+  (start + end date via the shared datepicker, applied by an **Apply** button). The
+  active range is shown in the card header. The window is applied **per bucket by that
+  bucket's own stage-event date** (not one created-at cohort): sanction/technical/legal
+  `completed_at` or `started_at`, tranche `disbursement_date` (Entry + OTC), query raised
+  date, hold/withdrawn `status_changed_at` — with a **loan `created_at` fallback** for
+  pending placeholders that have no event yet. This mirrors the Management funnel, so the
+  Disbursement Entry + OTC amount **reconciles exactly with the report's "Disbursed"**
+  (Σ tranches in window).
 - **Click-through**: every tile links to `/loans` with `brk_section` + `brk_bucket`
   (+ `brk_scope`/`brk_user`/`brk_period`, or `brk_from`/`brk_to` for custom). The loans
   list re-runs the *same* classifier (`loanIdsFor`) to `whereIn` the exact IDs, so the

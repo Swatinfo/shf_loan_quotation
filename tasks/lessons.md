@@ -4,6 +4,13 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Stage-Breakdown: per-stage dates + disbursement reconciles with Management report (2026-09-29)
+
+- **Problem**: the breakdown filtered every section by loan `created_at` (one cohort), while the Management report dates each milestone by its own date (quotation/loan created, `sanction.completed_at`, tranche `disbursement_date`). So "Disbursed" showed ~8 Cr on the report but ~3.5 Cr on the breakdown for the same "September" — different metrics.
+- **Fix (LoanPipelineBreakdownService)**: drop the `created_at` query filter; load all visible+scope loans, classify into a bucket as before, then **date-gate each bucket by its OWN stage event**, with a `created_at` fallback for pending placeholders (`bucketDate = event ?? created_at`). Date sources: sanction/technical/legal `started_at` (in-progress) / `completed_at` (completed·rejected); query = latest active `stage_queries.created_at`; hold/withdrawn = `status_changed_at`; rejected = `rejected_at`; docket `started_at`/`completed_at` (spill/logged-in); **Entry + OTC = per-tranche `disbursement_date`, amount = Σ in-window tranches**. Verified fields are 100% populated for reached rows (pending = null → fallback).
+- **Disbursement reconciliation (the whole point)**: BOTH money buckets (Entry = has tranche in window & not OTC; OTC = has tranche in window & OTC-cleared) are dated per-tranche and summed as in-window tranches, so **Entry + OTC = the report's "Disbursed" exactly** (verified live: Sep = ₹8.77 Cr / 20 loans on both). An earlier attempt with OTC as a *milestone* (otc `completed_at`, full lifetime disbursed) **over-counted** (18.28 vs 8.77) because it summed each loan's whole disbursement dated by clearance, not by tranche — so milestone dating is wrong for cash-flow reconciliation. A completed loan with no tranches has no disbursed money → correctly not in OTC.
+- **Consistency**: `loanIdsFor` (click-through) applies the identical date gate; block total = distinct loans in ≥1 in-window bucket. Backend-only (no asset bump). Tests: `StageBreakdownTest` — pending-in-window→Not Initiated, completed dates by `completed_at`, in-progress by `started_at`, entry/otc amount = Σ in-window tranches.
+
 ## Loan edit/create amount silently not saving — missing `initAmountFields` in the global JS (2026-09-29)
 
 - **Symptom**: on the loan **edit** form, changing the loan amount "doesn't take effect" — no error, the original amount is re-saved. (KFS inline amount edit works; only the edit/create forms are affected.)

@@ -78,15 +78,23 @@ class StageBreakdownTest extends TestCase
         ], $overrides));
     }
 
-    private function assign(LoanDetail $loan, string $stageKey, string $status): void
+    private function assign(LoanDetail $loan, string $stageKey, string $status, ?string $started = null, ?string $completed = null): void
     {
-        StageAssignment::create([
+        $attrs = [
             'loan_id' => $loan->id,
             'stage_key' => $stageKey,
             'assigned_to' => $loan->created_by,
             'status' => $status,
             'is_parallel_stage' => false,
-        ]);
+        ];
+        // Mirror real data: reached stages carry started_at; completed/rejected carry completed_at.
+        if (in_array($status, ['in_progress', 'completed', 'rejected'], true)) {
+            $attrs['started_at'] = $started ?? now();
+        }
+        if (in_array($status, ['completed', 'rejected'], true)) {
+            $attrs['completed_at'] = $completed ?? now();
+        }
+        StageAssignment::create($attrs);
     }
 
     private function query(LoanDetail $loan, string $stageKey, string $status): void
@@ -110,18 +118,19 @@ class StageBreakdownTest extends TestCase
         ]);
     }
 
-    private function entry(LoanDetail $loan, int $amount): void
+    private function entry(LoanDetail $loan, int $amount, ?string $date = null): void
     {
-        $detail = DisbursementDetail::create([
-            'loan_id' => $loan->id,
-            'disbursement_type' => 'fund_transfer',
-            'disbursement_date' => now()->toDateString(),
-            'amount_disbursed' => $amount,
-        ]);
+        $date = $date ?? now()->toDateString();
+        // One disbursement_details row per loan (unique loan_id); many tranche entries.
+        $detail = DisbursementDetail::firstOrCreate(
+            ['loan_id' => $loan->id],
+            ['disbursement_type' => 'fund_transfer', 'disbursement_date' => $date, 'amount_disbursed' => 0],
+        );
         DisbursementEntry::create([
             'loan_id' => $loan->id,
             'disbursement_detail_id' => $detail->id,
             'amount' => $amount,
+            'disbursement_date' => $date,
             'is_active' => true,
         ]);
     }
@@ -269,56 +278,94 @@ class StageBreakdownTest extends TestCase
         $this->assertSame(['count' => 1, 'amount' => 650000], $this->tile($b, 'disbursement', 'spill'));
     }
 
-    public function test_completed_and_skipped_otc_loans_count_in_otc_clearance(): void
+    public function test_otc_bucket_is_disbursed_money_dated_by_tranche(): void
     {
         $owner = $this->makeUser();
 
-        // A fully completed loan (non-cheque, OTC skipped) → OTC bucket.
+        // Completed (OTC skipped) loan with a tranche in the window → OTC bucket.
         $done = $this->makeLoan($owner, ['status' => 'completed']);
         $this->assign($done, 'otc_clearance', 'skipped');
         $this->entry($done, 800000);
 
-        // A completed loan with no OTC assignment at all still lands in OTC.
+        // OTC-cleared loan with a tranche in the window → OTC bucket.
+        $cheque = $this->makeLoan($owner, ['status' => 'active']);
+        $this->assign($cheque, 'otc_clearance', 'completed');
+        $this->entry($cheque, 200000);
+
+        // A completed loan with NO tranches has no disbursed money → NOT in OTC.
         $this->makeLoan($owner, ['status' => 'completed']);
 
         $b = $this->service->build($owner);
         $otc = $this->tile($b, 'disbursement', 'otc');
-        $this->assertSame(2, $otc['count']);
-        $this->assertSame(800000, $otc['amount']); // amount = disbursed entries
+        $this->assertSame(2, $otc['count']);                 // only the two with tranches
+        $this->assertSame(1000000, $otc['amount']);          // Σ in-window tranches (800k + 200k)
     }
 
-    public function test_custom_date_range_filters_on_created_at(): void
+    public function test_completed_bucket_dates_by_completed_at_not_created_at(): void
     {
         $owner = $this->makeUser();
 
+        // Completed 10 days ago (created long before) → inside a 20-day custom window.
         $inside = $this->makeLoan($owner);
-        $this->assign($inside, 'technical_valuation', 'in_progress');
-        LoanDetail::where('id', $inside->id)->update(['created_at' => now()->subDays(10)]);
+        $this->assign($inside, 'technical_valuation', 'completed', now()->subDays(90)->toDateTimeString(), now()->subDays(10)->toDateTimeString());
+        LoanDetail::where('id', $inside->id)->update(['created_at' => now()->subDays(90)]);
 
+        // Completed 40 days ago → outside the window (even though nothing else changed).
         $outside = $this->makeLoan($owner);
-        $this->assign($outside, 'technical_valuation', 'in_progress');
-        LoanDetail::where('id', $outside->id)->update(['created_at' => now()->subDays(40)]);
+        $this->assign($outside, 'technical_valuation', 'completed', now()->subDays(90)->toDateTimeString(), now()->subDays(40)->toDateTimeString());
 
         $b = $this->service->build($owner, 'custom', null, now()->subDays(20)->toDateString(), now()->toDateString());
-        $this->assertSame(1, $this->tile($b, 'technical', 'under_process')['count']);
+        $this->assertSame(1, $this->tile($b, 'technical', 'completed')['count']);
         $this->assertStringContainsString('–', $b['range']['label']); // "d M Y – d M Y"
     }
 
-    public function test_date_cohort_excludes_loans_older_than_the_window(): void
+    public function test_in_progress_bucket_dates_by_started_at(): void
     {
         $owner = $this->makeUser();
+        // started recently → in the 30-day window
         $recent = $this->makeLoan($owner);
-        $this->assign($recent, 'technical_valuation', 'in_progress');
+        $this->assign($recent, 'technical_valuation', 'in_progress', now()->toDateTimeString());
 
+        // started 60 days ago (created date is irrelevant now) → out of the 30-day window
         $old = $this->makeLoan($owner);
-        $this->assign($old, 'technical_valuation', 'in_progress');
-        LoanDetail::where('id', $old->id)->update(['created_at' => now()->subDays(60)]);
+        $this->assign($old, 'technical_valuation', 'in_progress', now()->subDays(60)->toDateTimeString());
 
         $b30 = $this->service->build($owner, '30');
         $this->assertSame(1, $this->tile($b30, 'technical', 'under_process')['count']);
 
         $bAll = $this->service->build($owner, 'all');
         $this->assertSame(2, $this->tile($bAll, 'technical', 'under_process')['count']);
+    }
+
+    public function test_pending_bucket_falls_back_to_loan_created_at(): void
+    {
+        $owner = $this->makeUser();
+        // In the parallel phase, technical pending (no started_at) → dated by created_at.
+        $recent = $this->makeLoan($owner, ['current_stage' => 'parallel_processing']);
+        $this->assign($recent, 'technical_valuation', 'pending');
+        LoanDetail::where('id', $recent->id)->update(['created_at' => now()->subDays(10)]);
+
+        $old = $this->makeLoan($owner, ['current_stage' => 'parallel_processing']);
+        $this->assign($old, 'technical_valuation', 'pending');
+        LoanDetail::where('id', $old->id)->update(['created_at' => now()->subDays(60)]);
+
+        $this->assertSame(1, $this->tile($this->service->build($owner, '30'), 'technical', 'not_initiated')['count']);
+        $this->assertSame(2, $this->tile($this->service->build($owner, 'all'), 'technical', 'not_initiated')['count']);
+    }
+
+    public function test_entry_amount_sums_only_in_window_tranches(): void
+    {
+        $owner = $this->makeUser();
+        $loan = $this->makeLoan($owner, ['current_stage' => 'disbursement']);
+        $this->assign($loan, 'docket', 'completed');
+        $this->entry($loan, 500000, now()->subDays(5)->toDateString());   // in the 30-day window
+        $this->entry($loan, 300000, now()->subDays(50)->toDateString());  // outside it
+
+        $t30 = $this->tile($this->service->build($owner, '30'), 'disbursement', 'entry');
+        $this->assertSame(1, $t30['count']);
+        $this->assertSame(500000, $t30['amount']); // only the in-window tranche
+
+        $this->assertSame(800000, $this->tile($this->service->build($owner, 'all'), 'disbursement', 'entry')['amount']);
     }
 
     public function test_advisor_scope_is_own_only_and_user_filter_ignored(): void

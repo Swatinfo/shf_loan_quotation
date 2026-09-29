@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LoanDetail;
+use App\Models\StageAssignment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,9 +13,13 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Builds the dashboard "Stage status breakdown" block: a stage-wise funnel where
  * each workflow stage is split into mutually-exclusive status buckets, every bucket
- * carrying a loan count + summed ₹ amount, scoped by (own | branch | all), a
- * created-at date cohort, and an optional target user.
+ * carrying a loan count + summed ₹ amount, scoped by (own | branch | all) and an
+ * optional target user.
  *
+ * Each bucket is date-filtered by its OWN stage event (sanction/technical/legal
+ * completed_at or started_at, tranche disbursement_date, query raised date, …), with
+ * a loan.created_at fallback for pending placeholders that have no event yet. This
+ * mirrors the Management report's milestone dating (so e.g. disbursement reconciles).
  * Classification is single-pass in PHP (one fetch per scope, then precedence rules)
  * so buckets within a section never overlap. See tasks/todo.md for the locked spec.
  */
@@ -124,7 +129,8 @@ class LoanPipelineBreakdownService
 
         $ids = [];
         foreach ($this->loans($requester, $scope, $userId, $window) as $loan) {
-            if (($this->classifyLoan($loan)[$section] ?? null) === $bucket) {
+            if (($this->classifyLoan($loan)[$section] ?? null) === $bucket
+                && $this->bucketInWindow($loan, $section, $bucket, $window)) {
                 $ids[] = (int) $loan->id;
             }
         }
@@ -225,21 +231,17 @@ class LoanPipelineBreakdownService
      */
     private function loans(User $requester, string $scope, ?int $userId, array $window): Collection
     {
+        // NOTE: no created_at filter here — each bucket is date-gated by its OWN stage
+        // event date (see bucketInWindow), with a created_at fallback for pending rows.
         $query = LoanDetail::query()
-            ->select(['id', 'loan_amount', 'sanctioned_amount', 'status', 'current_stage', 'created_at'])
+            ->select(['id', 'loan_amount', 'sanctioned_amount', 'status', 'current_stage', 'created_at', 'status_changed_at', 'rejected_at'])
             ->with([
-                'stageAssignments:id,loan_id,stage_key,status',
-                'stageQueries' => fn ($q) => $q->active()->select(['id', 'loan_id', 'stage_key', 'status']),
-                'disbursementEntries:id,loan_id,amount',
+                'stageAssignments:id,loan_id,stage_key,status,started_at,completed_at',
+                'stageQueries' => fn ($q) => $q->active()->select(['id', 'loan_id', 'stage_key', 'status', 'created_at']),
+                'disbursementEntries:id,loan_id,amount,disbursement_date',
             ]);
 
         $this->applyScope($query, $requester, $scope, $userId);
-        if ($window['from'] !== null) {
-            $query->where('created_at', '>=', CarbonImmutable::parse($window['from'])->startOfDay());
-        }
-        if ($window['to'] !== null) {
-            $query->where('created_at', '<=', CarbonImmutable::parse($window['to'])->endOfDay());
-        }
 
         return $query->get();
     }
@@ -284,14 +286,23 @@ class LoanPipelineBreakdownService
             }
         }
 
+        $totalLoanIds = [];
+        $totalAmount = 0;
         foreach ($loans as $loan) {
             $buckets = $this->classifyLoan($loan);
+            $counted = false;
             foreach ($buckets as $sectionKey => $bucketKey) {
-                if ($bucketKey === null) {
+                if ($bucketKey === null || ! $this->bucketInWindow($loan, $sectionKey, $bucketKey, $window)) {
                     continue;
                 }
                 $acc[$sectionKey][$bucketKey]['count']++;
-                $acc[$sectionKey][$bucketKey]['amount'] += $this->bucketAmount($loan, $sectionKey, $bucketKey);
+                $acc[$sectionKey][$bucketKey]['amount'] += $this->bucketAmount($loan, $sectionKey, $bucketKey, $window);
+                $counted = true;
+            }
+            // Block total = distinct loans that appear in ≥1 in-window bucket.
+            if ($counted && ! isset($totalLoanIds[$loan->id])) {
+                $totalLoanIds[$loan->id] = true;
+                $totalAmount += (int) ($loan->loan_amount ?? 0);
             }
         }
 
@@ -333,8 +344,8 @@ class LoanPipelineBreakdownService
         return [
             'scope' => $scope,
             'label' => $label,
-            'totalCount' => $loans->count(),
-            'totalAmount' => (int) $loans->sum('loan_amount'),
+            'totalCount' => count($totalLoanIds),
+            'totalAmount' => $totalAmount,
             'sections' => $sections,
         ];
     }
@@ -468,28 +479,171 @@ class LoanPipelineBreakdownService
         return $loan->disbursementEntries->isNotEmpty();
     }
 
-    private function disbursedAmount(LoanDetail $loan): int
+    /**
+     * Σ of tranche amounts whose disbursement_date falls inside the window
+     * (the Management-report basis — this is what makes "Cheque/Transfer Entry" reconcile).
+     *
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     */
+    private function windowedTrancheAmount(LoanDetail $loan, array $window): int
     {
-        return (int) $loan->disbursementEntries->sum('amount');
+        $from = $window['from'] ? CarbonImmutable::parse($window['from'])->startOfDay() : null;
+        $to = $window['to'] ? CarbonImmutable::parse($window['to'])->endOfDay() : null;
+
+        return (int) $loan->disbursementEntries
+            ->filter(function ($e) use ($from, $to) {
+                if ($e->disbursement_date === null) {
+                    return false;
+                }
+                $d = CarbonImmutable::parse($e->disbursement_date);
+
+                return ($from === null || $d >= $from) && ($to === null || $d <= $to);
+            })
+            ->sum('amount');
     }
 
     /**
      * Amount summed for a given bucket (per the locked spec).
+     *
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
      */
-    private function bucketAmount(LoanDetail $loan, string $section, string $bucket): int
+    private function bucketAmount(LoanDetail $loan, string $section, string $bucket, array $window): int
     {
         if ($section === 'disbursement') {
             return match ($bucket) {
-                'entry', 'otc' => $this->disbursedAmount($loan),
-                // Sanctioned amount for the docket phase; fall back to the requested
-                // loan amount when a loan carries no sanctioned figure yet (so the
-                // tile never shows ₹0 for real loans still awaiting a sanction value).
+                // Both disbursed-money buckets sum only the tranches dated in the window,
+                // so Entry + OTC = the Management report's "Disbursed" for that window.
+                'entry', 'otc' => $this->windowedTrancheAmount($loan, $window),
+                // Sanctioned amount for the docket phase; fall back to the requested loan
+                // amount when a loan carries no sanctioned figure yet (never ₹0 for a real loan).
                 'spill', 'logged_in' => (int) ($loan->sanctioned_amount ?: $loan->loan_amount ?: 0),
                 default => 0,
             };
         }
 
         return (int) ($loan->loan_amount ?? 0);
+    }
+
+    // ── per-bucket date gating ───────────────────────────────────────────────
+
+    /**
+     * Whether a loan's classified bucket falls inside the window, dated by that
+     * bucket's OWN stage event (with a created_at fallback for pending placeholders).
+     *
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     */
+    private function bucketInWindow(LoanDetail $loan, string $section, string $bucket, array $window): bool
+    {
+        // The disbursed-money buckets are dated per-tranche: include iff ≥1 tranche in
+        // window (so Entry + OTC reconcile with the Management report's "Disbursed").
+        if ($section === 'disbursement' && ($bucket === 'entry' || $bucket === 'otc')) {
+            return $this->hasTrancheInWindow($loan, $window);
+        }
+
+        return $this->inWindow($this->bucketDate($loan, $section, $bucket), $window);
+    }
+
+    /**
+     * The event date that a bucket is filtered by, falling back to loan.created_at
+     * when the stage event has not happened yet (pending placeholders).
+     */
+    private function bucketDate(LoanDetail $loan, string $section, string $bucket): CarbonImmutable
+    {
+        $byKey = $this->assignmentsByKey($loan);
+        $started = fn (string $k) => isset($byKey[$k]) && $byKey[$k]->started_at ? CarbonImmutable::parse($byKey[$k]->started_at) : null;
+        $completed = fn (string $k) => isset($byKey[$k]) && $byKey[$k]->completed_at ? CarbonImmutable::parse($byKey[$k]->completed_at) : null;
+        $queryDate = fn (string $k) => $this->latestActiveQueryDate($loan, $k);
+        $statusChanged = $loan->status_changed_at ? CarbonImmutable::parse($loan->status_changed_at) : null;
+        $rejectedAt = $loan->rejected_at ? CarbonImmutable::parse($loan->rejected_at) : null;
+
+        $date = match ($section.'.'.$bucket) {
+            'sanction.sip' => $started('sanction_decision'),          // pending → null → created_at
+            'sanction.query' => $queryDate('sanction_decision'),
+            'sanction.sanctioned' => $completed('sanction_decision'),
+            'sanction.hold', 'sanction.withdrawn' => $statusChanged,
+            'sanction.rejected' => $rejectedAt ?? $completed('sanction_decision'),
+            'technical.under_process' => $started('technical_valuation'),
+            'technical.completed', 'technical.rejected' => $completed('technical_valuation'),
+            'technical.query' => $queryDate('technical_valuation'),
+            'legal.under_process' => $started('legal_verification'),
+            'legal.completed', 'legal.rejected' => $completed('legal_verification'),
+            'legal.query' => $queryDate('legal_verification'),
+            'disbursement.spill' => $started('docket'),
+            'disbursement.logged_in' => $completed('docket'),
+            // entry + otc are tranche-dated in bucketInWindow (not here).
+            // not_initiated (pending) and anything else → loan creation date
+            default => null,
+        };
+
+        return $date ?? $this->loanCreatedAt($loan);
+    }
+
+    private function loanCreatedAt(LoanDetail $loan): CarbonImmutable
+    {
+        return CarbonImmutable::parse($loan->created_at);
+    }
+
+    /**
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     */
+    private function inWindow(CarbonImmutable $date, array $window): bool
+    {
+        if ($window['from'] !== null && $date->lt(CarbonImmutable::parse($window['from'])->startOfDay())) {
+            return false;
+        }
+        if ($window['to'] !== null && $date->gt(CarbonImmutable::parse($window['to'])->endOfDay())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Assignments indexed by stage_key (furthest-progressed kept), giving access to
+     * started_at/completed_at for dating.
+     *
+     * @return array<string,StageAssignment>
+     */
+    private function assignmentsByKey(LoanDetail $loan): array
+    {
+        $rank = ['pending' => 1, 'in_progress' => 2, 'rejected' => 3, 'completed' => 4, 'skipped' => 0];
+        $byKey = [];
+        foreach ($loan->stageAssignments as $a) {
+            if (! isset($byKey[$a->stage_key]) || ($rank[$a->status] ?? 0) > ($rank[$byKey[$a->stage_key]->status] ?? 0)) {
+                $byKey[$a->stage_key] = $a;
+            }
+        }
+
+        return $byKey;
+    }
+
+    /**
+     * @param  array{period:string,from:?string,to:?string,label:string}  $window
+     */
+    private function hasTrancheInWindow(LoanDetail $loan, array $window): bool
+    {
+        $from = $window['from'] ? CarbonImmutable::parse($window['from'])->startOfDay() : null;
+        $to = $window['to'] ? CarbonImmutable::parse($window['to'])->endOfDay() : null;
+
+        return $loan->disbursementEntries->contains(function ($e) use ($from, $to) {
+            if ($e->disbursement_date === null) {
+                return false;
+            }
+            $d = CarbonImmutable::parse($e->disbursement_date);
+
+            return ($from === null || $d >= $from) && ($to === null || $d <= $to);
+        });
+    }
+
+    private function latestActiveQueryDate(LoanDetail $loan, string $stageKey): ?CarbonImmutable
+    {
+        $dates = $loan->stageQueries
+            ->where('stage_key', $stageKey)
+            ->pluck('created_at')
+            ->filter()
+            ->map(fn ($d) => CarbonImmutable::parse($d));
+
+        return $dates->isNotEmpty() ? $dates->max() : null;
     }
 
     /**

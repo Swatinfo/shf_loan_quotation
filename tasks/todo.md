@@ -1,43 +1,42 @@
-# TODO — Dashboard "Stage status breakdown" block
+# TODO — Stage-Breakdown: per-stage dates (not loan-creation cohort)
 
-## STATUS: DONE — implemented + tested (StageBreakdownTest 9/9; loan-list regression 12/12 green).
+## STATUS: DONE — per-stage dates live; disbursement reconciles with Management report (Sep ₹8.77 Cr = report).
 
-## Goal
-New card below "Pipeline by stage" (#7): stage-wise status funnel. Per stage section
-(Sanction / Technical / Legal / Disbursement) status-bucket tiles with Count + ₹ Amount
-(compact L/Cr), each tile deep-linking to a pre-filtered loan list. Scope + date + user filters.
+## Rule (locked with user)
+Each bucket is filtered by its OWN stage event date; where the event hasn't
+happened (pending placeholders → no timestamp) fall back to the loan's created_at:
+    bucketDate = <stage event date> ?? loan.created_at
+    include ⇔ bucketDate ∈ [from,to]   ('All time' = no bound)
 
-## Decisions (locked by user)
-- Scope blocks: view_all_loans → All; BM/BDH → My data + My Branch; others → My data.
-- User dropdown: view_all_loans (all users) + BM/BDH (branch users) → pick a user = that user's own data.
-- Date: loans created within window. 30 (default)/60/90/180/All time/**Custom (start+end)**. Show the range.
-- Amounts: loan_amount, except Disbursement Spill/Logged-in = sanctioned_amount; Cheque/Transfer + OTC = summed active disbursement_entries.
-- Loan-level Withdrawn/Rejected/Hold stay in operational sections too.
-- **OTC Clearance = every completed loan** (status completed, or otc_clearance completed/skipped).
-- Sections individually **collapsible**.
+## Per-bucket date + amount
+- Sanction (sanction_decision):
+  - sip: started_at (in_progress) | created_at (pending)
+  - query: latest active query.created_at on sanction_decision
+  - sanctioned: completed_at
+  - hold/withdrawn: loan.status_changed_at
+  - rejected: loan.rejected_at ?? sanction_decision.completed_at
+- Technical/Legal (own stage_key):
+  - not_initiated: created_at  | under_process: started_at
+  - completed: completed_at | query: query.created_at | rejected: completed_at
+- Disbursement:
+  - spill: docket.started_at | logged_in: docket.completed_at (amount = sanctioned_amount)
+  - entry: tranche disbursement_date; INCLUDE iff ≥1 tranche in window; AMOUNT = Σ in-window tranches
+  - otc: otc_clearance.completed_at ?? loan.status_changed_at ?? created_at; amount = Σ all tranches
 
-## Steps — Phase A (board)
-- [x] `LoanPipelineBreakdownService` — allowedScopes/userOptions/build/loanIdsFor, precedence classifier, custom-range window, 60s cache, server-side scope+user auth.
-- [x] `DashboardController@stageBreakdown` (JSON) + route `GET /dashboard/stage-breakdown`.
-- [x] `stageBreakdownMeta` in `newthemePayload` (scopes, user options, periods incl. Custom).
-- [x] Dashboard block markup + collapsible sections + custom date inputs (`dashboard.blade.php`).
-- [x] Render + filter wiring (`dashboard.js`): AJAX, compact L/Cr amounts, collapse toggle, custom range.
-- [x] CSS (`dashboard.css`): tiles, collapsible section headers/caret, date inputs.
-- [x] Bump `SHF_VERSION` + `SHF_SW_VERSION` → 20260929120000, `config:clear`.
-- [x] Tests: classifier exclusivity, query rule, per-bucket amounts, OTC=completed, custom range, date cohort, scope/user auth.
+## Steps
+- [ ] `loans()` — drop created_at query filter; load all visible+scope loans; eager-load
+      stageAssignments(started_at,completed_at), stageQueries(created_at), entries(disbursement_date),
+      loan status_changed_at + rejected_at.
+- [ ] `bucketDate(loan, section, bucket)` + `inWindow(date, window)` + `bucketInWindow(...)`
+      (entry special: hasTrancheInWindow); `windowedTrancheAmount(loan, window)`.
+- [ ] `aggregate()` — date-gate each classified bucket; entry amount = windowed tranches;
+      block total = DISTINCT loans appearing in any in-window bucket + Σ their loan_amount.
+- [ ] `loanIdsFor()` — apply the same date gate so click-through matches.
+- [ ] Tests — pending-in-window → Not Initiated; completed in/out of window; entry amount =
+      Σ in-window tranches (reconciles with Management report); each in-progress dates by started_at.
+- [ ] Verify live: Disbursement Entry total vs Management report "Disbursed" for a period.
 
-## Steps — Phase B (click-through)
-- [x] `loanIdsFor(...)` on the service (exact bucket IDs, incl. custom from/to).
-- [x] `LoanController@loanData` honours `brk_section`/`brk_bucket` (+scope/user/period/from/to) via service IDs; skips Active-status default when active.
-- [x] `loans.js` reads `brk_*` from URL, forwards them, forces status=all, shows Clear banner (`loans.css`).
-- [x] Test: list count == tile count (`test_loan_list_deeplink_filters_to_the_exact_bucket`).
-
-## Docs
-- [x] `.docs/dashboard.md`, `.claude/routes-reference.md`, `.claude/services-reference.md`, `tasks/lessons.md`.
-
-## Follow-ups (not requested / deferred)
-- CSV export of the breakdown; trend vs previous period.
-- Remember last-used filter in localStorage.
-
-## Test runner (this machine)
-`php -c .scratch/php-test.ini vendor/phpunit/phpunit/phpunit --filter=StageBreakdownTest`
+## Notes
+- Sanctioned stays the sanction_decision gate (user's original sketch), not the report's sanction-letter stage.
+- Backend only (no JS/CSS) → no asset bump. Docs + lessons after.
+- Test runner: `php -c .scratch/php-test.ini vendor/phpunit/phpunit/phpunit --filter=StageBreakdownTest`
