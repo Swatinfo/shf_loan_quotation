@@ -48,6 +48,7 @@ Complete route table for SHF. Session auth (web guard), Eloquent provider. All w
 | GET | `/dashboard/task-data` | `dashboard.task-data` | DashboardController@taskData | auth |
 | GET | `/dashboard/loan-data` | `dashboard.loan-data` | DashboardController@dashboardLoanData | auth |
 | GET | `/dashboard/dvr-data` | `dashboard.dvr-data` | DashboardController@dvrData | auth |
+| GET | `/dashboard/stage-breakdown` | `dashboard.stage-breakdown` | DashboardController@stageBreakdown | auth | Stage status breakdown JSON (scope/user/period/custom-range; scope authorised server-side) |
 | GET | `/activity-log` | `activity-log` | DashboardController@activityLog | view_activity_log |
 | GET | `/activity-log/data` | `activity-log.data` | DashboardController@activityLogData | view_activity_log |
 
@@ -176,13 +177,13 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 
 ## Loan Stages
 
-Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`; `loans.stages.reset` is **email-gated in the controller** (`config('app.stage_reset_emails')`), not by permission.
+Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`; `loans.stages.reset` uses `reset_loan_stages`.
 
 | Method | URI | Name | Controller |
 |---|---|---|---|
 | GET | `/loans/{loan}/stages` | `loans.stages` | LoanStageController@index (perm: view_loans) |
 | GET | `/loans/{loan}/transfers` | `loans.transfers` | LoanStageController@transferHistory (perm: view_loans) |
-| POST | `/loans/{loan}/stages/reset` | `loans.stages.reset` | LoanStageController@resetStage (email-gated: app.stage_reset_emails; rewinds loan to a stage) |
+| POST | `/loans/{loan}/stages/reset` | `loans.stages.reset` | LoanStageController@resetStage (perm: reset_loan_stages; rewinds loan to a stage) |
 | POST | `/loans/{loan}/stages/{stageKey}/status` | `loans.stages.status` | LoanStageController@updateStatus |
 | POST | `/loans/{loan}/stages/{stageKey}/assign` | `loans.stages.assign` | LoanStageController@assign |
 | POST | `/loans/{loan}/stages/{stageKey}/transfer` | `loans.stages.transfer` | LoanStageController@transfer (+`transfer_loan_stages`) |

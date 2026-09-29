@@ -5,18 +5,21 @@ namespace Tests\Feature;
 use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\LoanDetail;
+use App\Models\Permission;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\StageAssignment;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
- * Email-gated loan stage reset — web action (loans.stages.reset) + the
- * shared LoanStageService::resetToStage() engine used by the CLI too.
+ * Permission-gated loan stage reset — web action (loans.stages.reset), gated by
+ * the `reset_loan_stages` permission, plus the shared
+ * LoanStageService::resetToStage() engine used by the CLI too.
  */
 class LoanStageResetTest extends TestCase
 {
@@ -32,8 +35,16 @@ class LoanStageResetTest extends TestCase
     {
         parent::setUp();
         Role::firstOrCreate(['slug' => 'super_admin'], ['name' => 'Super Admin']);
-        // Restrict the reset to a single known account for the tests.
-        config(['app.stage_reset_emails' => ['superadmin@shfworld.com']]);
+        // A resetter role that holds the reset permission; a plain role that does not.
+        $resetter = Role::firstOrCreate(['slug' => 'branch_manager'], ['name' => 'Branch Manager']);
+        Role::firstOrCreate(['slug' => 'loan_advisor'], ['name' => 'Loan Advisor']);
+
+        // RefreshDatabase runs migrations only; base role_permission seeding isn't
+        // guaranteed in tests, so grant the reset permission explicitly.
+        $perm = Permission::firstOrCreate(['slug' => 'reset_loan_stages'], ['name' => 'Reset Loan Stages', 'group' => 'Loans']);
+        $resetter->permissions()->syncWithoutDetaching([$perm->id]);
+        app(PermissionService::class)->clearAllCaches();
+
         $this->seedStages();
     }
 
@@ -52,7 +63,7 @@ class LoanStageResetTest extends TestCase
         }
     }
 
-    private function user(string $email, bool $superAdmin = false): User
+    private function user(string $email, ?string $role = null): User
     {
         $u = User::create([
             'name' => 'U '.uniqid(),
@@ -60,8 +71,8 @@ class LoanStageResetTest extends TestCase
             'password' => bcrypt('x'),
             'is_active' => true,
         ]);
-        if ($superAdmin) {
-            $u->roles()->sync(Role::where('slug', 'super_admin')->pluck('id'));
+        if ($role) {
+            $u->roles()->sync(Role::where('slug', $role)->pluck('id'));
         }
 
         return $u->fresh('roles');
@@ -104,9 +115,9 @@ class LoanStageResetTest extends TestCase
         return $loan->fresh('stageAssignments');
     }
 
-    public function test_allowed_email_resets_loan_to_earlier_stage(): void
+    public function test_permission_holder_resets_loan_to_earlier_stage(): void
     {
-        $allowed = $this->user('superadmin@shfworld.com');
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
         $owner = $this->user('owner-'.uniqid().'@test');
         $loan = $this->makeCompletedLoan($owner);
 
@@ -133,7 +144,7 @@ class LoanStageResetTest extends TestCase
 
     public function test_reset_before_app_number_clears_application_number(): void
     {
-        $allowed = $this->user('superadmin@shfworld.com');
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
         $owner = $this->user('owner-'.uniqid().'@test');
         $loan = $this->makeCompletedLoan($owner);
 
@@ -144,10 +155,10 @@ class LoanStageResetTest extends TestCase
         $this->assertNull($loan->fresh()->application_number);
     }
 
-    public function test_non_allowed_user_is_forbidden_even_as_super_admin(): void
+    public function test_user_without_reset_permission_is_forbidden(): void
     {
-        // super_admin ROLE, but email not in the allowlist → still denied.
-        $notAllowed = $this->user('someone-else@shfworld.com', superAdmin: true);
+        // loan_advisor role does not hold reset_loan_stages → 403 at the route.
+        $notAllowed = $this->user('adv-'.uniqid().'@test', 'loan_advisor');
         $owner = $this->user('owner-'.uniqid().'@test');
         $loan = $this->makeCompletedLoan($owner);
 
@@ -159,9 +170,23 @@ class LoanStageResetTest extends TestCase
         $this->assertSame('otc_clearance', $loan->fresh()->current_stage);
     }
 
+    public function test_super_admin_bypasses_permission_and_can_reset(): void
+    {
+        $superAdmin = $this->user('sa-'.uniqid().'@test', 'super_admin');
+        $owner = $this->user('owner-'.uniqid().'@test');
+        $loan = $this->makeCompletedLoan($owner);
+
+        $this->actingAs($superAdmin)
+            ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'sanction'])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame('sanction', $loan->fresh()->current_stage);
+    }
+
     public function test_unknown_stage_key_is_rejected(): void
     {
-        $allowed = $this->user('superadmin@shfworld.com');
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
         $owner = $this->user('owner-'.uniqid().'@test');
         $loan = $this->makeCompletedLoan($owner);
 

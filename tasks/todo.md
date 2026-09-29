@@ -1,18 +1,43 @@
-# TODO — Active-only listings + copy-btn fixes + 403 page + more copy sites
+# TODO — Dashboard "Stage status breakdown" block
 
-## STATUS: DONE — implemented + tested (153/153 loan/dashboard/stage suite green).
+## STATUS: DONE — implemented + tested (StageBreakdownTest 9/9; loan-list regression 12/12 green).
 
-- [x] Copy button parse-time fix (SHF.copyBtn top-level) → shows on dashboard My Tasks/Loan Tasks.
-- [x] Copy button color orange (--accent).
-- [x] Active-only default: loanData (else active; status=all bypass), loans index blade + loans.js
-      (default Active, Clear→active, counter baseline), dashboard widgets (->active / where active:
-      my-loan-tasks, KPI, tab counts, recent loans, pipeline-by-stage, open queries, bank-mix-MTD),
-      GeneralTask::scopeWithActiveLinks (linked loan must be active).
-- [x] Themed 403 page (errors/403.blade.php) — header nav + clear message.
-- [x] Copy buttons: customer listing (name/mobile/email/pan, table+cards), DVR page + dashboard DVR
-      (contact name + phone). Loan Acct # column already on loans list + dashboard.
-- [x] Tests: LoanListingActiveDefaultTest, Error403PageTest. Versions bumped 20260831160000.
+## Goal
+New card below "Pipeline by stage" (#7): stage-wise status funnel. Per stage section
+(Sanction / Technical / Legal / Disbursement) status-bucket tiles with Count + ₹ Amount
+(compact L/Cr), each tile deep-linking to a pre-filtered loan list. Scope + date + user filters.
 
-## Note
-- Reverses the 2026-07-07 "show all statuses by default" decision per explicit user request.
-- Field-activity + DVR follow-ups are DVR-based (no loan status) → left unchanged.
+## Decisions (locked by user)
+- Scope blocks: view_all_loans → All; BM/BDH → My data + My Branch; others → My data.
+- User dropdown: view_all_loans (all users) + BM/BDH (branch users) → pick a user = that user's own data.
+- Date: loans created within window. 30 (default)/60/90/180/All time/**Custom (start+end)**. Show the range.
+- Amounts: loan_amount, except Disbursement Spill/Logged-in = sanctioned_amount; Cheque/Transfer + OTC = summed active disbursement_entries.
+- Loan-level Withdrawn/Rejected/Hold stay in operational sections too.
+- **OTC Clearance = every completed loan** (status completed, or otc_clearance completed/skipped).
+- Sections individually **collapsible**.
+
+## Steps — Phase A (board)
+- [x] `LoanPipelineBreakdownService` — allowedScopes/userOptions/build/loanIdsFor, precedence classifier, custom-range window, 60s cache, server-side scope+user auth.
+- [x] `DashboardController@stageBreakdown` (JSON) + route `GET /dashboard/stage-breakdown`.
+- [x] `stageBreakdownMeta` in `newthemePayload` (scopes, user options, periods incl. Custom).
+- [x] Dashboard block markup + collapsible sections + custom date inputs (`dashboard.blade.php`).
+- [x] Render + filter wiring (`dashboard.js`): AJAX, compact L/Cr amounts, collapse toggle, custom range.
+- [x] CSS (`dashboard.css`): tiles, collapsible section headers/caret, date inputs.
+- [x] Bump `SHF_VERSION` + `SHF_SW_VERSION` → 20260929120000, `config:clear`.
+- [x] Tests: classifier exclusivity, query rule, per-bucket amounts, OTC=completed, custom range, date cohort, scope/user auth.
+
+## Steps — Phase B (click-through)
+- [x] `loanIdsFor(...)` on the service (exact bucket IDs, incl. custom from/to).
+- [x] `LoanController@loanData` honours `brk_section`/`brk_bucket` (+scope/user/period/from/to) via service IDs; skips Active-status default when active.
+- [x] `loans.js` reads `brk_*` from URL, forwards them, forces status=all, shows Clear banner (`loans.css`).
+- [x] Test: list count == tile count (`test_loan_list_deeplink_filters_to_the_exact_bucket`).
+
+## Docs
+- [x] `.docs/dashboard.md`, `.claude/routes-reference.md`, `.claude/services-reference.md`, `tasks/lessons.md`.
+
+## Follow-ups (not requested / deferred)
+- CSV export of the breakdown; trend vs previous period.
+- Remember last-used filter in localStorage.
+
+## Test runner (this machine)
+`php -c .scratch/php-test.ini vendor/phpunit/phpunit/phpunit --filter=StageBreakdownTest`

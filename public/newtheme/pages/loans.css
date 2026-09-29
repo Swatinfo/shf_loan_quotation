@@ -256,3 +256,20 @@
     .d-desktop-only { display: block !important; }
     .d-mobile-only { display: none !important; }
 }
+
+/* Deep-link banner when arriving from a dashboard breakdown tile */
+.lx-brk-note {
+    margin-top: 6px;
+    font: 500 12px/1.3 'Archivo', system-ui, sans-serif;
+    color: var(--ink-3);
+}
+
+.lx-brk-note strong {
+    color: var(--ink);
+    text-transform: capitalize;
+}
+
+.lx-brk-note a {
+    color: var(--accent);
+    font-weight: 600;
+}

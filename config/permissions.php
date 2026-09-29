@@ -46,6 +46,7 @@ return [
             ['slug' => 'delete_loan_files', 'name' => 'Delete Loan Files', 'description' => 'Remove uploaded document files'],
             ['slug' => 'manage_loan_stages', 'name' => 'Manage Loan Stages', 'description' => 'Update stage status and assignments'],
             ['slug' => 'skip_loan_stages', 'name' => 'Skip Loan Stages', 'description' => 'Skip stages in loan workflow'],
+            ['slug' => 'reset_loan_stages', 'name' => 'Reset Loan Stages', 'description' => 'Rewind a loan to an earlier stage (destructive: clears all following stages + dependent data)'],
             ['slug' => 'waive_legal_verification', 'name' => 'Waive Legal Verification', 'description' => 'Complete Legal Verification without sending to bank, at any phase (in addition to the loan owner / branch manager / BDH)'],
             ['slug' => 'verify_original_documents', 'name' => 'Verify Original Documents', 'description' => 'Complete Original Document Verification (seen original) even when not the stage assignee'],
             ['slug' => 'edit_docket_date', 'name' => 'Edit Docket Date', 'description' => 'Override a loan\'s expected docket date after sanction (with a reason)'],

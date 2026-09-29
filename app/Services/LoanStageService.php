@@ -1406,7 +1406,10 @@ class LoanStageService
 
         // 2. Rebuild + persist the fresh snapshot from live config.
         $loan->workflow_config = $this->buildWorkflowSnapshot(
-            $loan->bank_id, $loan->product_id, $loan->branch_id, $loan->location_id
+            $loan->bank_id,
+            $loan->product_id,
+            $loan->branch_id,
+            $loan->location_id
         );
         $loan->save();
 
@@ -1753,7 +1756,7 @@ class LoanStageService
     // (assignee resolved by role), every following stage is reset to pending,
     // dependent data (disbursement, valuation, app number, sanction/docket
     // fields) is cleared, and progress is recalculated. Shared by the
-    // email-gated web action (LoanStageController@resetStage) and the
+    // permission-gated web action (LoanStageController@resetStage) and the
     // `loan:set-stage` console command. This is destructive and irreversible.
 
     /** Parallel sub-stage keys, in flow order. */

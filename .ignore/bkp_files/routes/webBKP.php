@@ -42,7 +42,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/task-data', [DashboardController::class, 'taskData'])->name('dashboard.task-data');
     Route::get('/dashboard/loan-data', [DashboardController::class, 'dashboardLoanData'])->name('dashboard.loan-data');
     Route::get('/dashboard/dvr-data', [DashboardController::class, 'dvrData'])->name('dashboard.dvr-data');
-    Route::get('/dashboard/stage-breakdown', [DashboardController::class, 'stageBreakdown'])->name('dashboard.stage-breakdown');
 
     // Profile (Breeze default)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -122,10 +121,6 @@ Route::middleware(['auth'])->group(function () {
         // DME change is gated by role (super_admin/admin/bdh) inside the controller,
         // not a named permission, so it lives here rather than under edit_loan.
         Route::post('/loans/{loan}/dme', [LoanController::class, 'updateDme'])->name('loans.dme.update');
-        // Docket-date override — gated by the edit_docket_date permission. Available
-        // only once the sanction stage is complete (enforced in the controller).
-        Route::post('/loans/{loan}/docket-date', [LoanController::class, 'updateDocketDate'])
-            ->middleware('permission:edit_docket_date')->name('loans.docket-date.update');
     });
     Route::middleware('permission:edit_loan')->group(function () {
         Route::get('/loans/{loan}/edit', [LoanController::class, 'edit'])->name('loans.edit');
@@ -146,7 +141,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loan-settings/products', [WorkflowConfigController::class, 'storeProduct'])->name('loan-settings.products.store');
         Route::get('/loan-settings/products/{product}/stages', [WorkflowConfigController::class, 'productStages'])->name('loan-settings.product-stages');
         Route::post('/loan-settings/products/{product}/stages', [WorkflowConfigController::class, 'saveProductStages'])->name('loan-settings.product-stages.save');
-        Route::post('/loan-settings/sync-stage-config', [WorkflowConfigController::class, 'syncStageConfig'])->name('loan-settings.sync-stage-config');
         Route::post('/loan-settings/products/{product}/locations', [WorkflowConfigController::class, 'saveProductLocations'])->name('loan-settings.product-locations.save');
         Route::post('/loan-settings/branches', [WorkflowConfigController::class, 'storeBranch'])->name('loan-settings.branches.store');
         Route::delete('/loan-settings/branches/{branch}', [WorkflowConfigController::class, 'destroyBranch'])->name('loan-settings.branches.destroy');
@@ -162,11 +156,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/loans/{loan}/stages', [LoanStageController::class, 'index'])->name('loans.stages');
         Route::get('/loans/{loan}/transfers', [LoanStageController::class, 'transferHistory'])->name('loans.transfers');
     });
-    // Loan stage reset — gated by the reset_loan_stages permission (default roles:
-    // super_admin, admin, branch_manager, bdh). Destructive: rewinds the loan to an
-    // earlier stage. Controller re-checks canResetLoanStages() for a friendly message.
-    Route::post('/loans/{loan}/stages/reset', [LoanStageController::class, 'resetStage'])
-        ->middleware('permission:reset_loan_stages')->name('loans.stages.reset');
     Route::middleware('permission:manage_loan_stages')->group(function () {
         Route::post('/loans/{loan}/stages/{stageKey}/status', [LoanStageController::class, 'updateStatus'])->name('loans.stages.status');
         Route::post('/loans/{loan}/stages/{stageKey}/assign', [LoanStageController::class, 'assign'])->name('loans.stages.assign');
@@ -174,7 +163,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loans/{loan}/stages/{stageKey}/reject', [LoanStageController::class, 'reject'])->name('loans.stages.reject');
         Route::post('/loans/{loan}/stages/{stageKey}/query', [LoanStageController::class, 'raiseQuery'])->name('loans.stages.query');
         Route::post('/loans/{loan}/stages/{stageKey}/notes', [LoanStageController::class, 'saveNotes'])->name('loans.stages.notes');
-        Route::post('/loans/{loan}/kfs/loan-amount', [LoanStageController::class, 'updateKfsLoanAmount'])->name('loans.kfs.amount.update');
         Route::post('/loans/{loan}/stages/technical_valuation/action', [LoanStageController::class, 'technicalValuationAction'])->name('loans.stages.technical-valuation-action');
         Route::post('/loans/{loan}/stages/esign/action', [LoanStageController::class, 'esignAction'])->name('loans.stages.esign-action');
         Route::post('/loans/{loan}/stages/docket/action', [LoanStageController::class, 'docketAction'])->name('loans.stages.docket-action');
@@ -382,4 +370,4 @@ Route::middleware(['auth'])->group(function () {
 
 // Note: Package Route::impersonate() removed — custom take/leave routes in auth group handle impersonation with smart redirect
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

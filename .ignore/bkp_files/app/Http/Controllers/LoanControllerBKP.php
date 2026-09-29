@@ -13,7 +13,6 @@ use App\Models\Stage;
 use App\Models\User;
 use App\Services\CustomerService;
 use App\Services\LoanConversionService;
-use App\Services\LoanPipelineBreakdownService;
 use App\Services\LoanStageService;
 use App\Services\LoanTimelineService;
 use App\Validation\LoanValidationRules;
@@ -22,7 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-class LoanController extends Controller
+class LoanControllerBKP extends Controller
 {
     public function __construct(
         private LoanConversionService $conversionService,
@@ -44,12 +43,15 @@ class LoanController extends Controller
         $banks = Bank::active()->orderBy('name')->get();
         $branches = Branch::active()->orderBy('name')->get();
         $isBankEmployee = $user->hasRole('bank_employee');
-        // Show every enabled stage in the filter, including all parallel sub-stages,
-        // ordered by workflow sequence. The `parallel_processing` parent is a container
-        // (never a filterable target), so it's excluded. Sub-stage selections match
-        // loans currently AT that sub-stage; top-level selections match completed.
+        // Bank employees participate in these stages (via default_role or phase actions)
+        $bankEmployeeStages = ['bsm_osv', 'rate_pf', 'sanction', 'legal_verification', 'esign'];
+        // Non-bank-employees see top-level stages plus bsm_osv (a parallel sub-stage)
+        // so they can filter for loans currently sitting at BSM/OSV.
         $stages = Stage::where('is_enabled', true)
-            ->where('stage_key', '!=', 'parallel_processing')
+            ->when($isBankEmployee, fn ($q) => $q->whereIn('stage_key', $bankEmployeeStages))
+            ->when(! $isBankEmployee, fn ($q) => $q->where(
+                fn ($w) => $w->whereNull('parent_stage_key')->orWhere('stage_key', 'bsm_osv')
+            ))
             ->orderBy('sequence_order')
             ->get();
 
@@ -84,39 +86,13 @@ class LoanController extends Controller
         $canEdit = $user->hasPermission('edit_loan');
         $canDelete = $user->hasPermission('delete_loan');
 
-        $query = LoanDetail::visibleTo($user)->with(['creator', 'advisor', 'bank', 'branch', 'product', 'location.parent', 'stageAssignments.assignee.roles', 'disbursementEntries']);
+        $query = LoanDetail::visibleTo($user)->with(['creator', 'advisor', 'bank', 'branch', 'product', 'location.parent', 'stageAssignments.assignee.roles']);
 
         $recordsTotal = (clone $query)->count();
 
-        // Deep-link from the dashboard "Stage status breakdown" tiles. The service
-        // re-classifies the exact loan IDs for this section/bucket (authorising the
-        // scope server-side), so the list matches the tile count precisely. When
-        // active we skip the default Active-status filter — a bucket legitimately
-        // contains withdrawn/hold/rejected/completed loans.
-        $bucketFilter = $request->filled('brk_section') && $request->filled('brk_bucket');
-        if ($bucketFilter) {
-            $ids = app(LoanPipelineBreakdownService::class)->loanIdsFor(
-                $user,
-                (string) $request->query('brk_scope', 'own'),
-                $request->filled('brk_user') ? (int) $request->query('brk_user') : null,
-                (string) $request->query('brk_period', LoanPipelineBreakdownService::DEFAULT_PERIOD),
-                (string) $request->query('brk_section'),
-                (string) $request->query('brk_bucket'),
-                $request->filled('brk_from') ? (string) $request->query('brk_from') : null,
-                $request->filled('brk_to') ? (string) $request->query('brk_to') : null,
-            );
-            $query->whereIn('id', $ids ?: [-1]);
-        }
-
-        // Custom filters. Default to ACTIVE loans only — on_hold / cancelled /
-        // rejected / completed appear only when the user explicitly selects that
-        // status (or "all") from the filter. Pass status=all to see everything.
+        // Custom filters
         if ($request->filled('status')) {
-            if ($request->status !== 'all') {
-                $query->where('status', $request->status);
-            }
-        } elseif (! $bucketFilter) {
-            $query->where('status', LoanDetail::STATUS_ACTIVE);
+            $query->where('status', $request->status);
         }
         if ($request->filled('customer_type')) {
             $query->where('customer_type', $request->customer_type);
@@ -130,45 +106,26 @@ class LoanController extends Controller
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
-        // Stage filter:
-        //  - stage only            → loans CURRENTLY AT that stage (its assignment
-        //    is in_progress). This is what the dropdown means to users: "show loans
-        //    sitting at KFS", NOT "loans that ever finished KFS". Works uniformly for
-        //    top-level stages and parallel sub-stage keys (both have an in_progress
-        //    assignment while active).
-        //  - stage + date range    → reporting: loans that COMPLETED that stage
-        //    within the window (completed_at). The date range is completion activity.
-        //  - date range only       → the loan's LATEST stage completion in the window.
-        $stage = $request->filled('stage') ? $request->stage : null;
-        $dateFrom = $request->filled('date_from') ? $request->date_from : null;
-        $dateTo = $request->filled('date_to') ? $request->date_to : null;
-
-        if ($stage !== null && ($dateFrom !== null || $dateTo !== null)) {
-            // Reporting: completed that stage inside the date window.
-            $query->whereHas('stageAssignments', function ($q) use ($stage, $dateFrom, $dateTo) {
-                $q->where('stage_key', $stage)->where('status', 'completed');
-                if ($dateFrom !== null) {
-                    $q->whereDate('completed_at', '>=', $dateFrom);
-                }
-                if ($dateTo !== null) {
-                    $q->whereDate('completed_at', '<=', $dateTo);
-                }
-            });
-        } elseif ($stage !== null) {
-            // Loans currently sitting AT this stage — its assignment is in_progress.
-            $query->whereHas('stageAssignments', function ($q) use ($stage) {
-                $q->where('stage_key', $stage)->where('status', 'in_progress');
-            });
-        } elseif ($dateFrom !== null || $dateTo !== null) {
-            // Date range without a stage → filter on the loan's most-recent
-            // stage completion (MAX(completed_at)). Correlated subquery is
-            // portable across MySQL (prod) and SQLite (tests); DATE() drops time.
-            $latest = '(SELECT MAX(sa.completed_at) FROM stage_assignments sa WHERE sa.loan_id = loan_details.id)';
-            if ($dateFrom !== null) {
-                $query->whereRaw("DATE($latest) >= ?", [$dateFrom]);
-            }
-            if ($dateTo !== null) {
-                $query->whereRaw("DATE($latest) <= ?", [$dateTo]);
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+        if ($request->filled('stage')) {
+            $stage = $request->stage;
+            $stageRow = Stage::where('stage_key', $stage)->first();
+            // Sub-stages (e.g. bsm_osv) live under parallel_processing. loan_details.current_stage
+            // only ever holds the parent key, so match by active assignment instead.
+            if ($stageRow && $stageRow->parent_stage_key) {
+                $query->whereHas(
+                    'stageAssignments',
+                    fn ($q) => $q
+                        ->where('stage_key', $stage)
+                        ->where('status', 'in_progress')
+                );
+            } else {
+                $query->where('current_stage', $stage);
             }
         }
         if ($request->filled('role')) {
@@ -184,16 +141,21 @@ class LoanController extends Controller
         if ($request->filled('user')) {
             $userId = (int) $request->user;
             $query->where(function ($outer) use ($userId) {
-                $outer->whereHas('stageAssignments', fn ($q) => $q
-                    ->where('assigned_to', $userId)
-                    ->whereColumn('stage_key', 'loan_details.current_stage')
-                )->orWhere(fn ($w) => $w
-                    ->where('current_stage', 'parallel_processing')
-                    ->whereHas('stageAssignments', fn ($q) => $q
+                $outer->whereHas(
+                    'stageAssignments',
+                    fn ($q) => $q
                         ->where('assigned_to', $userId)
-                        ->where('parent_stage_key', 'parallel_processing')
-                        ->where('status', 'in_progress')
-                    )
+                        ->whereColumn('stage_key', 'loan_details.current_stage')
+                )->orWhere(
+                    fn ($w) => $w
+                        ->where('current_stage', 'parallel_processing')
+                        ->whereHas(
+                            'stageAssignments',
+                            fn ($q) => $q
+                                ->where('assigned_to', $userId)
+                                ->where('parent_stage_key', 'parallel_processing')
+                                ->where('status', 'in_progress')
+                        )
                 );
             });
         }
@@ -208,9 +170,11 @@ class LoanController extends Controller
             if (isset($sPlus[$docket])) {
                 // Commitment-type filter: read docket_days_offset from app_number notes,
                 // ignore the date entirely. Surfaces all S+N loans regardless of stage.
-                $query->whereHas('stageAssignments', fn ($q) => $q
-                    ->where('stage_key', 'app_number')
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(notes, '$.docket_days_offset')) = ?", [$sPlus[$docket]])
+                $query->whereHas(
+                    'stageAssignments',
+                    fn ($q) => $q
+                        ->where('stage_key', 'app_number')
+                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(notes, '$.docket_days_offset')) = ?", [$sPlus[$docket]])
                 );
             } else {
                 // Date-range filter. Effective docket date is COALESCE of:
@@ -259,7 +223,6 @@ class LoanController extends Controller
         if ($search !== '' && $search !== null) {
             $query->where(function ($q) use ($search) {
                 $q->where('loan_number', 'like', "%{$search}%")
-                    ->orWhere('application_number', 'like', "%{$search}%")
                     ->orWhere('customer_name', 'like', "%{$search}%")
                     ->orWhere('bank_name', 'like', "%{$search}%")
                     ->orWhere('customer_phone', 'like', "%{$search}%")
@@ -332,9 +295,6 @@ class LoanController extends Controller
             return [
                 'loan_number' => $loan->loan_number.($isOverdue ? '<br><small class="text-danger fw-bold" title="Docket expected by '.$docketInfo.'">⚠ Docket Overdue</small>' : ($docketInfo ? '<br><small class="text-muted" title="Expected docket date">📅 '.$docketInfo.'</small>' : '')),
                 'customer_name' => $loan->customer_name,
-                'loan_number_raw' => $loan->loan_number,
-                'application_number' => $loan->application_number ?? '—',
-                'loan_account_numbers' => $loan->loan_account_numbers ?: '—',
                 'show_url' => route('loans.show', $loan),
                 'stages_url' => route('loans.stages', $loan),
                 'bank_name' => $loan->bank_name ?? '—',
@@ -441,18 +401,9 @@ class LoanController extends Controller
                 ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
             : collect();
 
-        // Docket-date override UI: only after the Sanction stage is complete
-        // (when expected_docket_date is first computed) and only for holders of
-        // the edit_docket_date permission.
-        $sanctionDone = $loan->stageAssignments()
-            ->where('stage_key', 'sanction')
-            ->where('status', 'completed')
-            ->exists();
-        $canEditDocketDate = auth()->user()->canEditDocketDate();
-
         $template = 'newtheme.loans.show';
 
-        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers', 'sanctionDone', 'canEditDocketDate') + ['pageKey' => 'loans']);
+        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers') + ['pageKey' => 'loans']);
     }
 
     /**
@@ -496,63 +447,6 @@ class LoanController extends Controller
             'success' => true,
             'dme_name' => $target->name,
             'message' => 'DME updated.',
-        ]);
-    }
-
-    /**
-     * Override the loan's expected docket date. Gated by the edit_docket_date
-     * permission (route middleware) and only allowed once the Sanction stage is
-     * complete — at which point the date has first been computed. A mandatory
-     * reason is captured, and the old → new change is written to the activity log.
-     */
-    public function updateDocketDate(Request $request, LoanDetail $loan): JsonResponse
-    {
-        $this->authorizeView($loan);
-
-        abort_unless(auth()->user()->canEditDocketDate(), 403, 'You cannot change the docket date for this loan.');
-
-        abort_if($loan->status === 'completed', 422, 'The docket date cannot be changed for a completed loan.');
-
-        $sanctionDone = $loan->stageAssignments()
-            ->where('stage_key', 'sanction')
-            ->where('status', 'completed')
-            ->exists();
-        abort_unless($sanctionDone, 422, 'The docket date can only be changed after the Sanction stage is complete.');
-
-        $validated = $request->validate([
-            'docket_date' => [
-                'bail',
-                'required',
-                'date_format:d/m/Y',
-                // Must be today or later. Checked manually because `after_or_equal:today`
-                // mis-parses the d/m/Y string (PHP reads DD/MM/YYYY as MM/DD/YYYY).
-                // `bail` above guarantees the format is valid before we parse here.
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    $date = Carbon::createFromFormat('d/m/Y', $value);
-                    if (! $date || $date->startOfDay()->lt(now()->startOfDay())) {
-                        $fail('The docket date must be today or later.');
-                    }
-                },
-            ],
-            'reason' => ['required', 'string', 'min:3', 'max:500'],
-        ]);
-
-        $newDate = Carbon::createFromFormat('d/m/Y', $validated['docket_date'])->startOfDay();
-        $previous = $loan->expected_docket_date;
-
-        $loan->update(['expected_docket_date' => $newDate->toDateString()]);
-
-        ActivityLog::log('change_docket_date', $loan, [
-            'loan_number' => $loan->loan_number,
-            'from' => $previous?->format('d/m/Y'),
-            'to' => $newDate->format('d/m/Y'),
-            'reason' => $validated['reason'],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'docket_date' => $newDate->format('d M Y'),
-            'message' => 'Docket date updated.',
         ]);
     }
 

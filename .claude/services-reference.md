@@ -172,6 +172,17 @@ sharedStrings part), bold header row, optional bold footer rows.
 - `syncLoanKyc(LoanDetail, array $kyc): CustomerKycDetail` — edit: update snapshot in place if PAN unchanged, else new master/snapshot
 - `latestKycForPan(?string): ?CustomerKycDetail` — autofill lookup
 
+## LoanPipelineBreakdownService
+
+`app/Services/LoanPipelineBreakdownService.php` — feeds the dashboard "Stage status
+breakdown" block (see `.docs/dashboard.md`). No constructor deps.
+
+- `build(User $requester, string $period='30', ?int $userId=null, ?string $from=null, ?string $to=null): array` — `{range, blocks[]}`. One block per allowed scope (`own`/`branch`/`all`), or a single "Selected: <name>" block when a valid `userId` is picked. Each block → sections (sanction/technical/legal/disbursement) → bucket tiles `{key,label,count,amount,url}`.
+- `loanIdsFor(User, string $scope, ?int $userId, string $period, string $section, string $bucket, ?string $from=null, ?string $to=null): array` — exact loan IDs for one bucket; powers the loan-list click-through (`LoanController@loanData` `whereIn`).
+- `allowedScopes(User)`, `canFilterByUser(User)`, `userOptions(User)` — role/permission-driven UI metadata.
+- **Classification** is single-pass in PHP by **precedence** (first match wins) so buckets are mutually exclusive within a section. Query bucket = active (`pending`/`responded`) `StageQuery` on that `stage_key`; Completed/Rejected beat Query. OTC bucket absorbs every completed loan. **Amounts**: `loan_amount` except Disbursement (Spill/Logged-in = `sanctioned_amount`; Cheque/Transfer + OTC = summed active `disbursement_entries`).
+- Scope + selected-user **re-authorised server-side** (`view_all_loans` → `all`; BM/BDH → own+branch and only their branch users). Cohort = `created_at` window (preset days, all-time, or custom from/to). 60s per-block cache.
+
 ## LoanConversionService
 
 Constructor: `LoanStageService`, `LoanDocumentService`, `CustomerService`.
@@ -283,7 +294,7 @@ Pushes admin stage/task-owner config edits onto in-flight loans instead of only 
 
 ### Stage reset
 
-`resetToStage(LoanDetail, string $stageKey, ?int $phase = null, ?string $variant = null): array` — rewinds a loan to `$stageKey`: target → `in_progress` (assignee via `resolveResetUsers`), all later stages → `pending`, re-opens `parallel_processing` when the target is a sub-stage, clears dependent data (disbursement/valuation rows, `application_number`, `expected_docket_date`, `is_sanctioned`, each only when the target is at/before its producing stage), then `recalculateProgress`. Phased stages default to entry phase 1. Returns log lines. Destructive/irreversible. Shared by the `loan:set-stage` command and the email-gated `LoanStageController@resetStage` web action (`User::canResetLoanStages()` → `config('app.stage_reset_emails')`).
+`resetToStage(LoanDetail, string $stageKey, ?int $phase = null, ?string $variant = null): array` — rewinds a loan to `$stageKey`: target → `in_progress` (assignee via `resolveResetUsers`), all later stages → `pending`, re-opens `parallel_processing` when the target is a sub-stage, clears dependent data (disbursement/valuation rows, `application_number`, `expected_docket_date`, `is_sanctioned`, each only when the target is at/before its producing stage), then `recalculateProgress`. Phased stages default to entry phase 1. Returns log lines. Destructive/irreversible. Shared by the `loan:set-stage` command and the permission-gated `LoanStageController@resetStage` web action (`User::canResetLoanStages()` → `hasPermission('reset_loan_stages')`).
 
 `resolveResetUsers(LoanDetail): array` — `{task_owner, bank_employee, office_employee, branch_manager, bdh}` default user IDs for the loan (product-stage → bank/branch default → any active fallback).
 

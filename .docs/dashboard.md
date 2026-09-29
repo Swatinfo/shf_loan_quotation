@@ -32,6 +32,7 @@ All tabs are permission-gated for visibility. Default selection is **data-driven
 
 ### Tab list
 
+- **Stage Breakdown** — the stage-wise status funnel (see "Stage status breakdown block" below); first tab, default-selected, no count badge
 - **Personal Tasks** — general tasks created by / assigned to the user (see `general-tasks.md`)
 - **Loan Tasks** — current stage assignments for loans the user is working on. A loan in
   `parallel_processing` collapses into a **single entry** (not one row per sub-stage): the entry
@@ -100,6 +101,50 @@ Separate from the dashboard: `GET /activity-log` (permission: `view_activity_log
 - Everyone else → only active (`pending`/`responded`) queries that are **assigned to them** (`assigned_to_user_id`) **OR** on a loan visible to them (`whereHas('loan', visibleTo)` — owner/advisor, stage assignee, branch, or transfer history). Latest 6.
 
 Covered by `tests/Feature/DashboardOpenQueriesTest.php`.
+
+## Stage status breakdown block
+
+The **first dashboard tab** (before Personal Tasks) and the **default selected tab**
+(`newthemeDefaultTab` returns `stage-breakdown` when visible; tab-persist can still
+restore a returning user's last choice). It gives a stage-wise **status funnel**: per
+stage section (Sanction / Technical / Legal / Disbursement) a row of status-bucket
+tiles, each showing a **count + ₹ amount** (rendered compact — L / Cr). Fed lazily by
+`GET /dashboard/stage-breakdown` (kept off the initial page load); `newthemePayload`
+only ships `stageBreakdownMeta` (allowed scopes, user options, period list). The tab
+carries no count badge.
+
+- **Service**: `LoanPipelineBreakdownService` (see `services-reference.md`) does a
+  single-fetch-per-scope PHP classification — each cohort loan lands in **exactly one
+  bucket per section** by precedence, so buckets never overlap within a section.
+  Cross-section overlap is intended (a loan is "Technical: completed" *and* "Legal:
+  under process"). **Reached-stage gate**: `initializeStages()` pre-creates a `pending`
+  row for every stage, so the classifier counts a loan in a section only once it has
+  actually reached it — Disbursement "Spill" = `docket` `in_progress` (not the `pending`
+  placeholder), and Technical/Legal "Not Initiated" / Sanction "SIP"-pending only count
+  while `current_stage = parallel_processing`. A `parallel_processing` loan thus shows in
+  Sanction/Technical/Legal (concurrent sub-stages) but **not** in Disbursement.
+  Amounts: `loan_amount` everywhere except Disbursement
+  (Spill/Logged-in = `sanctioned_amount`; Cheque/Transfer + OTC = summed active
+  `disbursement_entries`). Spill/Logged-in fall back to `loan_amount` when a loan has
+  no `sanctioned_amount` yet (so the tile never shows ₹0 for a real docket-phase loan).
+  OTC Clearance also absorbs **every completed loan** (`status = completed`, or
+  `otc_clearance` completed/skipped).
+- **Scope blocks by role**: `view_all_loans` → one **All** block; branch_manager/bdh →
+  **My data** + **My Branch**; everyone else → **My data**. A user dropdown (all users
+  for `view_all_loans`, branch users for BM/BDH) narrows to one user's own data. Scope
+  and selected-user are re-authorised server-side — a forged `scope`/`user_id` is
+  silently downgraded, never leaked.
+- **Filters**: created-at cohort — Last 30 (default) / 60 / 90 / 180 / All time /
+  **Custom** (start + end date via the shared datepicker). The active date range is
+  shown in the card header.
+- **Click-through**: every tile links to `/loans` with `brk_section` + `brk_bucket`
+  (+ `brk_scope`/`brk_user`/`brk_period`, or `brk_from`/`brk_to` for custom). The loans
+  list re-runs the *same* classifier (`loanIdsFor`) to `whereIn` the exact IDs, so the
+  list count matches the tile. The loans page opens its filter panel, sets Status →
+  "All" (so nothing narrows the exact set), and shows a labelled "Filtered from
+  dashboard — Section · Bucket · date-range · scope … Clear" banner. Adding any list
+  filter narrows *within* the bucket; Clear drops the deep-link.
+- Covered by `tests/Feature/StageBreakdownTest.php`.
 
 ## Implementation notes
 

@@ -66,8 +66,8 @@ class LoanStageController extends Controller
     }
 
     /**
-     * Rewind a loan to an earlier stage. Restricted to the specific email
-     * accounts in config('app.stage_reset_emails') — NOT a role/permission.
+     * Rewind a loan to an earlier stage. Gated by the `reset_loan_stages`
+     * permission (default roles: super_admin, admin, branch_manager, bdh).
      * Destructive: clears all following stages + dependent data.
      */
     public function resetStage(Request $request, LoanDetail $loan): JsonResponse
@@ -171,7 +171,10 @@ class LoanStageController extends Controller
 
         try {
             $assignment = $this->stageService->updateStageStatus(
-                $loan, $stageKey, $validated['status'], auth()->id()
+                $loan,
+                $stageKey,
+                $validated['status'],
+                auth()->id()
             );
 
             $loan->refresh();
@@ -243,7 +246,10 @@ class LoanStageController extends Controller
             }
 
             $assignment = $this->stageService->transferStage(
-                $loan, $stageKey, (int) $validated['user_id'], $validated['reason'] ?? null
+                $loan,
+                $stageKey,
+                (int) $validated['user_id'],
+                $validated['reason'] ?? null
             );
 
             return response()->json([
@@ -818,10 +824,12 @@ class LoanStageController extends Controller
         }
 
         // A custom docket date (offset = 0) must be today or later — never in the past.
-        if ($stageKey === 'app_number'
+        if (
+            $stageKey === 'app_number'
             && ($data['docket_days_offset'] ?? '') === '0'
             && ! empty($data['custom_docket_date'])
-            && ! isset($errors['custom_docket_date'])) {
+            && ! isset($errors['custom_docket_date'])
+        ) {
             $custom = rescue(fn () => Carbon::createFromFormat('d/m/Y', $data['custom_docket_date']), null, false);
             if (! $custom || $custom->startOfDay()->lt(now()->startOfDay())) {
                 $errors['custom_docket_date'] = 'Custom Docket Date must be today or later';

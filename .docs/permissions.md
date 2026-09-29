@@ -1,6 +1,6 @@
 # Permissions
 
-Permission-based access control. 45 permissions across 7 groups, resolved through `PermissionService`.
+Permission-based access control. 46 permissions across 7 groups, resolved through `PermissionService`.
 
 ## Where things live
 
@@ -18,7 +18,7 @@ Permission-based access control. 45 permissions across 7 groups, resolved throug
 | **Settings** | 8 | view_settings, edit_company_info, edit_banks, edit_documents, edit_tenures, edit_charges, edit_services, edit_gst |
 | **Quotations** | 12 | create_quotation, edit_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain, hold_quotation, cancel_quotation, resume_quotation |
 | **Users** | 5 | view_users, create_users, edit_users, delete_users, assign_roles |
-| **Loans** | 17 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, waive_legal_verification, verify_original_documents, edit_docket_date, add_remarks, manage_workflow_config |
+| **Loans** | 18 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, reset_loan_stages, waive_legal_verification, verify_original_documents, edit_docket_date, add_remarks, manage_workflow_config |
 | **Tasks** | 1 | view_all_tasks |
 | **DVR** | 5 | view_dvr, create_dvr, edit_dvr, delete_dvr, view_all_dvr |
 | **System** | 4 | change_own_password, manage_permissions, view_activity_log, view_reports |
@@ -29,6 +29,8 @@ Additional slugs live in migrations (beyond `config/permissions.php`): `manage_c
 - `waive_legal_verification` → complete Legal Verification without sending to bank (`legalAction complete_skip_bank`), in addition to the loan owner / branch_manager / bdh of the branch. Checked in `LoanStageController::canSkipLegalBank()`.
 - `verify_original_documents` → complete Original Document Verification ("seen original") even when not the stage assignee (blade gate; `saveNotes` itself remains `manage_loan_stages`-gated).
 Both still require `manage_loan_stages` at the route (they are stage actions) — all four default roles already have it.
+
+**`reset_loan_stages`** (seeded by `2026_09_15_120000_add_reset_loan_stages_permission`, default-granted to admin/branch_manager/bdh; super_admin bypasses) gates the destructive "Reset to Stage" rewind (`loans.stages.reset`). It is a standalone route permission (its own middleware), not additive on top of `manage_loan_stages`. `User::canResetLoanStages()` resolves it. This **replaces** the former email allowlist (`config('app.stage_reset_emails')`, now removed).
 
 ## Branch-scoped visibility
 

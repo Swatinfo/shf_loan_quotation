@@ -13,6 +13,7 @@ use App\Models\StageAssignment;
 use App\Models\StageQuery;
 use App\Models\User;
 use App\Services\ConfigService;
+use App\Services\LoanPipelineBreakdownService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,21 @@ class DashboardController extends Controller
             'payload' => $this->newthemePayload($user),
             'pageKey' => 'dashboard',
         ]);
+    }
+
+    /**
+     * JSON feed for the dashboard "Stage status breakdown" block.
+     * Scope + selected-user authorization is enforced inside the service.
+     */
+    public function stageBreakdown(Request $request, LoanPipelineBreakdownService $service): JsonResponse
+    {
+        $user = Auth::user();
+        $period = (string) $request->query('period', LoanPipelineBreakdownService::DEFAULT_PERIOD);
+        $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
+        $from = $request->filled('from') ? (string) $request->query('from') : null;
+        $to = $request->filled('to') ? (string) $request->query('to') : null;
+
+        return response()->json($service->build($user, $period, $userId, $from, $to));
     }
 
     /**
@@ -713,11 +729,37 @@ class DashboardController extends Controller
             'dvr' => $this->newthemeDvr($user),
             'quotations' => $this->newthemeQuotations($user),
             'pipeline' => $this->newthemePipeline($user),
+            'stageBreakdownMeta' => $this->newthemeStageBreakdownMeta($user),
             'todayFollowUps' => $this->newthemeTodayFollowUps($user),
             'openQueries' => $this->newthemeOpenQueries($user),
             'fieldActivity' => $this->newthemeFieldActivity($user),
             'bankMix' => $this->newthemeBankMix($user),
             'stagesDropdown' => $this->newthemeStagesDropdown(),
+        ];
+    }
+
+    /**
+     * Filter metadata for the "Stage status breakdown" block. The heavy aggregation
+     * itself is fetched lazily via GET /dashboard/stage-breakdown.
+     *
+     * @return array<string,mixed>
+     */
+    private function newthemeStageBreakdownMeta(User $user): array
+    {
+        $service = app(LoanPipelineBreakdownService::class);
+
+        return [
+            'canFilterByUser' => $service->canFilterByUser($user),
+            'userOptions' => $service->userOptions($user),
+            'defaultPeriod' => LoanPipelineBreakdownService::DEFAULT_PERIOD,
+            'periods' => [
+                ['value' => '30', 'label' => 'Last 30 days'],
+                ['value' => '60', 'label' => 'Last 60 days'],
+                ['value' => '90', 'label' => 'Last 90 days'],
+                ['value' => '180', 'label' => 'Last 180 days'],
+                ['value' => 'all', 'label' => 'All time'],
+                ['value' => 'custom', 'label' => 'Custom range'],
+            ],
         ];
     }
 
@@ -740,6 +782,7 @@ class DashboardController extends Controller
             || $user->hasPermission('view_all_quotations');
 
         return [
+            ['key' => 'stage-breakdown', 'label' => 'Stage Breakdown', 'visible' => true, 'count' => 0],
             ['key' => 'personal-tasks', 'label' => 'Personal Tasks', 'visible' => true, 'count' => $counts['personal_tasks'] ?? 0],
             ['key' => 'tasks', 'label' => 'My Tasks', 'visible' => $hasLoanContext, 'count' => $counts['my_tasks'] ?? 0],
             ['key' => 'loans', 'label' => 'Loans', 'visible' => $hasLoanContext, 'count' => $counts['loans'] ?? 0],
@@ -763,6 +806,11 @@ class DashboardController extends Controller
     {
         $visible = collect($tabs)->where('visible', true)->pluck('key')->all();
         $isVisible = fn (string $k) => in_array($k, $visible, true);
+
+        // Stage breakdown is the headline tab — default to it when present.
+        if ($isVisible('stage-breakdown')) {
+            return 'stage-breakdown';
+        }
 
         $overdueDvr = DailyVisitReport::visibleTo($user)
             ->where('follow_up_needed', true)

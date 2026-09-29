@@ -27,7 +27,9 @@
                        id="dash-tab-{{ $tab['key'] }}"
                        data-panel="{{ $tab['key'] }}">
                         {{ $tab['label'] }}
-                        <span class="count" id="{{ $countId[$tab['key']] ?? 'cnt-'.$tab['key'] }}">0</span>
+                        @if ($tab['key'] !== 'stage-breakdown')
+                            <span class="count" id="{{ $countId[$tab['key']] ?? 'cnt-'.$tab['key'] }}">0</span>
+                        @endif
                     </a>
                 @endif
             @endforeach
@@ -38,6 +40,21 @@
         <div class="grid c-main mt-4">
             {{-- ===== MAIN: tab panels ===== --}}
             <div data-tab-panel-group="dash">
+
+                <div class="card" id="dash-panel-stage-breakdown" data-panel-id="stage-breakdown" style="display:none;">
+                    <div class="card-hd">
+                        <div class="t">Stage status breakdown <span class="sub" id="sbRange">—</span></div>
+                        <div class="actions sb-filters">
+                            <select id="sbUser" class="sb-select" style="display:none;"></select>
+                            <input type="text" id="sbFrom" class="sb-select shf-datepicker sb-date" placeholder="Start date" autocomplete="off" style="display:none;">
+                            <input type="text" id="sbTo" class="sb-select shf-datepicker sb-date" placeholder="End date" autocomplete="off" style="display:none;">
+                            <select id="sbPeriod" class="sb-select"></select>
+                        </div>
+                    </div>
+                    <div class="card-bd">
+                        <div id="stageBreakdown" data-url="{{ route('dashboard.stage-breakdown') }}"><div class="sb-loading text-xs text-muted">Loading…</div></div>
+                    </div>
+                </div>
 
                 <div class="card" id="dash-panel-personal-tasks" data-panel-id="personal-tasks">
                     <div class="card-hd">
@@ -98,36 +115,37 @@
                     <div class="card-bd" style="padding:0;overflow-x:auto;"><div id="rows-quot"></div></div>
                 </div>
 
-                <div class="card mt-4">
+                <div class="card mt-4" data-collapsible>
                     <div class="card-hd">
-                        <div class="t"><span class="num">6</span>Pipeline by stage <span class="sub">branch-wide</span></div>
+                        <div class="t"><span class="card-caret" aria-hidden="true">▾</span><span class="num">6</span>Pipeline by stage <span class="sub">branch-wide</span></div>
                         <div class="actions"><a class="btn sm ghost" href="{{ route('loans.index') }}">Open loans →</a></div>
                     </div>
                     <div class="card-bd">
                         <div id="pipelineGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;"></div>
                     </div>
                 </div>
+
             </div>
 
             {{-- ===== SIDEBAR ===== --}}
             <aside>
-                <div class="card">
-                    <div class="card-hd"><div class="t"><span class="num">A</span>Today's follow-ups</div><a class="btn sm ghost" href="{{ route('dvr.index') }}">All</a></div>
+                <div class="card" data-collapsible>
+                    <div class="card-hd"><div class="t"><span class="card-caret" aria-hidden="true">▾</span><span class="num">A</span>Today's follow-ups</div><a class="btn sm ghost" href="{{ route('dvr.index') }}">All</a></div>
                     <div class="card-bd" style="padding:0;"><ul class="timeline" id="timelineList" style="padding:12px 18px;"></ul></div>
                 </div>
 
-                <div class="card mt-4">
-                    <div class="card-hd"><div class="t"><span class="num">B</span>Open queries</div><span class="badge red sq" id="openQueryCount">0</span></div>
+                <div class="card mt-4" data-collapsible>
+                    <div class="card-hd"><div class="t"><span class="card-caret" aria-hidden="true">▾</span><span class="num">B</span>Open queries</div><span class="badge red sq" id="openQueryCount">0</span></div>
                     <div class="card-bd" style="padding:0;" id="openQueriesList"></div>
                 </div>
 
-                <div class="card mt-4">
-                    <div class="card-hd"><div class="t"><span class="num">C</span>Field activity <span class="sub">today</span></div></div>
+                <div class="card mt-4" data-collapsible>
+                    <div class="card-hd"><div class="t"><span class="card-caret" aria-hidden="true">▾</span><span class="num">C</span>Field activity <span class="sub">today</span></div></div>
                     <div class="card-bd"><div class="strip" style="border:none;" id="fieldStrip"></div></div>
                 </div>
 
-                <div class="card mt-4">
-                    <div class="card-hd"><div class="t"><span class="num">D</span>Bank mix MTD</div></div>
+                <div class="card mt-4" data-collapsible>
+                    <div class="card-hd"><div class="t"><span class="card-caret" aria-hidden="true">▾</span><span class="num">D</span>Bank mix MTD</div></div>
                     <div class="card-bd" style="display:flex;gap:20px;align-items:center;">
                         <svg class="donut" viewBox="0 0 42 42" id="bankDonut"></svg>
                         <div style="flex:1;" id="bankLegend"></div>

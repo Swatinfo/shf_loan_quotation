@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Lab404\Impersonate\Models\Impersonate;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
-class User extends Authenticatable
+class UserBKP extends Authenticatable
 {
     use HasFactory, HasPushSubscriptions, Impersonate, Notifiable;
 
@@ -25,12 +25,20 @@ class User extends Authenticatable
     }
 
     protected $fillable = [
-        'name', 'email', 'password', 'is_active', 'created_by', 'phone',
-        'employee_id', 'default_branch_id', 'task_bank_id',
+        'name',
+        'email',
+        'password',
+        'is_active',
+        'created_by',
+        'phone',
+        'employee_id',
+        'default_branch_id',
+        'task_bank_id',
     ];
 
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
+        'remember_token',
     ];
 
     protected function casts(): array
@@ -174,25 +182,6 @@ class User extends Authenticatable
     public function hasPermission(string $slug): bool
     {
         return app(PermissionService::class)->userHasPermission($this, $slug);
-    }
-
-    /**
-     * Whether this account may reset a loan back to an earlier stage. Gated by
-     * the `reset_loan_stages` permission (default roles: super_admin, admin,
-     * branch_manager, bdh; super_admin bypasses all permission checks).
-     */
-    public function canResetLoanStages(): bool
-    {
-        return $this->hasPermission('reset_loan_stages');
-    }
-
-    /**
-     * Whether this account may override a loan's expected docket date after the
-     * Sanction stage. Gated by the `edit_docket_date` permission.
-     */
-    public function canEditDocketDate(): bool
-    {
-        return $this->hasPermission('edit_docket_date');
     }
 
     // ── Display Helpers ──

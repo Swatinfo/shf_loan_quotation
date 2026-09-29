@@ -19,6 +19,25 @@
         search: "",
     };
 
+    // Deep-link from the dashboard "Stage status breakdown" tiles. When present,
+    // the server classifies the exact loan IDs for this section/bucket so the list
+    // matches the tile count precisely.
+    var brk = (function () {
+        var p = new URLSearchParams(location.search);
+        if (!p.get("brk_bucket") || !p.get("brk_section")) {
+            return null;
+        }
+        return {
+            section: p.get("brk_section"),
+            bucket: p.get("brk_bucket"),
+            scope: p.get("brk_scope") || "own",
+            user: p.get("brk_user") || "",
+            period: p.get("brk_period") || "30",
+            from: p.get("brk_from") || "",
+            to: p.get("brk_to") || "",
+        };
+    })();
+
     var rowsEl = document.getElementById("lxRows");
     var mobileRowsEl = document.getElementById("lxMobileRows");
     var pagerEl = document.getElementById("lxPager");
@@ -89,6 +108,21 @@
         });
         if (state.search) {
             params.set("search[value]", state.search);
+        }
+        if (brk) {
+            params.set("brk_section", brk.section);
+            params.set("brk_bucket", brk.bucket);
+            params.set("brk_scope", brk.scope);
+            if (brk.user) {
+                params.set("brk_user", brk.user);
+            }
+            params.set("brk_period", brk.period);
+            if (brk.from) {
+                params.set("brk_from", brk.from);
+            }
+            if (brk.to) {
+                params.set("brk_to", brk.to);
+            }
         }
         return params.toString();
     }
@@ -567,6 +601,51 @@
         });
         activeCountEl.textContent = active;
         activeCountEl.classList.toggle("has-active", active > 0);
+    }
+
+    /* ======= Dashboard breakdown deep-link banner ======= */
+    if (brk) {
+        var BRK_SECTION = { sanction: "Sanction", technical: "Technical", legal: "Legal", disbursement: "Disbursement" };
+        var BRK_BUCKET = {
+            sip: "SIP (decision pending)", query: "Query", sanctioned: "Sanctioned", hold: "Hold", withdrawn: "Withdrawn", rejected: "Rejected",
+            not_initiated: "Not Initiated", under_process: "Under Process", completed: "Completed",
+            spill: "Spill (docket pending)", logged_in: "Logged In", entry: "Cheque / Transfer Entry", otc: "OTC Clearance",
+        };
+        var BRK_SCOPE = { own: "My data", branch: "My branch", all: "All data" };
+
+        // The bucket may hold any loan status (withdrawn/hold/rejected/completed), so
+        // reflect that as "All" — narrowing status would drop rows the tile counted.
+        var brkStatus = document.getElementById("lxStatus");
+        if (brkStatus) {
+            brkStatus.value = "all";
+        }
+        // Open the filter panel so the applied context is visible and adjustable.
+        var brkCard = document.getElementById("lxFiltersCard");
+        if (brkCard) {
+            brkCard.classList.remove("collapsed");
+        }
+
+        var dateText = (brk.from || brk.to)
+            ? (brk.from || "…") + " → " + (brk.to || "…")
+            : (brk.period === "all" ? "All time" : "Last " + brk.period + " days");
+
+        if (statsEl) {
+            var note = document.createElement("div");
+            note.className = "lx-brk-note";
+            note.innerHTML =
+                "Filtered from dashboard — <strong>" +
+                escapeHtml(BRK_SECTION[brk.section] || brk.section) +
+                " · " +
+                escapeHtml(BRK_BUCKET[brk.bucket] || brk.bucket) +
+                "</strong> · " +
+                escapeHtml(dateText) +
+                " · " +
+                escapeHtml(BRK_SCOPE[brk.scope] || brk.scope) +
+                " <a href=\"" +
+                escapeHtml(location.pathname) +
+                "\">Clear</a>";
+            statsEl.insertAdjacentElement("afterend", note);
+        }
     }
 
     /* ======= Initial load ======= */

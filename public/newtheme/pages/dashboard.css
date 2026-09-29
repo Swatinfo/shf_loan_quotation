@@ -153,3 +153,206 @@
         flex-wrap: wrap;
     }
 }
+
+/* ==================== Stage status breakdown (block #7) ==================== */
+.sb-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.sb-select {
+    font: 500 12px/1 'Archivo', system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    max-width: 170px;
+    cursor: pointer;
+}
+
+#sbRange {
+    font-weight: 500;
+}
+
+.sb-block {
+    margin-bottom: 18px;
+}
+
+.sb-block:last-child {
+    margin-bottom: 0;
+}
+
+.sb-block-hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    font: 600 14px/1.2 'Jost', system-ui, sans-serif;
+    color: var(--ink);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--line-strong);
+}
+
+.sb-block-total {
+    font: 500 12px/1 'Archivo', system-ui, sans-serif;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+
+.sb-section {
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.sb-section-hd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--paper-2);
+    border: 0;
+    cursor: pointer;
+    font: 600 11px/1 'Jost', system-ui, sans-serif;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    text-align: left;
+}
+
+.sb-section-hd:hover {
+    background: var(--bg-alt, #e6e7e8);
+}
+
+.sb-section-name {
+    flex: 1 1 auto;
+}
+
+.sb-section-sub {
+    font: 500 11px/1 'Archivo', system-ui, sans-serif;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+
+.sb-caret {
+    font-size: 11px;
+    color: var(--ink-3);
+    transition: transform .15s ease;
+}
+
+.sb-collapsed .sb-caret {
+    transform: rotate(-90deg);
+}
+
+.sb-section .sb-tiles {
+    padding: 10px 12px;
+}
+
+/* Must out-specify (or match) `#stageBreakdown .sb-tiles { display:grid }` below,
+   which uses an ID — otherwise a collapsed section can't hide its tiles. */
+#stageBreakdown .sb-collapsed .sb-tiles {
+    display: none !important;
+}
+
+.sb-date {
+    max-width: 120px;
+}
+
+/* Tiles are scoped to the homepage Stage-status-breakdown block only — nothing
+   elsewhere in the app uses .sb-tile, and dashboard.css only loads on /dashboard. */
+#stageBreakdown .sb-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 10px;
+}
+
+#stageBreakdown .sb-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 13px 15px;
+    /* full, clearly-visible border on all four sides + accent left edge */
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    background: var(--paper);
+    text-decoration: none;
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+}
+
+#stageBreakdown .sb-tile:hover {
+    border-color: var(--accent);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .08);
+    transform: translateY(-1px);
+}
+
+#stageBreakdown .sb-tile-lbl {
+    font: 600 10.5px/1.2 'Jost', system-ui, sans-serif;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+#stageBreakdown .sb-tile-count {
+    font: 600 26px/1 'Jost', system-ui, sans-serif;
+    color: var(--ink);
+}
+
+#stageBreakdown .sb-tile-amt {
+    font: 600 14px/1.15 'Jost', system-ui, sans-serif;
+    color: var(--ink-2);
+}
+
+/* Zero tiles keep their full border (dim the content, not the box). */
+#stageBreakdown .sb-tile-zero {
+    background: var(--paper-2);
+}
+
+#stageBreakdown .sb-tile-zero .sb-tile-lbl,
+#stageBreakdown .sb-tile-zero .sb-tile-count,
+#stageBreakdown .sb-tile-zero .sb-tile-amt {
+    color: var(--ink-4);
+}
+
+@media (max-width: 991.98px) {
+    #stageBreakdown .sb-tiles {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+    .sb-select {
+        max-width: 130px;
+    }
+}
+
+/* ==================== Collapsible dashboard cards ==================== */
+/* Pipeline by stage (#6) + sidebar cards A–D. Click the header to collapse. */
+[data-collapsible] > .card-hd {
+    cursor: pointer;
+    user-select: none;
+}
+
+.card-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    margin-right: 4px;
+    font-size: 11px;
+    color: var(--ink-3);
+    transition: transform .15s ease;
+}
+
+.card-collapsed .card-caret {
+    transform: rotate(-90deg);
+}
+
+.card-collapsed > .card-bd {
+    /* !important beats inline display styles on some card bodies (e.g. Bank mix MTD's flex). */
+    display: none !important;
+}

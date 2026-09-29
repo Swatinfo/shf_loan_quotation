@@ -307,7 +307,7 @@ Called after every completion / revert / status change.
 Two surfaces share this engine:
 
 - **CLI** — `php artisan loan:set-stage` (interactive menu with prior-stage validation), or non-interactive `php artisan loan:set-stage {loan} {stage} [--phase=] [--variant=escalated_bm|escalated_bdh|transferred_oe] [--force]`. Ungated (server access only).
-- **Web** — `POST /loans/{loan}/stages/reset` (`loans.stages.reset`) → `LoanStageController@resetStage`, surfaced as a red "Reset Stage" button + SweetAlert stage picker on the loan **stages** page (`newtheme/loans/stages.blade.php`). **Access is email-gated, not role/permission**: `User::canResetLoanStages()` checks `config('app.stage_reset_emails')` (default `superadmin@shfworld.com,admin@shfworld.com`, `STAGE_RESET_EMAILS` override). A super_admin whose email is not listed is still denied. Logs `reset_loan_stage` to the activity log.
+- **Web** — `POST /loans/{loan}/stages/reset` (`loans.stages.reset`) → `LoanStageController@resetStage`, surfaced as a red "Reset Stage" button + SweetAlert stage picker on the loan **stages** page (`newtheme/loans/stages.blade.php`). **Access is gated by the `reset_loan_stages` permission**: `User::canResetLoanStages()` → `hasPermission('reset_loan_stages')`. Default roles: super_admin, admin, branch_manager, bdh (super_admin bypasses all permission checks). The route also carries `permission:reset_loan_stages` middleware. Manage per-role/per-user in the Permissions UI. Logs `reset_loan_stage` to the activity log.
 
 ## Notifications
 

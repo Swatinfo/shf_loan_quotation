@@ -75,6 +75,14 @@
         || 'personal-tasks';
     activatePanel(initialTab);
 
+    /* Collapsible cards — Pipeline by stage (#6) + sidebar A–D. Clicking the
+       header toggles; header links/buttons keep working. */
+    document.addEventListener('click', (e) => {
+        const hd = e.target.closest('[data-collapsible] > .card-hd');
+        if (!hd || e.target.closest('a, button')) { return; }
+        hd.parentElement.classList.toggle('card-collapsed');
+    });
+
     /* ==================== Helpers ==================== */
     // Map controller "color" values to newtheme native badge color classes.
     // Newtheme CSS already defines .badge.{green|amber|red|blue|violet|orange|dark}
@@ -318,6 +326,133 @@
         '<div class="progress thin mt-1"><div class="fill" style="width:' + Math.min(100, s.count * 10) + '%;background:' + barColor(s.color) + ';"></div></div>' +
         '</div>'
     )).join('');
+
+    /* ==================== Stage status breakdown ==================== */
+    (function stageBreakdown() {
+        const host = $('stageBreakdown');
+        if (!host) { return; }
+        const meta = D.stageBreakdownMeta || {};
+        const url = host.getAttribute('data-url');
+        const periodSel = $('sbPeriod');
+        const userSel = $('sbUser');
+
+        // Compact Indian units: ₹ 1.23 Cr / ₹ 12.5 L / ₹ 40 K.
+        const fmtAmt = (n) => {
+            n = Number(n || 0);
+            const trim = (x) => parseFloat(x.toFixed(2)).toLocaleString('en-IN');
+            if (n >= 1e7) { return trim(n / 1e7) + ' Cr'; }
+            if (n >= 1e5) { return trim(n / 1e5) + ' L'; }
+            if (n >= 1e3) { return trim(n / 1e3) + ' K'; }
+            return Math.round(n).toLocaleString('en-IN');
+        };
+
+        const fromEl = $('sbFrom');
+        const toEl = $('sbTo');
+
+        // period options
+        periodSel.innerHTML = (meta.periods || []).map((p) =>
+            '<option value="' + escapeHtml(p.value) + '"' + (p.value === meta.defaultPeriod ? ' selected' : '') + '>' + escapeHtml(p.label) + '</option>'
+        ).join('');
+
+        // user options (only when allowed)
+        if (meta.canFilterByUser && (meta.userOptions || []).length) {
+            userSel.style.display = '';
+            userSel.innerHTML = '<option value="">— My scope —</option>' +
+                meta.userOptions.map((u) => '<option value="' + u.id + '">' + escapeHtml(u.name) + '</option>').join('');
+        }
+
+        // dd/mm/yyyy → yyyy-mm-dd for the request
+        const toIso = (val) => {
+            if (!val) { return ''; }
+            const p = val.split('/');
+            return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : val;
+        };
+        if (window.jQuery && jQuery.fn.datepicker) {
+            jQuery([fromEl, toEl]).datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true, clearBtn: true, orientation: 'bottom auto', container: 'body' });
+        }
+
+        function tile(b) {
+            const zero = !b.count ? ' sb-tile-zero' : '';
+            return '<a class="sb-tile' + zero + '" href="' + escapeHtml(b.url) + '">' +
+                '<span class="sb-tile-lbl">' + escapeHtml(b.label) + '</span>' +
+                '<span class="sb-tile-count">' + Number(b.count).toLocaleString('en-IN') + '</span>' +
+                '<span class="sb-tile-amt">₹ ' + fmtAmt(b.amount) + '</span>' +
+                '</a>';
+        }
+
+        function section(s) {
+            return '<div class="sb-section" data-sb-section>' +
+                '<button type="button" class="sb-section-hd" data-sb-toggle aria-expanded="true">' +
+                '<span class="sb-caret" aria-hidden="true">▾</span>' +
+                '<span class="sb-section-name">' + escapeHtml(s.label) + '</span>' +
+                '<span class="sb-section-sub">' + Number(s.subtotalCount).toLocaleString('en-IN') + ' · ₹ ' + fmtAmt(s.subtotalAmount) + '</span>' +
+                '</button>' +
+                '<div class="sb-tiles">' + s.buckets.map(tile).join('') + '</div>' +
+                '</div>';
+        }
+
+        function block(bl) {
+            return '<div class="sb-block">' +
+                '<div class="sb-block-hd">' + escapeHtml(bl.label) +
+                '<span class="sb-block-total">' + Number(bl.totalCount).toLocaleString('en-IN') + ' loans · ₹ ' + fmtAmt(bl.totalAmount) + '</span>' +
+                '</div>' +
+                bl.sections.map(section).join('') +
+                '</div>';
+        }
+
+        // Collapse/expand a section on header click (delegated — survives re-render).
+        host.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-sb-toggle]');
+            if (!btn) { return; }
+            const sec = btn.closest('[data-sb-section]');
+            const collapsed = sec.classList.toggle('sb-collapsed');
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+
+        let inFlight = 0;
+        function load() {
+            const period = periodSel.value || meta.defaultPeriod || '30';
+            const custom = period === 'custom';
+            fromEl.style.display = custom ? '' : 'none';
+            toEl.style.display = custom ? '' : 'none';
+
+            const from = custom ? toIso(fromEl.value) : '';
+            const to = custom ? toIso(toEl.value) : '';
+            // Custom range needs at least one bound before we query.
+            if (custom && !from && !to) {
+                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date.</div>';
+                return;
+            }
+
+            const uid = userSel.value || '';
+            let q = url + '?period=' + encodeURIComponent(period);
+            if (uid) { q += '&user_id=' + encodeURIComponent(uid); }
+            if (from) { q += '&from=' + encodeURIComponent(from); }
+            if (to) { q += '&to=' + encodeURIComponent(to); }
+
+            const token = ++inFlight;
+            host.innerHTML = '<div class="sb-loading text-xs text-muted">Loading…</div>';
+            fetch(q, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+                .then((data) => {
+                    if (token !== inFlight) { return; } // a newer request superseded this one
+                    const rangeEl = $('sbRange');
+                    if (rangeEl) { rangeEl.textContent = (data.range && data.range.label) || ''; }
+                    host.innerHTML = (data.blocks || []).map(block).join('') ||
+                        '<div class="text-xs text-muted">No data for this period.</div>';
+                })
+                .catch(() => {
+                    if (token !== inFlight) { return; }
+                    host.innerHTML = '<div class="text-xs text-muted">Could not load breakdown.</div>';
+                });
+        }
+
+        periodSel.addEventListener('change', load);
+        userSel.addEventListener('change', load);
+        fromEl.addEventListener('change', load);
+        toEl.addEventListener('change', load);
+        load();
+    })();
 
     /* ==================== Sidebar: today's follow-ups ==================== */
     const todayItems = D.todayFollowUps || [];
