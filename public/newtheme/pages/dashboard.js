@@ -126,7 +126,10 @@
        header toggles; header links/buttons keep working. */
     document.addEventListener("click", (e) => {
         const hd = e.target.closest("[data-collapsible] > .card-hd");
-        if (!hd || e.target.closest("a, button")) {
+        // Ignore interactive header controls so they keep working without
+        // toggling collapse — links/buttons AND form controls (the Stage
+        // Breakdown header carries filter selects + an Apply button).
+        if (!hd || e.target.closest("a, button, select, input, textarea, label, option")) {
             return;
         }
         hd.parentElement.classList.toggle("card-collapsed");

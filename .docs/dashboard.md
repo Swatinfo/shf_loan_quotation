@@ -44,6 +44,10 @@ system. Styling is a **page-scoped override in `public/newtheme/pages/dashboard.
   `.kpi-sep` equivalent; container `gap:16px` leaves room for it.
 - Stage Breakdown has **no count** (still shows only icon + label) and keeps the active orange
   underline; the active tab also colours its number/label with the accent.
+- **Responsive**: the bar shows **all** tabs at every width — no horizontal swipe. On desktop it's a
+  single row (with dividers); at `≤899px` it `flex-wrap: wrap`s onto multiple rows and turns
+  `overflow-x: visible` (the dividers are hidden on wrap, since a divider at a row-start floats); at
+  `≤480px` the label/count type is trimmed one step so two chips fit per row on phones.
 
 Editing `dashboard.css`/`dashboard.js`/the blade is a public-asset change → bump `SHF_VERSION`
 (`.env`) + `SHF_SW_VERSION` (`public/sw.js`) + `php artisan config:clear` (per the asset-versioning
@@ -118,7 +122,11 @@ Separate from the dashboard: `GET /activity-log` (permission: `view_activity_log
 ## Responsive patterns
 
 - Stat cards: 4-up on desktop, 2-up on tablet, 1-up on mobile
-- Tabs scroll horizontally on narrow screens (`overflow-x: auto` on `.shf-tabs`)
+- **Tab bar wraps to show every tab on smaller screens** — it does **not** horizontally scroll/swipe.
+  Desktop = one row with dividers; `≤899px` the row `flex-wrap: wrap`s onto multiple rows
+  (`overflow-x: visible`, dividers hidden, `row-gap` 8px); `≤480px` trims the type slightly so two
+  chips fit per row. Verified at 1440 (1 row), 768 (2 rows), 414/360 (3 rows). See "Tab bar visual
+  style" above.
 - DataTables use the **mobile card pattern** (`.shf-table-mobile`) on narrow screens — `thead` hides, `tbody` rows become flex-card blocks with `data-label` pseudo-elements
 
 ## Open Queries widget
@@ -141,6 +149,14 @@ tiles, each showing a **count + ₹ amount** (rendered compact — L / Cr). Fed 
 only ships `stageBreakdownMeta` (allowed scopes, user options, period list). The tab
 carries no count badge.
 
+- **Collapsible**: the whole block is collapsible via the shared card pattern —
+  `data-collapsible` on `#dash-panel-stage-breakdown` + a `.card-caret` in the header;
+  clicking the header toggles `.card-collapsed` (`.card-bd` hidden, caret rotates). Because
+  this header uniquely carries **filter controls** (scope/branch/bank/product/period selects
+  + Apply), the delegated toggle handler in `dashboard.js` ignores clicks on
+  `a, button, select, input, textarea, label, option` so the filters keep working without
+  collapsing the card. This is independent of the per-**section** collapse inside the block
+  (`[data-sb-toggle]` → `.sb-collapsed`).
 - **Service**: `LoanPipelineBreakdownService` (see `services-reference.md`) does a
   single-fetch-per-scope PHP classification — each cohort loan lands in **exactly one
   bucket per section** by precedence, so buckets never overlap within a section.

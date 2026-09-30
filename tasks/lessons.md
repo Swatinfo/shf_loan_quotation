@@ -25,7 +25,31 @@ Patterns and corrections captured during development. Review at session start.
   (padding, then font size, then the icons/dividers the KPI chips have but tabs lacked). Logging in via
   the chrome-devtools MCP and screenshotting the actual header (KPI strip above, tab bar below) closed
   it in two passes. For pixel-match requests, get a login/screenshot early instead of guessing.
-- Public-asset edits → bumped `SHF_VERSION` + `SHF_SW_VERSION` each pass (final `20260930190000`) +
+- **Small-screen tab bar wraps, doesn't swipe**: the request was to show *all* options on small
+  devices instead of a horizontally-scrolled row. Fix = `≤899px` `.page-header .tabs { flex-wrap:
+  wrap; overflow-x:visible; gap:8px 16px }` and **hide the `.tab + .tab::before` dividers on wrap**
+  (a divider at a wrapped row-start floats); `≤480px` trims label/count type one step. Verified 1440
+  (1 row) / 768 (2) / 414·360 (3). Mirrors how `.kpi-strip` flows its chips.
+- **Whole Stage-Breakdown block made collapsible** via the existing `data-collapsible` card pattern
+  (`.card-caret` in header, delegated click toggles `.card-collapsed`). Gotcha: that header uniquely
+  holds **filter selects + Apply**, and the shared handler only ignored `a, button` — a `<select>`
+  click would have collapsed the card. Extended the ignore list to
+  `a, button, select, input, textarea, label, option` (safe for the other collapsible cards — their
+  headers have no form controls). Separate from the per-section `[data-sb-toggle]`/`.sb-collapsed`
+  collapse inside the block.
+- **`max-width` media queries are desktop-first → order them LARGEST breakpoint first**, so the
+  smaller (more specific) one sits later and wins. The dashboard tab rules had drifted across three
+  blocks — `.tab` shrink at `899px`, again at `991.98px`, and a `.tab`/`.count` block at `480px` — but
+  the `991.98px` block sat **after** the `480px` block in the file, so at phone widths the 991.98
+  rules overrode the 480 ones and the phone tweaks silently "didn't take effect". `!important` had
+  been sprinkled on to force it, which then blocked the 480 block from ever winning. Fix: delete the
+  duplicate `.tab` rules from the `991.98px` block (it should only do `#pipelineGrid`), drop the
+  `!important`, and keep the tab-responsive rules in just the `899px` (wrap+shrink) and `480px`
+  (further shrink) blocks — `899` before `480` = correct descending order, no `!important` needed.
+  Verified with `getComputedStyle` at several widths (500px → count 14px from the 899 block; ≤480 →
+  the 480 block's 11px now wins). Note the desktop **base** had also been shrunk to 12px/14px + tight
+  padding while fighting this — left as-is (looks clean); the media blocks only step it down further.
+- Public-asset edits → bumped `SHF_VERSION` + `SHF_SW_VERSION` each pass (final `20260930220000`) +
   `config:clear`. No tests (view/CSS/JS only). Docs: `.docs/dashboard.md` updated.
 
 ## Stage-Breakdown: per-stage dates + disbursement reconciles with Management report (2026-09-29)

@@ -6,7 +6,7 @@
 //  If offline, any page/API request returns the offline shell or 503,
 //  so stale data is never shown.
 // ============================================================
-var SHF_SW_VERSION = '20260707102458';
+var SHF_SW_VERSION = '20260930175817';
 var STATIC_CACHE = 'shf-static-' + SHF_SW_VERSION;
 var OFFLINE_URL = '/offline.html';
 

@@ -49,7 +49,8 @@
     /* Shadows */
     --sh-1: 0 1px 2px rgba(20, 18, 19, 0.05), 0 1px 1px rgba(20, 18, 19, 0.03);
     --sh-2: 0 2px 4px rgba(20, 18, 19, 0.06), 0 8px 20px rgba(20, 18, 19, 0.05);
-    --sh-pop: 0 8px 28px rgba(20, 18, 19, 0.14), 0 2px 6px rgba(20, 18, 19, 0.06);
+    --sh-pop:
+        0 8px 28px rgba(20, 18, 19, 0.14), 0 2px 6px rgba(20, 18, 19, 0.06);
 }
 
 *,
@@ -62,7 +63,12 @@ html,
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Archivo', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family:
+        "Archivo",
+        "Inter",
+        system-ui,
+        -apple-system,
+        sans-serif;
     font-size: var(--t-base);
     color: var(--ink);
     background: var(--paper-2);
@@ -72,16 +78,16 @@ body {
 }
 
 .font-display {
-    font-family: 'Jost', 'Archivo', sans-serif;
+    font-family: "Jost", "Archivo", sans-serif;
     letter-spacing: -0.01em;
 }
 
 .font-mono {
-    font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
 
 .guj {
-    font-family: 'Noto Sans Gujarati', 'Archivo', sans-serif;
+    font-family: "Noto Sans Gujarati", "Archivo", sans-serif;
 }
 
 button {
@@ -130,7 +136,7 @@ a {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-weight: 700;
     letter-spacing: 0.04em;
     font-size: 14px;
@@ -194,7 +200,7 @@ a {
 }
 
 .nav-primary .nav-item.active::after {
-    content: '';
+    content: "";
     position: absolute;
     left: 12px;
     right: 12px;
@@ -370,7 +376,7 @@ a {
 }
 
 .page-header h1 {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     margin: 0;
     font-size: 22px;
     font-weight: 600;
@@ -389,7 +395,7 @@ a {
     align-items: flex-end;
     justify-content: space-between;
     gap: 20px;
-    padding-bottom: 10px;
+    /* padding-bottom: 10px; */
 }
 
 .page-header .head-actions {
@@ -473,7 +479,7 @@ main.content {
     overflow: hidden;
 }
 
-.card+.card {
+.card + .card {
     margin-top: 16px;
 }
 
@@ -487,7 +493,7 @@ main.content {
 }
 
 .card-hd .t {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 13.5px;
     font-weight: 600;
     display: flex;
@@ -558,7 +564,7 @@ main.content {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 13px;
     font-weight: 600;
 }
@@ -755,7 +761,9 @@ main.content {
     border: 1px solid var(--line-strong);
     border-radius: 6px;
     outline: none;
-    transition: border-color 0.12s, box-shadow 0.12s;
+    transition:
+        border-color 0.12s,
+        box-shadow 0.12s;
 }
 
 .input:focus,
@@ -854,7 +862,7 @@ main.content {
 }
 
 .switch .track::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 2px;
     left: 2px;
@@ -982,7 +990,7 @@ main.content {
 }
 
 .badge.dot::before {
-    content: '';
+    content: "";
     width: 5px;
     height: 5px;
     border-radius: 50%;
@@ -1134,7 +1142,7 @@ main.content {
 }
 
 .kpi .val {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 28px;
     font-weight: 600;
     letter-spacing: -0.02em;
@@ -1262,7 +1270,7 @@ main.content {
 }
 
 .stepper .step::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     right: -12px;
@@ -1287,7 +1295,7 @@ main.content {
 }
 
 .stepper .step .t {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 12.5px;
     font-weight: 600;
     color: var(--ink-3);
@@ -1348,7 +1356,7 @@ main.content {
 }
 
 .rail .r-step::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 11px;
     top: 28px;
@@ -1401,7 +1409,7 @@ main.content {
 }
 
 .rail .r-step .t {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-weight: 600;
     font-size: 13px;
     color: var(--ink);
@@ -1433,7 +1441,9 @@ main.content {
     background: #000;
     border-radius: 40px;
     padding: 10px;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.25),
+        0 10px 30px rgba(0, 0, 0, 0.1);
     position: relative;
     margin: 0 auto;
 }
@@ -1472,7 +1482,7 @@ main.content {
 }
 
 .m-topbar h1 {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 16px;
     font-weight: 600;
     margin: 0;
@@ -1520,7 +1530,7 @@ main.content {
 }
 
 .m-bottomnav .bn-item.active::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 25%;
@@ -1614,7 +1624,7 @@ main.content {
 }
 
 .timeline li::before {
-    content: '';
+    content: "";
     position: absolute;
     left: -7px;
     top: 2px;
@@ -1748,7 +1758,7 @@ main.content {
     padding: 12px 14px;
     background: var(--ink-2);
     color: #fff;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-weight: 600;
     font-size: 12px;
     letter-spacing: 0.06em;
@@ -1768,7 +1778,7 @@ main.content {
     margin-bottom: 14px;
 }
 
-.tweaks-panel .tw-group>label {
+.tweaks-panel .tw-group > label {
     display: block;
     font-size: 10px;
     font-weight: 600;
@@ -2078,14 +2088,18 @@ main.content {
 }
 
 .auth-panel::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -100px;
     right: -100px;
     width: 420px;
     height: 420px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(241, 90, 41, 0.3), transparent 70%);
+    background: radial-gradient(
+        circle,
+        rgba(241, 90, 41, 0.3),
+        transparent 70%
+    );
     pointer-events: none;
 }
 
@@ -2103,14 +2117,18 @@ main.content {
 
 .placeholder-img {
     background:
-        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 10px, transparent 10px 20px),
+        repeating-linear-gradient(
+            45deg,
+            rgba(255, 255, 255, 0.04) 0 10px,
+            transparent 10px 20px
+        ),
         linear-gradient(135deg, rgba(241, 90, 41, 0.12), rgba(58, 53, 54, 0.3));
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     display: grid;
     place-items: center;
     color: rgba(255, 255, 255, 0.55);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     font-size: 11px;
 }
 
@@ -2181,12 +2199,12 @@ main.content {
     overflow: hidden;
 }
 
-.strip>div {
+.strip > div {
     padding: 14px 18px;
     border-right: 1px solid var(--line);
 }
 
-.strip>div:last-child {
+.strip > div:last-child {
     border-right: none;
 }
 
@@ -2199,7 +2217,7 @@ main.content {
 }
 
 .strip .val {
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -2304,7 +2322,7 @@ main.content {
     background: #fff;
 }
 
-.file-row+.file-row {
+.file-row + .file-row {
     margin-top: 6px;
 }
 
@@ -2334,7 +2352,6 @@ main.content {
     gap: 4px;
     margin-left: auto;
 }
-
 
 /* ========================================================================
    APPENDED: completion stylesheet for all screen-level components
@@ -2389,7 +2406,7 @@ main.content {
     font-size: 11.5px;
     color: var(--ink-4);
     margin-bottom: 4px;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     letter-spacing: 0.02em;
 }
 
@@ -2519,7 +2536,7 @@ main.content {
     transform: translateY(-50%);
     color: var(--ink-4);
     font-size: 12px;
-    font-family: 'Jost';
+    font-family: "Jost";
     font-weight: 500;
     pointer-events: none;
 }
@@ -2566,7 +2583,7 @@ main.content {
     font-size: 11px;
     font-weight: 600;
     color: var(--ink-4);
-    font-family: 'Jost';
+    font-family: "Jost";
 }
 
 .step.done {
@@ -2611,7 +2628,7 @@ main.content {
 }
 
 .stage-rail::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 24px;
     right: 24px;
@@ -2640,7 +2657,7 @@ main.content {
     display: grid;
     place-items: center;
     margin: 0 auto;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-weight: 600;
     font-size: 14px;
     color: var(--ink-4);
@@ -2658,7 +2675,7 @@ main.content {
 .stage-rail .stg .sm {
     font-size: 10px;
     color: var(--ink-4);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     margin-top: 2px;
 }
 
@@ -2669,7 +2686,7 @@ main.content {
 }
 
 .stage-rail .stg.done .sn::before {
-    content: '✓';
+    content: "✓";
     font-size: 16px;
 }
 
@@ -2735,7 +2752,7 @@ main.content {
 }
 
 .stage-card .h .num {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 22px;
     font-weight: 600;
     color: var(--ink-4);
@@ -2747,7 +2764,7 @@ main.content {
 }
 
 .stage-card .t {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 4px;
@@ -2792,7 +2809,7 @@ main.content {
     place-items: center;
     color: var(--ink-4);
     font-size: 11px;
-    font-family: 'Jost';
+    font-family: "Jost";
 }
 
 .pp-row.active .pp-l,
@@ -2851,7 +2868,7 @@ main.content {
 }
 
 .badge.dot::before {
-    content: '';
+    content: "";
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -2876,7 +2893,7 @@ main.content {
 }
 
 .dvr-time {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     font-size: 11.5px;
     color: var(--ink-4);
     padding-top: 2px;
@@ -2892,7 +2909,7 @@ main.content {
 }
 
 .dvr-dot::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 12px;
     left: 50%;
@@ -2906,7 +2923,8 @@ main.content {
     display: none;
 }
 
-.dvr-body {}
+.dvr-body {
+}
 
 .dvr-t {
     font-weight: 600;
@@ -2941,12 +2959,12 @@ main.content {
     min-height: 300px;
 }
 
-.kanban-col>.h {
+.kanban-col > .h {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-    font-family: 'Jost';
+    font-family: "Jost";
     font-weight: 600;
     font-size: 12px;
     color: var(--ink-3);
@@ -2989,7 +3007,7 @@ main.content {
     margin-top: 8px;
     font-size: 10.5px;
     color: var(--ink-4);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
 }
 
 .task-card.overdue {
@@ -3049,7 +3067,7 @@ main.content {
 
 .doc-s {
     font-size: 10.5px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     color: var(--ink-4);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -3078,7 +3096,7 @@ main.content {
 
 .fn-r {
     text-align: right;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     color: var(--ink);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -3125,7 +3143,7 @@ main.content {
     border: 1px solid var(--line);
     border-radius: 6px;
     background: #fff;
-    font-family: 'Jost', sans-serif;
+    font-family: "Jost", sans-serif;
     font-weight: 700;
     font-size: 12px;
     letter-spacing: 0.04em;
@@ -3177,7 +3195,7 @@ main.content {
     gap: 10px 20px;
 }
 
-.kv-grid>div {
+.kv-grid > div {
     display: grid;
     grid-template-columns: 130px 1fr;
     gap: 8px;
@@ -3186,12 +3204,12 @@ main.content {
     border-bottom: 1px dashed var(--line);
 }
 
-.kv-grid>div>span:first-child {
+.kv-grid > div > span:first-child {
     color: var(--ink-4);
     font-weight: 500;
 }
 
-.kv-grid>div>span:last-child {
+.kv-grid > div > span:last-child {
     color: var(--ink);
     font-weight: 500;
 }
@@ -3245,7 +3263,7 @@ main.content {
 }
 
 .notif.unread::before {
-    content: '';
+    content: "";
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -3255,7 +3273,7 @@ main.content {
 }
 
 .notif:not(.unread)::before {
-    content: '';
+    content: "";
     width: 6px;
     height: 6px;
     flex-shrink: 0;
@@ -3271,7 +3289,7 @@ main.content {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    font-family: 'Jost';
+    font-family: "Jost";
     font-weight: 600;
     font-size: 14px;
 }
@@ -3327,7 +3345,7 @@ main.content {
 .n-t2 {
     font-size: 10.5px;
     color: var(--ink-4);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     margin-top: 4px;
 }
 
@@ -3335,8 +3353,20 @@ main.content {
 .map-ph {
     background:
         linear-gradient(#fcfbf9, #fcfbf9),
-        repeating-linear-gradient(0deg, transparent 0, transparent 22px, rgba(0, 0, 0, 0.04) 22px, rgba(0, 0, 0, 0.04) 23px),
-        repeating-linear-gradient(90deg, transparent 0, transparent 22px, rgba(0, 0, 0, 0.04) 22px, rgba(0, 0, 0, 0.04) 23px);
+        repeating-linear-gradient(
+            0deg,
+            transparent 0,
+            transparent 22px,
+            rgba(0, 0, 0, 0.04) 22px,
+            rgba(0, 0, 0, 0.04) 23px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent 0,
+            transparent 22px,
+            rgba(0, 0, 0, 0.04) 22px,
+            rgba(0, 0, 0, 0.04) 23px
+        );
     background-blend-mode: multiply;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -3345,7 +3375,7 @@ main.content {
 }
 
 .map-ph::after {
-    content: '📍';
+    content: "📍";
     position: absolute;
     left: 50%;
     top: 50%;
@@ -3367,7 +3397,7 @@ main.content {
 .upload-box strong {
     display: block;
     color: var(--ink);
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 14px;
     margin-bottom: 4px;
 }
@@ -3391,7 +3421,7 @@ main.content {
     inset: 0;
     display: grid;
     place-items: center;
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 32px;
     font-weight: 600;
 }
@@ -3411,7 +3441,7 @@ main.content {
 }
 
 .matrix th {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-weight: 600;
     color: var(--ink-3);
     text-transform: uppercase;
@@ -3429,7 +3459,7 @@ main.content {
 }
 
 .matrix td.c {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-weight: 600;
 }
 
@@ -3461,7 +3491,7 @@ main.content {
 }
 
 .cibil .score {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 40px;
     font-weight: 600;
     line-height: 1;
@@ -3531,7 +3561,7 @@ main.content {
 }
 
 .compare .bl.selected::before {
-    content: 'SELECTED';
+    content: "SELECTED";
     position: absolute;
     top: -10px;
     right: 12px;
@@ -3542,7 +3572,7 @@ main.content {
     padding: 3px 8px;
     border-radius: 3px;
     letter-spacing: 0.08em;
-    font-family: 'Jost';
+    font-family: "Jost";
 }
 
 .compare .bl .bank-logo {
@@ -3550,7 +3580,7 @@ main.content {
 }
 
 .compare .bl .val {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 22px;
     font-weight: 600;
 }
@@ -3581,7 +3611,7 @@ main.content {
 }
 
 .summary-card .val {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 28px;
     font-weight: 600;
     letter-spacing: -0.02em;
@@ -3607,7 +3637,7 @@ main.content {
 }
 
 .chk.done::before {
-    content: '✓';
+    content: "✓";
     font-size: 12px;
     font-weight: 700;
 }
@@ -3636,7 +3666,7 @@ main.content {
 }
 
 .stat-cell .val {
-    font-family: 'Jost';
+    font-family: "Jost";
     font-size: 20px;
     font-weight: 600;
     margin-top: 2px;
@@ -3711,7 +3741,7 @@ main.content {
 }
 
 .pdf-preview::before {
-    content: 'PDF';
+    content: "PDF";
     position: absolute;
     top: 10px;
     right: 10px;
@@ -3812,7 +3842,7 @@ input[type="range"].range {
     cursor: pointer;
     min-width: 28px;
     border-radius: 4px;
-    font-family: 'Jost';
+    font-family: "Jost";
 }
 
 .pager .pg.active,
@@ -3870,7 +3900,7 @@ input[type="range"].range {
     align-items: center;
 }
 
-.screen-card>div:not(.ic) {
+.screen-card > div:not(.ic) {
     flex: 1;
     min-width: 0;
 }

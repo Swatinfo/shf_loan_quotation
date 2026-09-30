@@ -66,9 +66,9 @@
             {{-- ===== MAIN: tab panels ===== --}}
             <div data-tab-panel-group="dash">
 
-                <div class="card" id="dash-panel-stage-breakdown" data-panel-id="stage-breakdown" style="display:none;">
+                <div class="card" id="dash-panel-stage-breakdown" data-panel-id="stage-breakdown" data-collapsible style="display:none;">
                     <div class="card-hd">
-                        <div class="t">Stage status breakdown <span class="sub" id="sbRange">—</span></div>
+                        <div class="t"><span class="card-caret" aria-hidden="true">▾</span>Stage status breakdown <span class="sub" id="sbRange">—</span></div>
                         <div class="actions sb-filters">
                             <select id="sbUser" class="sb-select" style="display:none;"></select>
                             <select id="sbBranch" class="sb-select" style="display:none;"></select>

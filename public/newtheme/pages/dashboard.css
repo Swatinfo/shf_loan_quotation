@@ -18,27 +18,27 @@
    its orange underline-active + count-pill treatment.
    ────────────────────────────────────────────────────────────────── */
 .page-header .tabs {
-    margin-top: 14px;          /* == .kpi-strip */
+    margin-top: 14px; /* == .kpi-strip */
     margin-bottom: 0;
-    padding: 8px 14px;         /* == .kpi-strip */
+    padding: 6px 10px; /* == .kpi-strip */
     background: #fff;
     border: 1px solid var(--line);
     border-radius: 10px;
     box-shadow: var(--sh-1);
-    gap: 16px;                 /* room for the divider, ≈ .kpi-strip chip gap */
+    gap: 16px; /* room for the divider, ≈ .kpi-strip chip gap */
     overflow-x: auto;
     scrollbar-width: none;
 }
 
 /* Vertical divider between adjacent tabs — mirrors .kpi-sep between chips. */
 .page-header .tabs .tab + .tab::before {
-    content: '';
+    content: "";
     position: absolute;
-    left: -8px;                /* half the container gap → centred in the gap */
+    left: -8px; /* half the container gap → centred in the gap */
     top: 50%;
     transform: translateY(-50%);
     width: 1px;
-    height: 22px;              /* == .kpi-sep */
+    height: 22px; /* == .kpi-sep */
     background: var(--line);
 }
 
@@ -51,15 +51,15 @@
    read as one system. Vertical padding is trimmed since the card supplies
    the outer 8px, keeping the bar ≈ the KPI strip height. */
 .page-header .tabs .tab {
-    position: relative;          /* anchors the divider pseudo-element */
-    padding: 5px 4px;
-    font-family: 'Jost', 'Archivo', sans-serif;
-    font-size: 13px;             /* label ≈ KPI chip label scale */
+    position: relative; /* anchors the divider pseudo-element */
+    padding: 3px 2px;
+    font-family: "Jost", "Archivo", sans-serif;
+    font-size: 12px; /* label ≈ KPI chip label scale */
     font-weight: 600;
-    text-transform: uppercase;   /* == .kpi-chip .kpi-lbl */
-    letter-spacing: 0.05em;      /* == .kpi-chip .kpi-lbl */
+    text-transform: uppercase; /* == .kpi-chip .kpi-lbl */
+    letter-spacing: 0.05em; /* == .kpi-chip .kpi-lbl */
     font-variant-numeric: tabular-nums;
-    gap: 7px;                    /* == .kpi-chip icon/label gap */
+    gap: 5px; /* == .kpi-chip icon/label gap */
 }
 
 /* Count renders like the KPI value: a big, bold, tabular number — not a
@@ -68,7 +68,7 @@
     background: none;
     padding: 0;
     border-radius: 0;
-    font-size: 18px;             /* == .kpi-chip .kpi-val */
+    font-size: 14px; /* == .kpi-chip .kpi-val */
     font-weight: 700;
     color: var(--ink);
     line-height: 1;
@@ -77,7 +77,7 @@
 
 .page-header .tabs .tab.active .count {
     background: none;
-    color: var(--accent);        /* active number picks up the brand accent */
+    color: var(--accent); /* active number picks up the brand accent */
 }
 
 /* Leading icon — mirrors .kpi-chip .kpi-ic (16px box, 14px svg, muted
@@ -96,17 +96,62 @@
     height: 14px;
 }
 
-.page-header .tabs .tab.tone-accent .tab-ic { color: var(--accent); }
-.page-header .tabs .tab.tone-blue   .tab-ic { color: var(--blue); }
-.page-header .tabs .tab.tone-amber  .tab-ic { color: var(--amber); }
-.page-header .tabs .tab.tone-green  .tab-ic { color: var(--green); }
-.page-header .tabs .tab.tone-red    .tab-ic { color: var(--red); }
-.page-header .tabs .tab.tone-violet .tab-ic { color: var(--violet); }
+.page-header .tabs .tab.tone-accent .tab-ic {
+    color: var(--accent);
+}
+.page-header .tabs .tab.tone-blue .tab-ic {
+    color: var(--blue);
+}
+.page-header .tabs .tab.tone-amber .tab-ic {
+    color: var(--amber);
+}
+.page-header .tabs .tab.tone-green .tab-ic {
+    color: var(--green);
+}
+.page-header .tabs .tab.tone-red .tab-ic {
+    color: var(--red);
+}
+.page-header .tabs .tab.tone-violet .tab-ic {
+    color: var(--violet);
+}
 
+/* Small devices: show ALL tabs by wrapping to fit the width, instead of a
+   single horizontally-swiped row. Mirrors how .kpi-strip content flows —
+   every option stays visible without scrolling. */
 @media (max-width: 899px) {
     .page-header .tabs {
         padding: 6px 10px;
-        flex-wrap: nowrap;
+        flex-wrap: wrap; /* wrap onto multiple rows */
+        overflow-x: visible; /* no horizontal scroll/swipe */
+        gap: 8px 16px; /* row-gap 8px, column-gap 16px */
+    }
+
+    /* Dividers lose meaning at wrapped row-starts (a leading line floats),
+       so drop them on wrap — the row/column gap separates the chips. */
+    .page-header .tabs .tab + .tab::before {
+        /* display: none; */
+    }
+    .page-header .tabs .tab {
+        font-size: 11px; /* keep the label legible on narrow widths */
+        gap: 3px; /* keep the icon/label gap tight on narrow widths */
+        padding: 3px 2px; /* keep the vertical padding tight on narrow widths */
+    }
+
+    /* Count stays balanced next to the 11px wrapped label (matches the
+       desktop base of 14px; the ≤480px block trims it to 11px). */
+    .page-header .tabs .tab .count {
+        font-size: 14px;
+    }
+}
+
+/* Phones: tighten type a touch so two chips fit per row on narrow widths. */
+@media (max-width: 480px) {
+    .page-header .tabs .tab {
+        font-size: 11px;
+    }
+
+    .page-header .tabs .tab .count {
+        font-size: 11px;
     }
 }
 
@@ -128,6 +173,21 @@
 @media (max-width: 991.98px) {
     #pipelineGrid {
         grid-template-columns: repeat(3, 1fr) !important;
+    }
+    .page-header .tabs .tab {
+        font-size: 11px; /* keep the label legible on narrow widths */
+        gap: 3px; /* keep the icon/label gap tight on narrow widths */
+        padding: 3px 2px; /* keep the vertical padding tight on narrow widths */
+    }
+
+    /* Count stays balanced next to the 11px wrapped label (matches the
+       desktop base of 14px; the ≤480px block trims it to 11px). */
+    .page-header .tabs .tab .count {
+        font-size: 12px;
+    }
+    .page-header .tabs {
+        padding: 6px 10px;
+        gap: 12px;
     }
 }
 
@@ -265,7 +325,10 @@
 }
 
 .sb-select {
-    font: 500 12px/1 'Archivo', system-ui, sans-serif;
+    font:
+        500 12px/1 "Archivo",
+        system-ui,
+        sans-serif;
     color: var(--ink);
     background: var(--white);
     border: 1px solid var(--line);
@@ -296,7 +359,10 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 10px;
-    font: 600 14px/1.2 'Jost', system-ui, sans-serif;
+    font:
+        600 14px/1.2 "Jost",
+        system-ui,
+        sans-serif;
     color: var(--ink);
     padding-bottom: 8px;
     margin-bottom: 12px;
@@ -304,7 +370,10 @@
 }
 
 .sb-block-total {
-    font: 500 12px/1 'Archivo', system-ui, sans-serif;
+    font:
+        500 12px/1 "Archivo",
+        system-ui,
+        sans-serif;
     color: var(--ink-3);
     white-space: nowrap;
 }
@@ -325,8 +394,11 @@
     background: var(--paper-2);
     border: 0;
     cursor: pointer;
-    font: 600 11px/1 'Jost', system-ui, sans-serif;
-    letter-spacing: .04em;
+    font:
+        600 11px/1 "Jost",
+        system-ui,
+        sans-serif;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--ink-2);
     text-align: left;
@@ -341,7 +413,10 @@
 }
 
 .sb-section-sub {
-    font: 500 11px/1 'Archivo', system-ui, sans-serif;
+    font:
+        500 11px/1 "Archivo",
+        system-ui,
+        sans-serif;
     text-transform: none;
     letter-spacing: 0;
     color: var(--ink-3);
@@ -351,7 +426,7 @@
 .sb-caret {
     font-size: 11px;
     color: var(--ink-3);
-    transition: transform .15s ease;
+    transition: transform 0.15s ease;
 }
 
 .sb-collapsed .sb-caret {
@@ -391,29 +466,41 @@
     border-radius: 10px;
     background: var(--paper);
     text-decoration: none;
-    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+    transition:
+        box-shadow 0.15s ease,
+        transform 0.15s ease,
+        border-color 0.15s ease;
 }
 
 #stageBreakdown .sb-tile:hover {
     border-color: var(--accent);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, .08);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
 }
 
 #stageBreakdown .sb-tile-lbl {
-    font: 600 10.5px/1.2 'Jost', system-ui, sans-serif;
-    letter-spacing: .03em;
+    font:
+        600 10.5px/1.2 "Jost",
+        system-ui,
+        sans-serif;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
     color: var(--ink-3);
 }
 
 #stageBreakdown .sb-tile-count {
-    font: 600 26px/1 'Jost', system-ui, sans-serif;
+    font:
+        600 26px/1 "Jost",
+        system-ui,
+        sans-serif;
     color: var(--ink);
 }
 
 #stageBreakdown .sb-tile-amt {
-    font: 600 14px/1.15 'Jost', system-ui, sans-serif;
+    font:
+        600 14px/1.15 "Jost",
+        system-ui,
+        sans-serif;
     color: var(--ink-2);
 }
 
@@ -488,11 +575,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
+    width: 20px;
     margin-right: 4px;
-    font-size: 11px;
+    font-size: 20px;
     color: var(--ink-3);
-    transition: transform .15s ease;
+    transition: transform 0.15s ease;
 }
 
 .card-collapsed .card-caret {
