@@ -4,6 +4,30 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Dashboard KPI strip retired → tab bar wears the KPI-chip look (2026-09-30)
+
+- **Change**: the header **KPI chip strip** (`#kpiStrip`) is disabled and the **tab bar**
+  (`.page-header .tabs`) restyled to look like it, so the header still reads as a KPI strip but is
+  interactive. Match is icon → **number** → label per tab: tone-coloured `.tab-ic` (per-tab `tone-*`
+  from a `$tabMeta` map in the blade), the `.count` rendered like `.kpi-val` (18px/700, accent when
+  active — **not** the base pill), uppercase label (`letter-spacing:0.05em`), a `.tab + .tab::before`
+  1px×22px `var(--line)` divider (the `.kpi-sep` equivalent), all inside a white card copied from
+  `.kpi-strip` (border/radius/shadow/padding). All in **`dashboard.css` (page-scoped)** — shared
+  `shf.css`/`shf-workflow.css` untouched.
+- **Comment the markup AND the JS render block together**: `#kpiStrip` is commented in the blade, so
+  the `$("kpiStrip").innerHTML = (D.kpi||[])…` block in `dashboard.js` **must** stay commented — with
+  the element gone it sets `.innerHTML` on `null`, throws, and aborts the rest of dashboard init (tab
+  counts never populate, tab switching dies). A code formatter (Prettier) had silently **re-enabled**
+  the block once by closing the `/* */` at the first prose line — verify the whole code body is inside
+  the comment after any reformat. `newthemeKpi()` + the `'kpi'` payload were left in place (unused) on
+  purpose so the strip can be restored quickly.
+- **Iterating on visual "match" tasks needs eyes on the render** — three blind CSS guesses all missed
+  (padding, then font size, then the icons/dividers the KPI chips have but tabs lacked). Logging in via
+  the chrome-devtools MCP and screenshotting the actual header (KPI strip above, tab bar below) closed
+  it in two passes. For pixel-match requests, get a login/screenshot early instead of guessing.
+- Public-asset edits → bumped `SHF_VERSION` + `SHF_SW_VERSION` each pass (final `20260930190000`) +
+  `config:clear`. No tests (view/CSS/JS only). Docs: `.docs/dashboard.md` updated.
+
 ## Stage-Breakdown: per-stage dates + disbursement reconciles with Management report (2026-09-29)
 
 - **Problem**: the breakdown filtered every section by loan `created_at` (one cohort), while the Management report dates each milestone by its own date (quotation/loan created, `sanction.completed_at`, tranche `disbursement_date`). So "Disbursed" showed ~8 Cr on the report but ~3.5 Cr on the breakdown for the same "September" — different metrics.

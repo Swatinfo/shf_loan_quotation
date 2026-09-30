@@ -4,22 +4,50 @@ Single-page dashboard for the authenticated user at `GET /dashboard`. Controller
 
 ## Structure
 
-Top stat cards + a tabbed panel with several DataTables fed by AJAX endpoints. No fixed sidebar layout — the navbar is the only chrome.
+A KPI-styled tab bar in the header + a tabbed panel with several DataTables fed by AJAX endpoints. No fixed sidebar layout — the navbar is the only chrome.
 
-## Stat cards
+## Header KPI strip (disabled) → tab bar carries the chip look
 
-Up to 4 cards rendered at the top of the page based on user permissions:
+The header used to show a **KPI chip strip** (`#kpiStrip`) — a white card of chips, each an
+icon + big number + uppercase label, separated by vertical dividers, rendered client-side by
+`dashboard.js` from `D.kpi` (`DashboardController::newthemeKpi()`).
 
-- **Quotations** — total, today, this month, converted
-- **Loans** — total, active, completed, this month (shown if user has `view_loans`)
-- **Tasks** — personal task counts
-- **DVR** — visit counts
+That strip is now **disabled** — the markup is commented out in
+`resources/views/newtheme/dashboard.blade.php` and the matching render block is commented out in
+`public/newtheme/pages/dashboard.js`. **Both must stay commented together**: with the `#kpiStrip`
+element gone, the live render block would do `$("kpiStrip").innerHTML = …` on `null` and throw,
+aborting the rest of dashboard init (tab counts, tab switching). The `newthemeKpi()` method and its
+`'kpi'` payload are intentionally **left in place** (unused) so the strip can be restored quickly.
 
-Each uses the `shf-stat-card` component with color-coded variants (`shf-stat-card-blue`, `-green`, `-accent`, `-warning`).
+The **tab bar took over the chip look** (see "Tab bar visual style" below), so the header still reads
+as a KPI strip — just interactive.
 
 ## Tabs
 
 All tabs are permission-gated for visibility. Default selection is **data-driven** — pick the tab that has the most actionable items, not merely the first visible one.
+
+### Tab bar visual style (KPI-chip look)
+
+The tab row (`.page-header .tabs`) is styled to mirror the retired KPI strip, so the two read as one
+system. Styling is a **page-scoped override in `public/newtheme/pages/dashboard.css`** (shared
+`shf.css` / `shf-workflow.css` are untouched):
+
+- Container: white rounded card — `#fff`, `1px solid var(--line)`, `border-radius:10px`,
+  `box-shadow:var(--sh-1)`, `padding:8px 14px`, `margin-top:14px` — copied from `.kpi-strip`.
+- Each tab is a chip in **icon → number → label** order (matching a KPI chip's icon → value → label):
+  - a tone-coloured leading icon (`.tab-ic`, 16px box / 14px svg), tone set per tab via a
+    `tone-*` class (`accent`/`blue`/`amber`/`green`/`violet`) driven by a `$tabMeta` map in the blade;
+  - the **count** (`.count`) rendered like `.kpi-val` — 18px / 700, `var(--ink)` (accent when active),
+    **not** the small pill from base `shf.css`; the number sits **before** the label;
+  - the **label** uppercase with `letter-spacing:0.05em`, 13px / 600 (like `.kpi-lbl`).
+- A 1px × 22px `var(--line)` divider (`.tab + .tab::before`) sits between adjacent tabs — the
+  `.kpi-sep` equivalent; container `gap:16px` leaves room for it.
+- Stage Breakdown has **no count** (still shows only icon + label) and keeps the active orange
+  underline; the active tab also colours its number/label with the accent.
+
+Editing `dashboard.css`/`dashboard.js`/the blade is a public-asset change → bump `SHF_VERSION`
+(`.env`) + `SHF_SW_VERSION` (`public/sw.js`) + `php artisan config:clear` (per the asset-versioning
+rule).
 
 ### Default tab priority (in order)
 

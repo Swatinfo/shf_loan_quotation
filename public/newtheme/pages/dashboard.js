@@ -5,39 +5,79 @@
  * value comes from real Laravel data instead of randomised demo arrays.
  */
 (function () {
-    'use strict';
+    "use strict";
 
     const D = window.__DASHBOARD;
     if (!D) {
-        console.warn('[newtheme dashboard] window.__DASHBOARD missing');
+        console.warn("[newtheme dashboard] window.__DASHBOARD missing");
         return;
     }
 
     const $ = (id) => document.getElementById(id);
-    const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const escapeHtml = (s) =>
+        String(s ?? "").replace(
+            /[&<>"']/g,
+            (c) =>
+                ({
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#39;",
+                })[c],
+        );
 
     /* ==================== Greeting ==================== */
     const hour = new Date().getHours();
-    const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    $('greeting').textContent = greet + ', ' + (D.currentUser?.short || D.currentUser?.name || '');
+    const greet =
+        hour < 12
+            ? "Good morning"
+            : hour < 17
+              ? "Good afternoon"
+              : "Good evening";
+    $("greeting").textContent =
+        greet + ", " + (D.currentUser?.short || D.currentUser?.name || "");
 
     /* ==================== Subheader ==================== */
     const sh = D.subheader || {};
-    $('dashSub').innerHTML =
-        'Branch: <strong>' + escapeHtml(sh.branch || '—') + '</strong> · ' +
-        (sh.activeFiles || 0) + ' active files · ' +
-        (sh.disbursementsToday || 0) + ' disbursements scheduled today';
+    $("dashSub").innerHTML =
+        "Branch: <strong>" +
+        escapeHtml(sh.branch || "—") +
+        "</strong> · " +
+        (sh.activeFiles || 0) +
+        " active files · " +
+        (sh.disbursementsToday || 0) +
+        " disbursements scheduled today";
 
-    /* ==================== KPI strip ==================== */
-    $('kpiStrip').innerHTML = (D.kpi || []).map((s, i) => {
-        const sep = i > 0 ? '<span class="kpi-sep"></span>' : '';
-        return sep +
-            '<div class="kpi-chip kpi-tone-' + escapeHtml(s.tone) + '">' +
-            '<span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="' + s.icon + '"/></svg></span>' +
-            '<span class="kpi-val">' + Number(s.val).toLocaleString('en-IN') + '</span>' +
-            '<span class="kpi-lbl">' + escapeHtml(s.lbl) + '</span>' +
-            '</div>';
-    }).join('');
+    /* ==================== KPI strip (DISABLED) ====================
+       The KPI strip (#kpiStrip) is commented out in the blade — the
+       card-styled tab bar replaces it. This render block is kept commented
+       (not deleted) so it can be restored alongside the markup. It MUST stay
+       commented while the markup is gone: `$("kpiStrip")` would be null and
+       `.innerHTML` would throw, aborting the rest of dashboard init.
+
+    $("kpiStrip").innerHTML = (D.kpi || [])
+        .map((s, i) => {
+            const sep = i > 0 ? '<span class="kpi-sep"></span>' : "";
+            return (
+                sep +
+                '<div class="kpi-chip kpi-tone-' +
+                escapeHtml(s.tone) +
+                '">' +
+                '<span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="' +
+                s.icon +
+                '"/></svg></span>' +
+                '<span class="kpi-val">' +
+                Number(s.val).toLocaleString("en-IN") +
+                "</span>" +
+                '<span class="kpi-lbl">' +
+                escapeHtml(s.lbl) +
+                "</span>" +
+                "</div>"
+            );
+        })
+        .join("");
+    ==================================================================== */
 
     /* ==================== Tab counts ====================
        Counter <span> elements only exist for tabs the controller marked
@@ -47,40 +87,49 @@
     const tc = D.tabCounts || {};
     function setCount(id, val) {
         const el = document.getElementById(id);
-        if (el) { el.textContent = val == null ? 0 : val; }
+        if (el) {
+            el.textContent = val == null ? 0 : val;
+        }
     }
-    setCount('cnt-ptasks', tc.personal_tasks);
-    setCount('cnt-tasks', tc.my_tasks);
-    setCount('cnt-loans', tc.loans);
-    setCount('cnt-dvr', tc.dvr);
-    setCount('cnt-quot', tc.quotations);
+    setCount("cnt-ptasks", tc.personal_tasks);
+    setCount("cnt-tasks", tc.my_tasks);
+    setCount("cnt-loans", tc.loans);
+    setCount("cnt-dvr", tc.dvr);
+    setCount("cnt-quot", tc.quotations);
 
     /* ==================== Tab switching (no shared tabs.js dependency) ==================== */
     function activatePanel(panelId) {
-        document.querySelectorAll('.tabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.panel === panelId));
-        document.querySelectorAll('[data-panel-id]').forEach((p) => {
-            p.style.display = p.dataset.panelId === panelId ? '' : 'none';
+        document
+            .querySelectorAll(".tabs .tab")
+            .forEach((t) =>
+                t.classList.toggle("active", t.dataset.panel === panelId),
+            );
+        document.querySelectorAll("[data-panel-id]").forEach((p) => {
+            p.style.display = p.dataset.panelId === panelId ? "" : "none";
         });
     }
-    document.querySelectorAll('.tabs .tab').forEach((tab) => {
-        tab.addEventListener('click', (e) => {
+    document.querySelectorAll(".tabs .tab").forEach((tab) => {
+        tab.addEventListener("click", (e) => {
             e.preventDefault();
             activatePanel(tab.dataset.panel);
         });
     });
     // Honour the controller's data-driven default tab (mirrors the existing
     // dashboard's defaultTab logic). Falls back to whichever .tab.active exists.
-    const initialTab = D.defaultTab
-        || document.querySelector('.tabs .tab.active')?.dataset.panel
-        || 'personal-tasks';
+    const initialTab =
+        D.defaultTab ||
+        document.querySelector(".tabs .tab.active")?.dataset.panel ||
+        "personal-tasks";
     activatePanel(initialTab);
 
     /* Collapsible cards — Pipeline by stage (#6) + sidebar A–D. Clicking the
        header toggles; header links/buttons keep working. */
-    document.addEventListener('click', (e) => {
-        const hd = e.target.closest('[data-collapsible] > .card-hd');
-        if (!hd || e.target.closest('a, button')) { return; }
-        hd.parentElement.classList.toggle('card-collapsed');
+    document.addEventListener("click", (e) => {
+        const hd = e.target.closest("[data-collapsible] > .card-hd");
+        if (!hd || e.target.closest("a, button")) {
+            return;
+        }
+        hd.parentElement.classList.toggle("card-collapsed");
     });
 
     /* ==================== Helpers ==================== */
@@ -88,421 +137,807 @@
     // Newtheme CSS already defines .badge.{green|amber|red|blue|violet|orange|dark}
     // so we lean on those tokens instead of duplicating colors via inline style.
     const COLOR_CLASS = {
-        green: 'green', amber: 'amber', red: 'red', blue: 'blue',
-        violet: 'violet', orange: 'orange', dark: 'dark', gray: '',
+        green: "green",
+        amber: "amber",
+        red: "red",
+        blue: "blue",
+        violet: "violet",
+        orange: "orange",
+        dark: "dark",
+        gray: "",
     };
-    function colorClass(c) { return COLOR_CLASS[c] ?? ''; }
+    function colorClass(c) {
+        return COLOR_CLASS[c] ?? "";
+    }
 
     // Stage-bar fill color: matches the badge tone so the progress bar reads
     // the same hue as the stage chip above it (mirrors the demo's BAR map).
     const BAR_COLOR = {
-        blue: 'var(--blue)',
-        amber: 'var(--amber)',
-        orange: 'var(--accent)',
-        violet: 'var(--violet)',
-        green: 'var(--green)',
-        red: 'var(--red)',
-        dark: 'var(--ink-3)',
-        gray: 'var(--ink-4)',
+        blue: "var(--blue)",
+        amber: "var(--amber)",
+        orange: "var(--accent)",
+        violet: "var(--violet)",
+        green: "var(--green)",
+        red: "var(--red)",
+        dark: "var(--ink-3)",
+        gray: "var(--ink-4)",
     };
-    function barColor(c) { return BAR_COLOR[c] || 'var(--accent)'; }
+    function barColor(c) {
+        return BAR_COLOR[c] || "var(--accent)";
+    }
 
     function pill(label, color) {
         const cls = colorClass(color);
         // .pill defaults to gray; for colored variants reuse the .badge color tokens
         // by stacking .badge.<color> rules (background-color + color). Using an inline
         // override only for font weight to match the demo pill style.
-        if (cls && cls !== 'gray') {
-            return '<span class="badge ' + cls + '" style="border-radius:999px;font-weight:600;font-size:10.5px;text-transform:none;letter-spacing:0;">' + escapeHtml(label) + '</span>';
+        if (cls && cls !== "gray") {
+            return (
+                '<span class="badge ' +
+                cls +
+                '" style="border-radius:999px;font-weight:600;font-size:10.5px;text-transform:none;letter-spacing:0;">' +
+                escapeHtml(label) +
+                "</span>"
+            );
         }
-        return '<span class="pill" style="font-weight:600;font-size:10.5px;">' + escapeHtml(label) + '</span>';
+        return (
+            '<span class="pill" style="font-weight:600;font-size:10.5px;">' +
+            escapeHtml(label) +
+            "</span>"
+        );
     }
 
     function badge(label, color) {
         const cls = colorClass(color);
-        return '<span class="badge sq ' + cls + '">' + escapeHtml(label) + '</span>';
+        return (
+            '<span class="badge sq ' +
+            cls +
+            '">' +
+            escapeHtml(label) +
+            "</span>"
+        );
     }
 
     function bankChip(b) {
         if (!b) {
             return '<span class="text-xs text-muted">—</span>';
         }
-        return '<span class="bank-chip" style="background:' + b.bg + ';color:' + b.fg + ';">' + escapeHtml(b.name) + '</span>';
+        return (
+            '<span class="bank-chip" style="background:' +
+            b.bg +
+            ";color:" +
+            b.fg +
+            ';">' +
+            escapeHtml(b.name) +
+            "</span>"
+        );
     }
     function emptyState(emoji, title, sub) {
-        return '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);">' +
-            '<div style="font-size:30px;margin-bottom:8px;">' + emoji + '</div>' +
-            '<div style="font-weight:600;">' + escapeHtml(title) + '</div>' +
-            (sub ? '<div class="text-xs text-muted mt-1">' + escapeHtml(sub) + '</div>' : '') +
-            '</div>';
+        return (
+            '<div class="empty" style="padding:40px 24px;text-align:center;color:var(--ink-3);">' +
+            '<div style="font-size:30px;margin-bottom:8px;">' +
+            emoji +
+            "</div>" +
+            '<div style="font-weight:600;">' +
+            escapeHtml(title) +
+            "</div>" +
+            (sub
+                ? '<div class="text-xs text-muted mt-1">' +
+                  escapeHtml(sub) +
+                  "</div>"
+                : "") +
+            "</div>"
+        );
     }
 
     /* ==================== Personal Tasks ==================== */
     const pt = D.personalTasks || [];
     const overdue = pt.filter((t) => t.overdue).length;
-    $('ptasksSub').textContent = pt.length + ' pending · ' + overdue + ' overdue';
-    $('rows-ptasks').innerHTML = pt.length ? (
-        '<table class="tbl"><thead><tr>' +
-        '<th>Task</th><th>Priority</th><th>Status</th><th>Due</th><th>Assignee</th>' +
-        '</tr></thead><tbody>' +
-        pt.map((t) => (
-            '<tr onclick="location=\'' + t.showUrl + '\'" class="clickable">' +
-            '<td data-label="Task"><strong>' + escapeHtml(t.title) + '</strong>' +
-            '<div class="text-xs text-muted">' +
-            (t.loanNumber ? '<span class="font-mono" style="color:var(--accent);">' + escapeHtml(t.loanNumber) + '</span>' + copyBtn(t.loanNumber) + ' · ' : '') +
-            'Created by ' + escapeHtml(t.createdBy) +
-            '</div>' +
-            '</td>' +
-            '<td data-label="Priority">' + pill(t.priorityLabel, t.priorityColor) + '</td>' +
-            '<td data-label="Status">' + pill(t.statusLabel, t.statusColor) + '</td>' +
-            '<td data-label="Due">' +
-            '<div class="text-xs"' + (t.overdue ? ' style="color:var(--red);font-weight:600;"' : '') + '>' + (t.dueDate || '—') + '</div>' +
-            (t.overdue ? '<div class="text-xs" style="color:var(--red);">Overdue</div>' : '') +
-            '</td>' +
-            '<td data-label="Assignee"><div>' + escapeHtml(t.assignee) + '</div>' + (t.assignedToMe ? '<div class="text-xs" style="color:var(--accent);">Me</div>' : '') + '</td>' +
-            '</tr>'
-        )).join('') + '</tbody></table>'
-    ) : emptyState('✅', 'All caught up!', 'No pending personal tasks.');
+    $("ptasksSub").textContent =
+        pt.length + " pending · " + overdue + " overdue";
+    $("rows-ptasks").innerHTML = pt.length
+        ? '<table class="tbl"><thead><tr>' +
+          "<th>Task</th><th>Priority</th><th>Status</th><th>Due</th><th>Assignee</th>" +
+          "</tr></thead><tbody>" +
+          pt
+              .map(
+                  (t) =>
+                      "<tr onclick=\"location='" +
+                      t.showUrl +
+                      '\'" class="clickable">' +
+                      '<td data-label="Task"><strong>' +
+                      escapeHtml(t.title) +
+                      "</strong>" +
+                      '<div class="text-xs text-muted">' +
+                      (t.loanNumber
+                          ? '<span class="font-mono" style="color:var(--accent);">' +
+                            escapeHtml(t.loanNumber) +
+                            "</span>" +
+                            copyBtn(t.loanNumber) +
+                            " · "
+                          : "") +
+                      "Created by " +
+                      escapeHtml(t.createdBy) +
+                      "</div>" +
+                      "</td>" +
+                      '<td data-label="Priority">' +
+                      pill(t.priorityLabel, t.priorityColor) +
+                      "</td>" +
+                      '<td data-label="Status">' +
+                      pill(t.statusLabel, t.statusColor) +
+                      "</td>" +
+                      '<td data-label="Due">' +
+                      '<div class="text-xs"' +
+                      (t.overdue
+                          ? ' style="color:var(--red);font-weight:600;"'
+                          : "") +
+                      ">" +
+                      (t.dueDate || "—") +
+                      "</div>" +
+                      (t.overdue
+                          ? '<div class="text-xs" style="color:var(--red);">Overdue</div>'
+                          : "") +
+                      "</td>" +
+                      '<td data-label="Assignee"><div>' +
+                      escapeHtml(t.assignee) +
+                      "</div>" +
+                      (t.assignedToMe
+                          ? '<div class="text-xs" style="color:var(--accent);">Me</div>'
+                          : "") +
+                      "</td>" +
+                      "</tr>",
+              )
+              .join("") +
+          "</tbody></table>"
+        : emptyState("✅", "All caught up!", "No pending personal tasks.");
 
     /* ==================== My Loan Tasks ==================== */
     const mt = D.myLoanTasks || [];
-    const stageSel = $('dashTaskStageFilter');
+    const stageSel = $("dashTaskStageFilter");
     (D.stagesDropdown || []).forEach((s) => {
-        const o = document.createElement('option');
+        const o = document.createElement("option");
         o.value = s.key;
-        o.textContent = s.n + '. ' + s.label;
+        o.textContent = s.n + ". " + s.label;
         stageSel.appendChild(o);
     });
 
     // Copy-to-clipboard button (global SHF.copyBtn handler in shf-newtheme.js).
     function copyBtn(v) {
-        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : '';
+        return window.SHF && SHF.copyBtn ? SHF.copyBtn(v) : "";
     }
 
     // Application-number cell (own column) — '—' until captured at app_number stage.
     function appCell(l) {
         var v = l.applicationNumber;
-        return '<span class="font-mono">' + escapeHtml(v || '—') + '</span>' + copyBtn(v);
+        return (
+            '<span class="font-mono">' +
+            escapeHtml(v || "—") +
+            "</span>" +
+            copyBtn(v)
+        );
     }
 
     // Loan account number(s) cell — combined across tranches; '—' pre-disbursement.
     function acctCell(l) {
         var v = l.loanAccountNumbers;
-        return '<span class="font-mono">' + escapeHtml(v || '—') + '</span>' + copyBtn(v);
+        return (
+            '<span class="font-mono">' +
+            escapeHtml(v || "—") +
+            "</span>" +
+            copyBtn(v)
+        );
     }
 
     // Stage cell: a parallel entry shows one badge + owner per active sub-stage,
     // stacked within the single row; other stages show one badge.
     function myTaskStageCell(l) {
-        const bar = '<div class="progress thin mt-1"><div class="fill" style="width:' + l.progress + '%;background:' + barColor(l.stageBadgeClass) + ';"></div></div>';
-        if (l.type === 'parallel' && (l.subStages || []).length) {
-            const subs = l.subStages.map((s) => (
-                '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
-                badge(s.stageName, s.badgeClass) +
-                '<span class="text-xs text-muted">' + escapeHtml(s.owner) + '</span>' +
-                '</div>'
-            )).join('');
+        const bar =
+            '<div class="progress thin mt-1"><div class="fill" style="width:' +
+            l.progress +
+            "%;background:" +
+            barColor(l.stageBadgeClass) +
+            ';"></div></div>';
+        if (l.type === "parallel" && (l.subStages || []).length) {
+            const subs = l.subStages
+                .map(
+                    (s) =>
+                        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
+                        badge(s.stageName, s.badgeClass) +
+                        '<span class="text-xs text-muted">' +
+                        escapeHtml(s.owner) +
+                        "</span>" +
+                        "</div>",
+                )
+                .join("");
             return subs + bar;
         }
-        const owner = '<div style="display:flex;align-items:center;gap:6px;">' +
+        const owner =
+            '<div style="display:flex;align-items:center;gap:6px;">' +
             badge(l.stageName, l.stageBadgeClass) +
-            (l.owner ? '<span class="text-xs text-muted">' + escapeHtml(l.owner) + '</span>' : '') +
-            '</div>';
+            (l.owner
+                ? '<span class="text-xs text-muted">' +
+                  escapeHtml(l.owner) +
+                  "</span>"
+                : "") +
+            "</div>";
         return owner + bar;
     }
 
     function renderMyTasks() {
         const filter = stageSel.value;
-        const rows = mt.filter((l) => !filter || l.stageKey === filter || (l.subStageKeys && l.subStageKeys.indexOf(filter) !== -1));
-        $('rows-mytasks').innerHTML = rows.length ? (
-            '<table class="tbl"><thead><tr>' +
-            '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Stage &amp; Owner</th><th class="num">Amount</th><th>Bank</th>' +
-            '</tr></thead><tbody>' +
-            rows.map((l) => (
-                '<tr onclick="location=\'' + l.showUrl + '\'" class="clickable">' +
-                '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span>' + copyBtn(l.loanNumber) + '</td>' +
-                '<td data-label="App #">' + appCell(l) + '</td>' +
-                '<td data-label="Customer"><strong>' + escapeHtml(l.customer) + '</strong>' + copyBtn(l.customer) + '<div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
-                '<td data-label="Loan Acct #">' + acctCell(l) + '</td>' +
-                '<td data-label="Stage & Owner">' + myTaskStageCell(l) + '</td>' +
-                '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
-                '<td data-label="Bank">' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
-                '</tr>'
-            )).join('') + '</tbody></table>'
-        ) : emptyState('🎉', 'No assigned stages');
+        const rows = mt.filter(
+            (l) =>
+                !filter ||
+                l.stageKey === filter ||
+                (l.subStageKeys && l.subStageKeys.indexOf(filter) !== -1),
+        );
+        $("rows-mytasks").innerHTML = rows.length
+            ? '<table class="tbl"><thead><tr>' +
+              '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Stage &amp; Owner</th><th class="num">Amount</th><th>Bank</th>' +
+              "</tr></thead><tbody>" +
+              rows
+                  .map(
+                      (l) =>
+                          "<tr onclick=\"location='" +
+                          l.showUrl +
+                          '\'" class="clickable">' +
+                          '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' +
+                          escapeHtml(l.loanNumber) +
+                          "</span>" +
+                          copyBtn(l.loanNumber) +
+                          "</td>" +
+                          '<td data-label="App #">' +
+                          appCell(l) +
+                          "</td>" +
+                          '<td data-label="Customer"><strong>' +
+                          escapeHtml(l.customer) +
+                          "</strong>" +
+                          copyBtn(l.customer) +
+                          '<div class="text-xs text-muted">' +
+                          escapeHtml(l.customerType) +
+                          "</div></td>" +
+                          '<td data-label="Loan Acct #">' +
+                          acctCell(l) +
+                          "</td>" +
+                          '<td data-label="Stage & Owner">' +
+                          myTaskStageCell(l) +
+                          "</td>" +
+                          '<td class="num tnum" data-label="Amount"><strong>' +
+                          escapeHtml(l.amountFormatted) +
+                          "</strong></td>" +
+                          '<td data-label="Bank">' +
+                          bankChip(l.bank) +
+                          (l.productName
+                              ? '<div class="text-xs text-muted mt-1">' +
+                                escapeHtml(l.productName) +
+                                "</div>"
+                              : "") +
+                          "</td>" +
+                          "</tr>",
+                  )
+                  .join("") +
+              "</tbody></table>"
+            : emptyState("🎉", "No assigned stages");
     }
-    stageSel.addEventListener('change', renderMyTasks);
+    stageSel.addEventListener("change", renderMyTasks);
     renderMyTasks();
 
     /* ==================== Loans ==================== */
     const loans = D.loans || [];
-    $('rows-loans').innerHTML = loans.length ? (
-        '<table class="tbl"><thead><tr>' +
-        '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Bank / Product</th><th class="num">Amount</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th>Stage &amp; Owner</th>' +
-        '</tr></thead><tbody>' +
-        loans.map((l) => (
-            '<tr onclick="location=\'' + l.showUrl + '\'" class="clickable">' +
-            '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' + escapeHtml(l.loanNumber) + '</span>' + copyBtn(l.loanNumber) + '</td>' +
-            '<td data-label="App #">' + appCell(l) + '</td>' +
-            '<td data-label="Customer"><strong>' + escapeHtml(l.customer) + '</strong>' + copyBtn(l.customer) + '<div class="text-xs text-muted">' + escapeHtml(l.customerType) + '</div></td>' +
-            '<td data-label="Loan Acct #">' + acctCell(l) + '</td>' +
-            '<td data-label="Bank / Product">' + bankChip(l.bank) + (l.productName ? '<div class="text-xs text-muted mt-1">' + escapeHtml(l.productName) + '</div>' : '') + '</td>' +
-            '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(l.amountFormatted) + '</strong></td>' +
-            '<td class="num tnum" data-label="Sanctioned">' + escapeHtml(l.sanctionedFormatted || '—') + '</td>' +
-            '<td class="num tnum" data-label="Disbursed">' + escapeHtml(l.disbursedFormatted || '—') + '</td>' +
-            '<td data-label="Stage & Owner">' + myTaskStageCell(l) + '</td>' +
-            '</tr>'
-        )).join('') + '</tbody></table>'
-    ) : emptyState('📂', 'No active loans');
+    $("rows-loans").innerHTML = loans.length
+        ? '<table class="tbl"><thead><tr>' +
+          '<th>Loan #</th><th>App #</th><th>Customer</th><th>Loan Acct #</th><th>Bank / Product</th><th class="num">Amount</th><th class="num">Sanctioned</th><th class="num">Disbursed</th><th>Stage &amp; Owner</th>' +
+          "</tr></thead><tbody>" +
+          loans
+              .map(
+                  (l) =>
+                      "<tr onclick=\"location='" +
+                      l.showUrl +
+                      '\'" class="clickable">' +
+                      '<td data-label="Loan #"><span class="font-mono" style="font-weight:600;">' +
+                      escapeHtml(l.loanNumber) +
+                      "</span>" +
+                      copyBtn(l.loanNumber) +
+                      "</td>" +
+                      '<td data-label="App #">' +
+                      appCell(l) +
+                      "</td>" +
+                      '<td data-label="Customer"><strong>' +
+                      escapeHtml(l.customer) +
+                      "</strong>" +
+                      copyBtn(l.customer) +
+                      '<div class="text-xs text-muted">' +
+                      escapeHtml(l.customerType) +
+                      "</div></td>" +
+                      '<td data-label="Loan Acct #">' +
+                      acctCell(l) +
+                      "</td>" +
+                      '<td data-label="Bank / Product">' +
+                      bankChip(l.bank) +
+                      (l.productName
+                          ? '<div class="text-xs text-muted mt-1">' +
+                            escapeHtml(l.productName) +
+                            "</div>"
+                          : "") +
+                      "</td>" +
+                      '<td class="num tnum" data-label="Amount"><strong>' +
+                      escapeHtml(l.amountFormatted) +
+                      "</strong></td>" +
+                      '<td class="num tnum" data-label="Sanctioned">' +
+                      escapeHtml(l.sanctionedFormatted || "—") +
+                      "</td>" +
+                      '<td class="num tnum" data-label="Disbursed">' +
+                      escapeHtml(l.disbursedFormatted || "—") +
+                      "</td>" +
+                      '<td data-label="Stage & Owner">' +
+                      myTaskStageCell(l) +
+                      "</td>" +
+                      "</tr>",
+              )
+              .join("") +
+          "</tbody></table>"
+        : emptyState("📂", "No active loans");
 
     /* ==================== DVR ==================== */
     const dvr = D.dvr || [];
-    const pendingFu = dvr.filter((v) => v.followUp.state === 'pending').length;
+    const pendingFu = dvr.filter((v) => v.followUp.state === "pending").length;
     const overdueFu = dvr.filter((v) => v.followUp.overdue).length;
-    $('dvrSub').textContent = dvr.length + ' visits · ' + pendingFu + ' pending follow-ups · ' + overdueFu + ' overdue';
-    $('rows-dvr').innerHTML = dvr.length ? (
-        '<table class="tbl"><thead><tr>' +
-        '<th>Visit</th><th>Contact</th><th>User</th><th>Type</th><th>Purpose</th><th>Outcome</th><th>Follow-up</th>' +
-        '</tr></thead><tbody>' +
-        dvr.map((v) => {
-            let fu;
-            if (v.followUp.state === 'none') {
-                fu = '<span class="text-xs text-muted">—</span>';
-            } else if (v.followUp.state === 'done' || v.followUp.state === 'completed') {
-                fu = badge('Completed', 'green');
-            } else if (v.followUp.overdue) {
-                fu = badge('Overdue · ' + v.followUp.date, 'red');
-            } else {
-                fu = badge('Pending · ' + v.followUp.date, 'amber');
-            }
-            if (v.followUpsTaken && v.followUpsTaken > 0) {
-                const label = v.followUpsTaken === 1 ? 'follow-up taken' : 'follow-ups taken';
-                fu += '<div style="margin-top:4px;">' + badge(v.followUpsTaken + ' ' + label, 'blue') + '</div>';
-            }
-            return '<tr onclick="location=\'' + v.showUrl + '\'" class="clickable">' +
-                '<td data-label="Visit"><div class="text-xs">' + escapeHtml(v.visitDate) + '</div></td>' +
-                '<td data-label="Contact"><strong>' + escapeHtml(v.contactName) + '</strong>' + copyBtn(v.contactName) +
-                (v.contactPhone ? '<div class="text-xs text-muted font-mono">' + escapeHtml(v.contactPhone) + copyBtn(v.contactPhone) + '</div>' : '') + '</td>' +
-                '<td data-label="User">' + escapeHtml(v.user || '—') + '</td>' +
-                '<td data-label="Type">' + pill(v.contactType, 'gray') + '</td>' +
-                '<td data-label="Purpose">' + escapeHtml(v.purpose) + '</td>' +
-                '<td data-label="Outcome"><div class="text-xs">' + escapeHtml(v.outcome || '—') + '</div></td>' +
-                '<td data-label="Follow-up">' + fu + '</td>' +
-                '</tr>';
-        }).join('') + '</tbody></table>'
-    ) : emptyState('📍', 'No visits yet');
+    $("dvrSub").textContent =
+        dvr.length +
+        " visits · " +
+        pendingFu +
+        " pending follow-ups · " +
+        overdueFu +
+        " overdue";
+    $("rows-dvr").innerHTML = dvr.length
+        ? '<table class="tbl"><thead><tr>' +
+          "<th>Visit</th><th>Contact</th><th>User</th><th>Type</th><th>Purpose</th><th>Outcome</th><th>Follow-up</th>" +
+          "</tr></thead><tbody>" +
+          dvr
+              .map((v) => {
+                  let fu;
+                  if (v.followUp.state === "none") {
+                      fu = '<span class="text-xs text-muted">—</span>';
+                  } else if (
+                      v.followUp.state === "done" ||
+                      v.followUp.state === "completed"
+                  ) {
+                      fu = badge("Completed", "green");
+                  } else if (v.followUp.overdue) {
+                      fu = badge("Overdue · " + v.followUp.date, "red");
+                  } else {
+                      fu = badge("Pending · " + v.followUp.date, "amber");
+                  }
+                  if (v.followUpsTaken && v.followUpsTaken > 0) {
+                      const label =
+                          v.followUpsTaken === 1
+                              ? "follow-up taken"
+                              : "follow-ups taken";
+                      fu +=
+                          '<div style="margin-top:4px;">' +
+                          badge(v.followUpsTaken + " " + label, "blue") +
+                          "</div>";
+                  }
+                  return (
+                      "<tr onclick=\"location='" +
+                      v.showUrl +
+                      '\'" class="clickable">' +
+                      '<td data-label="Visit"><div class="text-xs">' +
+                      escapeHtml(v.visitDate) +
+                      "</div></td>" +
+                      '<td data-label="Contact"><strong>' +
+                      escapeHtml(v.contactName) +
+                      "</strong>" +
+                      copyBtn(v.contactName) +
+                      (v.contactPhone
+                          ? '<div class="text-xs text-muted font-mono">' +
+                            escapeHtml(v.contactPhone) +
+                            copyBtn(v.contactPhone) +
+                            "</div>"
+                          : "") +
+                      "</td>" +
+                      '<td data-label="User">' +
+                      escapeHtml(v.user || "—") +
+                      "</td>" +
+                      '<td data-label="Type">' +
+                      pill(v.contactType, "gray") +
+                      "</td>" +
+                      '<td data-label="Purpose">' +
+                      escapeHtml(v.purpose) +
+                      "</td>" +
+                      '<td data-label="Outcome"><div class="text-xs">' +
+                      escapeHtml(v.outcome || "—") +
+                      "</div></td>" +
+                      '<td data-label="Follow-up">' +
+                      fu +
+                      "</td>" +
+                      "</tr>"
+                  );
+              })
+              .join("") +
+          "</tbody></table>"
+        : emptyState("📍", "No visits yet");
 
     /* ==================== Quotations ==================== */
     const quots = D.quotations || [];
     function renderQuotations() {
-        const filter = $('dashQuotStatusFilter').value;
+        const filter = $("dashQuotStatusFilter").value;
         const rows = quots.filter((q) => !filter || q.status === filter);
-        $('quotSub').textContent = rows.length + ' quotations' + (filter ? ' · filtered' : '');
-        $('rows-quot').innerHTML = rows.length ? (
-            '<table class="tbl"><thead><tr>' +
-            '<th>#</th><th>Customer</th><th class="num">Amount</th><th>Banks</th><th>Status</th><th>Date</th>' +
-            '</tr></thead><tbody>' +
-            rows.map((q) => (
-                '<tr onclick="location=\'' + q.showUrl + '\'" class="clickable">' +
-                '<td data-label="#"><span class="font-mono" style="font-weight:600;">' + escapeHtml(q.quotNumber) + '</span>' + copyBtn(q.quotNumber) + '</td>' +
-                '<td data-label="Customer"><strong>' + escapeHtml(q.customer) + '</strong>' + copyBtn(q.customer) + '<div class="text-xs text-muted">' + escapeHtml(q.customerType) + '</div></td>' +
-                '<td class="num tnum" data-label="Amount"><strong>' + escapeHtml(q.amountFormatted) + '</strong></td>' +
-                '<td data-label="Banks"><div style="display:flex;gap:4px;flex-wrap:wrap;">' + (q.banks || []).map(bankChip).join('') + '</div></td>' +
-                '<td data-label="Status">' + pill(q.statusLabel, q.statusColor) + '</td>' +
-                '<td data-label="Date"><div class="text-xs">' + escapeHtml(q.date || '—') + '</div></td>' +
-                '</tr>'
-            )).join('') + '</tbody></table>'
-        ) : emptyState('📄', 'No quotations match filter');
+        $("quotSub").textContent =
+            rows.length + " quotations" + (filter ? " · filtered" : "");
+        $("rows-quot").innerHTML = rows.length
+            ? '<table class="tbl"><thead><tr>' +
+              '<th>#</th><th>Customer</th><th class="num">Amount</th><th>Banks</th><th>Status</th><th>Date</th>' +
+              "</tr></thead><tbody>" +
+              rows
+                  .map(
+                      (q) =>
+                          "<tr onclick=\"location='" +
+                          q.showUrl +
+                          '\'" class="clickable">' +
+                          '<td data-label="#"><span class="font-mono" style="font-weight:600;">' +
+                          escapeHtml(q.quotNumber) +
+                          "</span>" +
+                          copyBtn(q.quotNumber) +
+                          "</td>" +
+                          '<td data-label="Customer"><strong>' +
+                          escapeHtml(q.customer) +
+                          "</strong>" +
+                          copyBtn(q.customer) +
+                          '<div class="text-xs text-muted">' +
+                          escapeHtml(q.customerType) +
+                          "</div></td>" +
+                          '<td class="num tnum" data-label="Amount"><strong>' +
+                          escapeHtml(q.amountFormatted) +
+                          "</strong></td>" +
+                          '<td data-label="Banks"><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+                          (q.banks || []).map(bankChip).join("") +
+                          "</div></td>" +
+                          '<td data-label="Status">' +
+                          pill(q.statusLabel, q.statusColor) +
+                          "</td>" +
+                          '<td data-label="Date"><div class="text-xs">' +
+                          escapeHtml(q.date || "—") +
+                          "</div></td>" +
+                          "</tr>",
+                  )
+                  .join("") +
+              "</tbody></table>"
+            : emptyState("📄", "No quotations match filter");
     }
-    $('dashQuotStatusFilter').addEventListener('change', renderQuotations);
+    $("dashQuotStatusFilter").addEventListener("change", renderQuotations);
     renderQuotations();
 
     /* ==================== Pipeline ==================== */
     const pipe = D.pipeline || [];
-    $('pipelineGrid').innerHTML = pipe.map((s) => (
-        '<div>' +
-        '<div class="text-xs text-muted">' + s.n + '. ' + escapeHtml(s.label) + '</div>' +
-        '<div style="font-family:Jost;font-size:22px;font-weight:600;margin-top:3px;' + (s.key === 'completed_mtd' ? 'color:var(--green);' : '') + '">' + s.count + '</div>' +
-        '<div class="progress thin mt-1"><div class="fill" style="width:' + Math.min(100, s.count * 10) + '%;background:' + barColor(s.color) + ';"></div></div>' +
-        '</div>'
-    )).join('');
+    $("pipelineGrid").innerHTML = pipe
+        .map(
+            (s) =>
+                "<div>" +
+                '<div class="text-xs text-muted">' +
+                s.n +
+                ". " +
+                escapeHtml(s.label) +
+                "</div>" +
+                '<div style="font-family:Jost;font-size:22px;font-weight:600;margin-top:3px;' +
+                (s.key === "completed_mtd" ? "color:var(--green);" : "") +
+                '">' +
+                s.count +
+                "</div>" +
+                '<div class="progress thin mt-1"><div class="fill" style="width:' +
+                Math.min(100, s.count * 10) +
+                "%;background:" +
+                barColor(s.color) +
+                ';"></div></div>' +
+                "</div>",
+        )
+        .join("");
 
     /* ==================== Stage status breakdown ==================== */
     (function stageBreakdown() {
-        const host = $('stageBreakdown');
-        if (!host) { return; }
+        const host = $("stageBreakdown");
+        if (!host) {
+            return;
+        }
         const meta = D.stageBreakdownMeta || {};
-        const url = host.getAttribute('data-url');
-        const periodSel = $('sbPeriod');
-        const userSel = $('sbUser');
+        const url = host.getAttribute("data-url");
+        const periodSel = $("sbPeriod");
+        const userSel = $("sbUser");
 
         // Compact Indian units: ₹ 1.23 Cr / ₹ 12.5 L / ₹ 40 K.
         const fmtAmt = (n) => {
             n = Number(n || 0);
-            const trim = (x) => parseFloat(x.toFixed(2)).toLocaleString('en-IN');
-            if (n >= 1e7) { return trim(n / 1e7) + ' Cr'; }
-            if (n >= 1e5) { return trim(n / 1e5) + ' L'; }
-            if (n >= 1e3) { return trim(n / 1e3) + ' K'; }
-            return Math.round(n).toLocaleString('en-IN');
+            const trim = (x) =>
+                parseFloat(x.toFixed(2)).toLocaleString("en-IN");
+            if (n >= 1e7) {
+                return trim(n / 1e7) + " Cr";
+            }
+            if (n >= 1e5) {
+                return trim(n / 1e5) + " L";
+            }
+            if (n >= 1e3) {
+                return trim(n / 1e3) + " K";
+            }
+            return Math.round(n).toLocaleString("en-IN");
         };
 
-        const fromEl = $('sbFrom');
-        const toEl = $('sbTo');
-        const applyBtn = $('sbApply');
-        const branchSel = $('sbBranch');
-        const bankSel = $('sbBank');
-        const productSel = $('sbProduct');
+        const fromEl = $("sbFrom");
+        const toEl = $("sbTo");
+        const applyBtn = $("sbApply");
+        const branchSel = $("sbBranch");
+        const bankSel = $("sbBank");
+        const productSel = $("sbProduct");
 
         // period options
-        periodSel.innerHTML = (meta.periods || []).map((p) =>
-            '<option value="' + escapeHtml(p.value) + '"' + (p.value === meta.defaultPeriod ? ' selected' : '') + '>' + escapeHtml(p.label) + '</option>'
-        ).join('');
+        periodSel.innerHTML = (meta.periods || [])
+            .map(
+                (p) =>
+                    '<option value="' +
+                    escapeHtml(p.value) +
+                    '"' +
+                    (p.value === meta.defaultPeriod ? " selected" : "") +
+                    ">" +
+                    escapeHtml(p.label) +
+                    "</option>",
+            )
+            .join("");
 
         // user options (only when allowed)
         if (meta.canFilterByUser && (meta.userOptions || []).length) {
-            userSel.style.display = '';
-            userSel.innerHTML = '<option value="">— My scope —</option>' +
-                meta.userOptions.map((u) => '<option value="' + u.id + '">' + escapeHtml(u.name) + '</option>').join('');
+            userSel.style.display = "";
+            userSel.innerHTML =
+                '<option value="">— My scope —</option>' +
+                meta.userOptions
+                    .map(
+                        (u) =>
+                            '<option value="' +
+                            u.id +
+                            '">' +
+                            escapeHtml(u.name) +
+                            "</option>",
+                    )
+                    .join("");
         }
 
         // branch options (shown only when the user has ≥1 branch to pick from)
         if ((meta.branchOptions || []).length) {
-            branchSel.style.display = '';
-            branchSel.innerHTML = '<option value="">All branches</option>' +
-                meta.branchOptions.map((b) => '<option value="' + b.id + '">' + escapeHtml(b.name) + '</option>').join('');
+            branchSel.style.display = "";
+            branchSel.innerHTML =
+                '<option value="">All branches</option>' +
+                meta.branchOptions
+                    .map(
+                        (b) =>
+                            '<option value="' +
+                            b.id +
+                            '">' +
+                            escapeHtml(b.name) +
+                            "</option>",
+                    )
+                    .join("");
         }
 
         // bank options + Bank → Product cascade
         const allProducts = meta.productOptions || [];
-        bankSel.innerHTML = '<option value="">All banks</option>' +
-            (meta.bankOptions || []).map((b) => '<option value="' + b.id + '">' + escapeHtml(b.name) + '</option>').join('');
+        bankSel.innerHTML =
+            '<option value="">All banks</option>' +
+            (meta.bankOptions || [])
+                .map(
+                    (b) =>
+                        '<option value="' +
+                        b.id +
+                        '">' +
+                        escapeHtml(b.name) +
+                        "</option>",
+                )
+                .join("");
 
         function syncProducts() {
             const bank = bankSel.value;
             if (!bank) {
                 productSel.innerHTML = '<option value="">All products</option>';
-                productSel.value = '';
+                productSel.value = "";
                 productSel.disabled = true;
                 return;
             }
             productSel.disabled = false;
-            productSel.innerHTML = '<option value="">All products</option>' +
-                allProducts.filter((p) => String(p.bank_id) === String(bank))
-                    .map((p) => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
-            productSel.value = '';
+            productSel.innerHTML =
+                '<option value="">All products</option>' +
+                allProducts
+                    .filter((p) => String(p.bank_id) === String(bank))
+                    .map(
+                        (p) =>
+                            '<option value="' +
+                            p.id +
+                            '">' +
+                            escapeHtml(p.name) +
+                            "</option>",
+                    )
+                    .join("");
+            productSel.value = "";
         }
         syncProducts();
 
         // dd/mm/yyyy → yyyy-mm-dd for the request
         const toIso = (val) => {
-            if (!val) { return ''; }
-            const p = val.split('/');
-            return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : val;
+            if (!val) {
+                return "";
+            }
+            const p = val.split("/");
+            return p.length === 3 ? p[2] + "-" + p[1] + "-" + p[0] : val;
         };
         if (window.jQuery && jQuery.fn.datepicker) {
-            jQuery([fromEl, toEl]).datepicker({ format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true, clearBtn: true, orientation: 'bottom auto', container: 'body' });
+            jQuery([fromEl, toEl]).datepicker({
+                format: "dd/mm/yyyy",
+                autoclose: true,
+                todayHighlight: true,
+                clearBtn: true,
+                orientation: "bottom auto",
+                container: "body",
+            });
         }
 
         function tile(b) {
-            const zero = !b.count ? ' sb-tile-zero' : '';
-            const total = b.derived ? ' sb-tile-total' : '';
-            return '<a class="sb-tile' + zero + total + '" href="' + escapeHtml(b.url) + '">' +
-                '<span class="sb-tile-lbl">' + escapeHtml(b.label) + '</span>' +
-                '<span class="sb-tile-count">' + Number(b.count).toLocaleString('en-IN') + '</span>' +
-                '<span class="sb-tile-amt">₹ ' + fmtAmt(b.amount) + '</span>' +
-                '</a>';
+            const zero = !b.count ? " sb-tile-zero" : "";
+            const total = b.derived ? " sb-tile-total" : "";
+            return (
+                '<a class="sb-tile' +
+                zero +
+                total +
+                '" href="' +
+                escapeHtml(b.url) +
+                '">' +
+                '<span class="sb-tile-lbl">' +
+                escapeHtml(b.label) +
+                "</span>" +
+                '<span class="sb-tile-count">' +
+                Number(b.count).toLocaleString("en-IN") +
+                "</span>" +
+                '<span class="sb-tile-amt">₹ ' +
+                fmtAmt(b.amount) +
+                "</span>" +
+                "</a>"
+            );
         }
 
         function section(s) {
-            return '<div class="sb-section" data-sb-section>' +
+            return (
+                '<div class="sb-section" data-sb-section>' +
                 '<button type="button" class="sb-section-hd" data-sb-toggle aria-expanded="true">' +
                 '<span class="sb-caret" aria-hidden="true">▾</span>' +
-                '<span class="sb-section-name">' + escapeHtml(s.label) + '</span>' +
-                '<span class="sb-section-sub">' + Number(s.subtotalCount).toLocaleString('en-IN') + ' · ₹ ' + fmtAmt(s.subtotalAmount) + '</span>' +
-                '</button>' +
-                '<div class="sb-tiles">' + s.buckets.map(tile).join('') + '</div>' +
-                '</div>';
+                '<span class="sb-section-name">' +
+                escapeHtml(s.label) +
+                "</span>" +
+                '<span class="sb-section-sub">' +
+                Number(s.subtotalCount).toLocaleString("en-IN") +
+                " · ₹ " +
+                fmtAmt(s.subtotalAmount) +
+                "</span>" +
+                "</button>" +
+                '<div class="sb-tiles">' +
+                s.buckets.map(tile).join("") +
+                "</div>" +
+                "</div>"
+            );
         }
 
         function block(bl) {
-            return '<div class="sb-block">' +
-                '<div class="sb-block-hd">' + escapeHtml(bl.label) +
-                '<span class="sb-block-total">' + Number(bl.totalCount).toLocaleString('en-IN') + ' loans · ₹ ' + fmtAmt(bl.totalAmount) + '</span>' +
-                '</div>' +
-                bl.sections.map(section).join('') +
-                '</div>';
+            return (
+                '<div class="sb-block">' +
+                '<div class="sb-block-hd">' +
+                escapeHtml(bl.label) +
+                '<span class="sb-block-total">' +
+                Number(bl.totalCount).toLocaleString("en-IN") +
+                " loans · ₹ " +
+                fmtAmt(bl.totalAmount) +
+                "</span>" +
+                "</div>" +
+                bl.sections.map(section).join("") +
+                "</div>"
+            );
         }
 
         // Collapse/expand a section on header click (delegated — survives re-render).
-        host.addEventListener('click', function (e) {
-            const btn = e.target.closest('[data-sb-toggle]');
-            if (!btn) { return; }
-            const sec = btn.closest('[data-sb-section]');
-            const collapsed = sec.classList.toggle('sb-collapsed');
-            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        host.addEventListener("click", function (e) {
+            const btn = e.target.closest("[data-sb-toggle]");
+            if (!btn) {
+                return;
+            }
+            const sec = btn.closest("[data-sb-section]");
+            const collapsed = sec.classList.toggle("sb-collapsed");
+            btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
         });
 
         // Show/hide the custom-range inputs + Apply button for the current period.
         function syncControls() {
-            const custom = periodSel.value === 'custom';
-            fromEl.style.display = custom ? '' : 'none';
-            toEl.style.display = custom ? '' : 'none';
-            applyBtn.style.display = custom ? '' : 'none';
+            const custom = periodSel.value === "custom";
+            fromEl.style.display = custom ? "" : "none";
+            toEl.style.display = custom ? "" : "none";
+            applyBtn.style.display = custom ? "" : "none";
         }
 
         let inFlight = 0;
         function load() {
-            const period = periodSel.value || meta.defaultPeriod || 'month';
-            const custom = period === 'custom';
-            const from = custom ? toIso(fromEl.value) : '';
-            const to = custom ? toIso(toEl.value) : '';
+            const period = periodSel.value || meta.defaultPeriod || "month";
+            const custom = period === "custom";
+            const from = custom ? toIso(fromEl.value) : "";
+            const to = custom ? toIso(toEl.value) : "";
             // Custom range needs at least one bound before we query.
             if (custom && !from && !to) {
-                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
+                host.innerHTML =
+                    '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
                 return;
             }
 
-            const uid = userSel.value || '';
-            let q = url + '?period=' + encodeURIComponent(period);
-            if (uid) { q += '&user_id=' + encodeURIComponent(uid); }
-            if (from) { q += '&from=' + encodeURIComponent(from); }
-            if (to) { q += '&to=' + encodeURIComponent(to); }
-            if (branchSel.value) { q += '&branch_id=' + encodeURIComponent(branchSel.value); }
-            if (bankSel.value) { q += '&bank_id=' + encodeURIComponent(bankSel.value); }
-            if (productSel.value) { q += '&product_id=' + encodeURIComponent(productSel.value); }
+            const uid = userSel.value || "";
+            let q = url + "?period=" + encodeURIComponent(period);
+            if (uid) {
+                q += "&user_id=" + encodeURIComponent(uid);
+            }
+            if (from) {
+                q += "&from=" + encodeURIComponent(from);
+            }
+            if (to) {
+                q += "&to=" + encodeURIComponent(to);
+            }
+            if (branchSel.value) {
+                q += "&branch_id=" + encodeURIComponent(branchSel.value);
+            }
+            if (bankSel.value) {
+                q += "&bank_id=" + encodeURIComponent(bankSel.value);
+            }
+            if (productSel.value) {
+                q += "&product_id=" + encodeURIComponent(productSel.value);
+            }
 
             const token = ++inFlight;
-            host.innerHTML = '<div class="sb-loading text-xs text-muted">Loading…</div>';
-            fetch(q, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-                .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+            host.innerHTML =
+                '<div class="sb-loading text-xs text-muted">Loading…</div>';
+            fetch(q, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                credentials: "same-origin",
+            })
+                .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
                 .then((data) => {
-                    if (token !== inFlight) { return; } // a newer request superseded this one
-                    const rangeEl = $('sbRange');
-                    if (rangeEl) { rangeEl.textContent = (data.range && data.range.label) || ''; }
-                    host.innerHTML = (data.blocks || []).map(block).join('') ||
+                    if (token !== inFlight) {
+                        return;
+                    } // a newer request superseded this one
+                    const rangeEl = $("sbRange");
+                    if (rangeEl) {
+                        rangeEl.textContent =
+                            (data.range && data.range.label) || "";
+                    }
+                    host.innerHTML =
+                        (data.blocks || []).map(block).join("") ||
                         '<div class="text-xs text-muted">No data for this period.</div>';
                 })
                 .catch(() => {
-                    if (token !== inFlight) { return; }
-                    host.innerHTML = '<div class="text-xs text-muted">Could not load breakdown.</div>';
+                    if (token !== inFlight) {
+                        return;
+                    }
+                    host.innerHTML =
+                        '<div class="text-xs text-muted">Could not load breakdown.</div>';
                 });
         }
 
         // Presets + user filter load immediately; custom range waits for Apply
         // (the datepicker's date-pick doesn't fire a reliable native change event).
-        periodSel.addEventListener('change', function () {
+        periodSel.addEventListener("change", function () {
             syncControls();
-            if (periodSel.value === 'custom') {
-                host.innerHTML = '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
+            if (periodSel.value === "custom") {
+                host.innerHTML =
+                    '<div class="text-xs text-muted">Pick a start and/or end date, then tap Apply.</div>';
             } else {
                 load();
             }
         });
-        userSel.addEventListener('change', load);
-        applyBtn.addEventListener('click', load);
-        branchSel.addEventListener('change', load);
-        bankSel.addEventListener('change', function () { syncProducts(); load(); });
-        productSel.addEventListener('change', load);
+        userSel.addEventListener("change", load);
+        applyBtn.addEventListener("click", load);
+        branchSel.addEventListener("change", load);
+        bankSel.addEventListener("change", function () {
+            syncProducts();
+            load();
+        });
+        productSel.addEventListener("change", load);
 
         syncControls();
         load();
@@ -510,52 +945,101 @@
 
     /* ==================== Sidebar: today's follow-ups ==================== */
     const todayItems = D.todayFollowUps || [];
-    $('timelineList').innerHTML = todayItems.length
-        ? todayItems.map((i) => (
-            '<li' + (i.active ? ' class="active"' : '') + '>' +
-            '<div class="tl-t">' + escapeHtml(i.title) + '</div>' +
-            '<div class="tl-meta">' + escapeHtml(i.meta) +
-            (i.owner ? ' · ' + escapeHtml(i.owner) : '') +
-            '</div>' +
-            '</li>'
-        )).join('')
+    $("timelineList").innerHTML = todayItems.length
+        ? todayItems
+              .map(
+                  (i) =>
+                      "<li" +
+                      (i.active ? ' class="active"' : "") +
+                      ">" +
+                      '<div class="tl-t">' +
+                      escapeHtml(i.title) +
+                      "</div>" +
+                      '<div class="tl-meta">' +
+                      escapeHtml(i.meta) +
+                      (i.owner ? " · " + escapeHtml(i.owner) : "") +
+                      "</div>" +
+                      "</li>",
+              )
+              .join("")
         : '<li><div class="tl-meta">No follow-ups due today.</div></li>';
 
     /* ==================== Sidebar: open queries ==================== */
     const queries = D.openQueries || [];
-    $('openQueryCount').textContent = queries.length;
-    $('openQueriesList').innerHTML = queries.length
-        ? queries.map((q, i) => {
-            const last = i === queries.length - 1;
-            return '<div style="padding:12px 18px;' + (last ? '' : 'border-bottom:1px solid var(--line);') + '">' +
-                '<div style="font-size:12px;font-weight:500;">' + escapeHtml(q.title) + '</div>' +
-                '<div class="text-xs text-muted mt-1"><span class="font-mono">' + escapeHtml(q.loan) + '</span> · ' + escapeHtml(q.role) + ' · ' + escapeHtml(q.age) + '</div>' +
-                '</div>';
-        }).join('')
+    $("openQueryCount").textContent = queries.length;
+    $("openQueriesList").innerHTML = queries.length
+        ? queries
+              .map((q, i) => {
+                  const last = i === queries.length - 1;
+                  return (
+                      '<div style="padding:12px 18px;' +
+                      (last ? "" : "border-bottom:1px solid var(--line);") +
+                      '">' +
+                      '<div style="font-size:12px;font-weight:500;">' +
+                      escapeHtml(q.title) +
+                      "</div>" +
+                      '<div class="text-xs text-muted mt-1"><span class="font-mono">' +
+                      escapeHtml(q.loan) +
+                      "</span> · " +
+                      escapeHtml(q.role) +
+                      " · " +
+                      escapeHtml(q.age) +
+                      "</div>" +
+                      "</div>"
+                  );
+              })
+              .join("")
         : '<div style="padding:24px;text-align:center;color:var(--ink-3);font-size:12px;">No open queries.</div>';
 
     /* ==================== Sidebar: field activity ==================== */
     const fa = D.fieldActivity || [];
-    $('fieldStrip').innerHTML = fa.map((s) => (
-        '<div><div class="lbl">' + escapeHtml(s.lbl) + '</div><div class="val">' + escapeHtml(s.val) + '</div></div>'
-    )).join('');
+    $("fieldStrip").innerHTML = fa
+        .map(
+            (s) =>
+                '<div><div class="lbl">' +
+                escapeHtml(s.lbl) +
+                '</div><div class="val">' +
+                escapeHtml(s.val) +
+                "</div></div>",
+        )
+        .join("");
 
     /* ==================== Sidebar: bank mix donut ==================== */
     const mix = D.bankMix || { total: 0, banks: [] };
     let offset = 25;
-    let donutSegs = '<circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--paper-2)" stroke-width="6"/>';
-    let legendHtml = '';
+    let donutSegs =
+        '<circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--paper-2)" stroke-width="6"/>';
+    let legendHtml = "";
     mix.banks.forEach((b) => {
         const dash = mix.total ? (b.count / mix.total) * 100 : 0;
-        donutSegs += '<circle cx="21" cy="21" r="15.915" fill="none" stroke="' + b.bg + '" stroke-width="6" stroke-dasharray="' + dash + ' 100" stroke-dashoffset="' + offset + '" transform="rotate(-90 21 21)"/>';
+        donutSegs +=
+            '<circle cx="21" cy="21" r="15.915" fill="none" stroke="' +
+            b.bg +
+            '" stroke-width="6" stroke-dasharray="' +
+            dash +
+            ' 100" stroke-dashoffset="' +
+            offset +
+            '" transform="rotate(-90 21 21)"/>';
         offset -= dash;
-        legendHtml += '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;">' +
+        legendHtml +=
+            '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;">' +
             '<span style="display:inline-flex;gap:6px;align-items:center;">' +
-            '<span style="width:8px;height:8px;background:' + b.bg + ';border-radius:2px;"></span>' + escapeHtml(b.code) +
-            '</span><strong>' + b.pct + '%</strong></div>';
+            '<span style="width:8px;height:8px;background:' +
+            b.bg +
+            ';border-radius:2px;"></span>' +
+            escapeHtml(b.code) +
+            "</span><strong>" +
+            b.pct +
+            "%</strong></div>";
     });
-    donutSegs += '<text x="21" y="22" text-anchor="middle" font-family="Jost" font-weight="600" font-size="6" fill="#1c1a1b">' + mix.total + '</text>';
-    donutSegs += '<text x="21" y="27" text-anchor="middle" font-family="Archivo" font-size="3" fill="#8a8285">loans</text>';
-    $('bankDonut').innerHTML = donutSegs;
-    $('bankLegend').innerHTML = legendHtml || '<div class="text-xs text-muted">No loans this month.</div>';
+    donutSegs +=
+        '<text x="21" y="22" text-anchor="middle" font-family="Jost" font-weight="600" font-size="6" fill="#1c1a1b">' +
+        mix.total +
+        "</text>";
+    donutSegs +=
+        '<text x="21" y="27" text-anchor="middle" font-family="Archivo" font-size="3" fill="#8a8285">loans</text>';
+    $("bankDonut").innerHTML = donutSegs;
+    $("bankLegend").innerHTML =
+        legendHtml ||
+        '<div class="text-xs text-muted">No loans this month.</div>';
 })();

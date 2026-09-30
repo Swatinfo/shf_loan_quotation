@@ -8,6 +8,108 @@
     margin: 4px 0 2px;
 }
 
+/* ──────────────────────────────────────────────────────────────────
+   Tab bar → same card chrome as the KPI strip (.kpi-strip in
+   shf-workflow.css). The dashboard tabs render inside .page-header, so
+   the base rules in shf.css (.page-header .tabs) apply. dashboard.css is
+   page-scoped, so these overrides only affect the dashboard — shared
+   shf.css is untouched. Container values mirror .kpi-strip exactly
+   (bg / border / radius / shadow / margin-top / padding); each tab keeps
+   its orange underline-active + count-pill treatment.
+   ────────────────────────────────────────────────────────────────── */
+.page-header .tabs {
+    margin-top: 14px;          /* == .kpi-strip */
+    margin-bottom: 0;
+    padding: 8px 14px;         /* == .kpi-strip */
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--sh-1);
+    gap: 16px;                 /* room for the divider, ≈ .kpi-strip chip gap */
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+/* Vertical divider between adjacent tabs — mirrors .kpi-sep between chips. */
+.page-header .tabs .tab + .tab::before {
+    content: '';
+    position: absolute;
+    left: -8px;                /* half the container gap → centred in the gap */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 22px;              /* == .kpi-sep */
+    background: var(--line);
+}
+
+.page-header .tabs::-webkit-scrollbar {
+    display: none;
+}
+
+/* Tab items become KPI-style chips: leading tone-coloured icon + label +
+   count. Typography mirrors .kpi-chip (Jost, tabular) so the two strips
+   read as one system. Vertical padding is trimmed since the card supplies
+   the outer 8px, keeping the bar ≈ the KPI strip height. */
+.page-header .tabs .tab {
+    position: relative;          /* anchors the divider pseudo-element */
+    padding: 5px 4px;
+    font-family: 'Jost', 'Archivo', sans-serif;
+    font-size: 13px;             /* label ≈ KPI chip label scale */
+    font-weight: 600;
+    text-transform: uppercase;   /* == .kpi-chip .kpi-lbl */
+    letter-spacing: 0.05em;      /* == .kpi-chip .kpi-lbl */
+    font-variant-numeric: tabular-nums;
+    gap: 7px;                    /* == .kpi-chip icon/label gap */
+}
+
+/* Count renders like the KPI value: a big, bold, tabular number — not a
+   small pill. (Overrides the base pill in shf.css .page-header .tabs .tab .count.) */
+.page-header .tabs .tab .count {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 18px;             /* == .kpi-chip .kpi-val */
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.page-header .tabs .tab.active .count {
+    background: none;
+    color: var(--accent);        /* active number picks up the brand accent */
+}
+
+/* Leading icon — mirrors .kpi-chip .kpi-ic (16px box, 14px svg, muted
+   default; tone class overrides the colour, same as the KPI chips). */
+.page-header .tabs .tab .tab-ic {
+    width: 16px;
+    height: 16px;
+    display: inline-grid;
+    place-items: center;
+    color: var(--ink-4);
+    flex-shrink: 0;
+}
+
+.page-header .tabs .tab .tab-ic svg {
+    width: 14px;
+    height: 14px;
+}
+
+.page-header .tabs .tab.tone-accent .tab-ic { color: var(--accent); }
+.page-header .tabs .tab.tone-blue   .tab-ic { color: var(--blue); }
+.page-header .tabs .tab.tone-amber  .tab-ic { color: var(--amber); }
+.page-header .tabs .tab.tone-green  .tab-ic { color: var(--green); }
+.page-header .tabs .tab.tone-red    .tab-ic { color: var(--red); }
+.page-header .tabs .tab.tone-violet .tab-ic { color: var(--violet); }
+
+@media (max-width: 899px) {
+    .page-header .tabs {
+        padding: 6px 10px;
+        flex-wrap: nowrap;
+    }
+}
+
 /* Bank mix donut size — keeps numerals legible */
 .donut {
     width: 110px;
