@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
- * The custom themed 403 page renders (extending the app layout with the header
- * nav) and shows a clear "no permission" message.
+ * The custom branded 403 page renders (standalone shared error layout — no app
+ * header, so it is robust in all states) and shows a clear "no permission"
+ * message with a Go to Dashboard action.
  */
 class Error403PageTest extends TestCase
 {
@@ -34,7 +35,8 @@ class Error403PageTest extends TestCase
         $response->assertForbidden();
         $response->assertSee('Access Denied');
         $response->assertSee("don't have permission", false);
-        // Header nav is present (the layout rendered) — the dashboard link exists.
-        $response->assertSee(route('dashboard'), false);
+        // Standalone branded page with a Go to Dashboard action.
+        $response->assertSee('Go to Dashboard');
+        $response->assertSee('href="/dashboard"', false);
     }
 }

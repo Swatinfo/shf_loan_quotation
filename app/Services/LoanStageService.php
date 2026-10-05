@@ -1688,7 +1688,7 @@ class LoanStageService
     {
         return $loan->stageAssignments()
             ->subStagesOf('parallel_processing')
-            ->with(['stage', 'assignee'])
+            ->with(['stage', 'assignee', 'activeQueries'])
             ->get();
     }
 
@@ -1734,7 +1734,7 @@ class LoanStageService
     public function getLoanStageStatus(LoanDetail $loan): Collection
     {
         return $loan->stageAssignments()
-            ->with(['stage', 'assignee'])
+            ->with(['stage', 'assignee', 'activeQueries'])
             ->get()
             ->sortBy(fn ($sa) => ($sa->stage?->sequence_order ?? 999) * 1000 + ($sa->stage?->id ?? 999));
     }

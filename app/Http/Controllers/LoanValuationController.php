@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\LoanDetail;
 use App\Services\LoanStageService;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -28,7 +30,7 @@ class LoanValuationController extends Controller
         return view($template, compact('loan', 'valuations') + ['pageKey' => 'loans']);
     }
 
-    public function searchLocation(Request $request): \Illuminate\Http\JsonResponse
+    public function searchLocation(Request $request): JsonResponse
     {
         $request->validate(['q' => 'required|string|max:255']);
 
@@ -71,7 +73,7 @@ class LoanValuationController extends Controller
         return response()->json(['results' => $mapped]);
     }
 
-    public function reverseGeocode(Request $request): \Illuminate\Http\JsonResponse
+    public function reverseGeocode(Request $request): JsonResponse
     {
         $request->validate([
             'lat' => 'required|numeric',
@@ -157,6 +159,13 @@ class LoanValuationController extends Controller
             return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst($loan->status).'. Changes are not allowed.');
         }
 
+        // An open query blocks the stage — don't save or complete until it's resolved.
+        $tvAssignment = $loan->stageAssignments()->where('stage_key', 'technical_valuation')->first();
+        if ($tvAssignment && $tvAssignment->hasPendingQueries()) {
+            return redirect()->route('loans.stages', $loan)
+                ->with('error', 'An open query is blocking Technical Valuation. Resolve it before saving.');
+        }
+
         $validated = $request->validate([
             'valuation_type' => 'required|in:property',
             'property_type' => 'required|string|max:100',
@@ -174,7 +183,7 @@ class LoanValuationController extends Controller
             'notes' => 'nullable|string|max:5000',
         ]);
 
-        $validated['valuation_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['valuation_date'])->toDateString();
+        $validated['valuation_date'] = Carbon::createFromFormat('d/m/Y', $validated['valuation_date'])->toDateString();
 
         // Calculate valuations
         $landArea = (float) preg_replace('/[^0-9.]/', '', $validated['land_area']);
@@ -204,10 +213,14 @@ class LoanValuationController extends Controller
         $stageService = app(LoanStageService::class);
         $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
         if ($assignment && in_array($assignment->status, ['pending', 'in_progress'])) {
-            if ($assignment->status === 'pending') {
-                $stageService->updateStageStatus($loan, $stageKey, 'in_progress', auth()->id());
+            try {
+                if ($assignment->status === 'pending') {
+                    $stageService->updateStageStatus($loan, $stageKey, 'in_progress', auth()->id());
+                }
+                $stageService->updateStageStatus($loan, $stageKey, 'completed', auth()->id());
+            } catch (\RuntimeException $e) {
+                return redirect()->route('loans.stages', $loan)->with('error', $e->getMessage());
             }
-            $stageService->updateStageStatus($loan, $stageKey, 'completed', auth()->id());
 
             return redirect()->route('loans.stages', $loan)->with('success', 'Valuation saved — stage completed!');
         }

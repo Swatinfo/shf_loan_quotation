@@ -395,6 +395,11 @@ class LoanStageController extends Controller
                 return response()->json(['error' => 'Only the loan owner / branch manager / BDH can skip bank verification.'], 403);
             }
 
+            // Blocked by an open query on legal or its dependent ODV sub-stage.
+            if ($blocked = $this->queryBlock($loan, ['legal_verification', 'original_document_verification'])) {
+                return $blocked;
+            }
+
             $assignment->mergeNotesData([
                 'legal_phase' => 'completed_skip_bank',
                 'legal_skipped_bank' => true,
@@ -402,7 +407,11 @@ class LoanStageController extends Controller
                 'legal_completed_at' => now()->toDateTimeString(),
             ]);
 
-            $this->stageService->updateStageStatus($loan, 'legal_verification', 'completed', auth()->id());
+            try {
+                $this->stageService->updateStageStatus($loan, 'legal_verification', 'completed', auth()->id());
+            } catch (\RuntimeException $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
 
             ActivityLog::log('legal_completed_skip_bank', $assignment->fresh(), [
                 'loan_number' => $loan->loan_number,
@@ -548,7 +557,14 @@ class LoanStageController extends Controller
 
         // Phase 4: Bank employee confirms → complete stage
         if ($validated['action'] === 'esign_complete') {
-            $this->stageService->updateStageStatus($loan, 'esign', 'completed', auth()->id());
+            if ($blocked = $this->queryBlock($loan, ['esign'])) {
+                return $blocked;
+            }
+            try {
+                $this->stageService->updateStageStatus($loan, 'esign', 'completed', auth()->id());
+            } catch (\RuntimeException $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
             $loan->refresh();
             $progress = $this->stageService->recalculateProgress($loan);
 
@@ -674,12 +690,38 @@ class LoanStageController extends Controller
         }
 
         if ($validated['action'] === 'complete') {
-            $this->stageService->updateStageStatus($loan, 'rate_pf', 'completed', auth()->id());
+            if ($blocked = $this->queryBlock($loan, ['rate_pf'])) {
+                return $blocked;
+            }
+            try {
+                $this->stageService->updateStageStatus($loan, 'rate_pf', 'completed', auth()->id());
+            } catch (\RuntimeException $e) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
 
             return response()->json(['success' => true, 'message' => 'Rate & PF completed']);
         }
 
         return response()->json(['error' => 'Invalid action'], 422);
+    }
+
+    /**
+     * If any of the given stages has an unresolved query (pending/responded),
+     * return a 422 JSON response to block the action; otherwise null. Stage
+     * completion is blocked until the query is resolved.
+     */
+    private function queryBlock(LoanDetail $loan, array $stageKeys): ?JsonResponse
+    {
+        foreach ($stageKeys as $key) {
+            $assignment = $loan->stageAssignments()->where('stage_key', $key)->first();
+            if ($assignment && $assignment->hasPendingQueries()) {
+                return response()->json([
+                    'error' => 'An open query is blocking this stage. Resolve it before completing.',
+                ], 422);
+            }
+        }
+
+        return null;
     }
 
     public function saveNotes(Request $request, LoanDetail $loan, string $stageKey): JsonResponse
@@ -765,10 +807,12 @@ class LoanStageController extends Controller
         // Refresh assignment after notes merge
         $assignment->refresh();
 
-        // Auto-complete if stage criteria met (for pending/in_progress stages)
+        // Auto-complete if stage criteria met (for pending/in_progress stages).
+        // Skipped while an open query blocks the stage — notes still save, the
+        // stage waits for resolution (no error thrown).
         $stageAdvanced = false;
         $stageReverted = false;
-        if (in_array($assignment->status, ['pending', 'in_progress']) && $this->isStageDataComplete($stageKey, $assignment)) {
+        if (in_array($assignment->status, ['pending', 'in_progress']) && ! $assignment->hasPendingQueries() && $this->isStageDataComplete($stageKey, $assignment)) {
             if ($assignment->status === 'pending') {
                 $this->stageService->updateStageStatus($loan, $stageKey, 'in_progress', auth()->id());
             }

@@ -563,7 +563,12 @@
                                                         ->user()
                                                         ->hasAnyRole(['super_admin', 'admin']);
                                             @endphp
-                                            @php $isSubActionable = $loan->status === 'active' && $isSubAssignee && $sub->status === 'in_progress'; @endphp
+                                            @php
+                                                $isSubActionable = $loan->status === 'active' && $isSubAssignee && $sub->status === 'in_progress';
+                                                // An open query (pending/responded) on THIS sub-stage blocks its
+                                                // actions — stage-wise, siblings unaffected.
+                                                $subHasQuery = $sub->activeQueries->isNotEmpty();
+                                            @endphp
                                             <div class="col-md-6 mb-2">
                                                 <div class="card border-start border-2 {{ match ($sub->status) {'completed' => 'border-success','in_progress' => 'border-primary',default => 'border-secondary'} }}"
                                                     @if ($isSubActionable) data-actionable="true" @endif>
@@ -571,9 +576,15 @@
                                                         <div class="d-flex justify-content-between align-items-center">
                                                             <strong
                                                                 class="shf-text-sm">{{ $sub->stage?->stage_name_en }}</strong>
-                                                            <span
-                                                                class="shf-badge shf-badge-{{ match (\App\Models\StageAssignment::STATUS_LABELS[$sub->status]['color']) {'success' => 'green','primary' => 'blue',default => 'gray'} }} shf-text-2xs">
-                                                                {{ \App\Models\StageAssignment::STATUS_LABELS[$sub->status]['label'] }}
+                                                            <span class="d-inline-flex align-items-center gap-1">
+                                                                @if ($subHasQuery)
+                                                                    <span class="shf-badge shf-badge-orange shf-text-2xs">⚠
+                                                                        Query</span>
+                                                                @endif
+                                                                <span
+                                                                    class="shf-badge shf-badge-{{ match (\App\Models\StageAssignment::STATUS_LABELS[$sub->status]['color']) {'success' => 'green','primary' => 'blue',default => 'gray'} }} shf-text-2xs">
+                                                                    {{ \App\Models\StageAssignment::STATUS_LABELS[$sub->status]['label'] }}
+                                                                </span>
                                                             </span>
                                                         </div>
                                                         @if ($sub->assignee)
@@ -847,7 +858,22 @@
                                                                     @break
                                                                 @endswitch
                                                             </div>
-                                                        @elseif($sub->status === 'in_progress' && ($isSubAssignee || ($sub->stage_key === 'original_document_verification' && auth()->user()->hasPermission('verify_original_documents'))))
+                                                        @elseif($sub->status === 'in_progress' && $subHasQuery)
+                                                            {{-- Blocked: an open query on this sub-stage hides its actions
+                                                                 until resolved (stage-wise). Resolve controls are in the
+                                                                 Active Queries banner below. --}}
+                                                            <div
+                                                                class="alert alert-warning py-2 mt-2 mb-0 shf-text-sm d-flex align-items-start gap-2">
+                                                                <svg class="shf-icon-sm flex-shrink-0" fill="none"
+                                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                                </svg>
+                                                                <div><strong>Action blocked by an open query.</strong>
+                                                                    Resolve the query below to continue.</div>
+                                                            </div>
+                                                        @elseif($sub->status === 'in_progress' && ! $subHasQuery && ($isSubAssignee || ($sub->stage_key === 'original_document_verification' && auth()->user()->hasPermission('verify_original_documents'))))
                                                             {{-- In-progress: show editable form for the assignee, plus ODV
                                                                  for holders of verify_original_documents (any assignee). The
                                                                  inner switch self-selects by stage_key, so only the matching
@@ -1447,7 +1473,7 @@ $canSkipLegalBank =
                                                              non-assignees, for holders of waive_legal_verification (plus the
                                                              base owner / BM / BDH authority). Complements the Phase-1 assignee
                                                              button above without duplicating it. --}}
-                                                        @if ($sub->stage_key === 'legal_verification' && $sub->status === 'in_progress' && $loan->status === 'active')
+                                                        @if ($sub->stage_key === 'legal_verification' && $sub->status === 'in_progress' && $loan->status === 'active' && ! $subHasQuery)
                                                             @php
                                                                 $lwUser = auth()->user();
                                                                 $lwPhase = $sub->getNotesData()['legal_phase'] ?? '1';
@@ -1699,8 +1725,10 @@ $canSkipLegalBank =
                                 @php
                                     $stageViewable = in_array($assignment->status, ['in_progress', 'completed']);
                                     $stageEditable = $stageViewable && $isMainAssignee;
+                                    // An open query (pending/responded) on this stage blocks its actions.
+                                    $mainHasQuery = $assignment->activeQueries->isNotEmpty();
                                 @endphp
-                                @if ($stageEditable)
+                                @if ($stageEditable && ! $mainHasQuery)
                                     @switch($assignment->stage_key)
                                         @case('inquiry')
                                             @if ($assignment->status === 'in_progress' || ($assignment->status === 'completed' && !$loan->isBasicEditLocked()))
@@ -3244,6 +3272,18 @@ $canSkipLegalBank =
 
                                         {{-- sanction_decision is handled in sub-stages section above --}}
                                     @endswitch
+                                @elseif ($stageEditable && $mainHasQuery)
+                                    {{-- Blocked: an open query on this stage hides its actions until
+                                         resolved. Resolve controls are in the Active Queries banner below. --}}
+                                    <div class="alert alert-warning py-2 mt-2 mb-0 shf-text-sm d-flex align-items-start gap-2">
+                                        <svg class="shf-icon-sm flex-shrink-0" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        <div><strong>Action blocked by an open query.</strong> Resolve the query below to
+                                            continue.</div>
+                                    </div>
                                 @elseif ($stageViewable)
                                     {{-- Non-assignee viewer: same read-only financial detail the
                                          assignee sees, but with NO forms/buttons (view-only). --}}

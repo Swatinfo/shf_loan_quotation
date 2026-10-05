@@ -4,6 +4,18 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Open query blocks all stage actions (stage-wise) + no more raw exception pages (2026-10-05)
+
+- **Bug**: `LoanStageService::updateStageStatus` throws `RuntimeException("…unresolved queries")` when completing a stage with a pending/responded query, but the UI left action buttons enabled and several endpoints didn't guard. Worst case: `LoanValuationController::store` is a full-page POST → the user got a **raw exception page**. AJAX endpoints returned a 500 HTML body → the JS `.fail` showed a generic "Failed" (real message lost).
+- **Rule**: an active query = status `pending` OR `responded` (only `resolved` unblocks). While a stage has one, ALL its actions are hidden; only Raise/Respond/**Resolve** remain. **Parallel = stage-wise** — keyed on each sub-stage's own `activeQueries` (per `stage_assignment`), so a query on technical_valuation blocks only it, not legal/sanction_decision.
+- **Layer 1 (UI, `_stages-body.blade.php`)**: compute `$mainHasQuery = $assignment->activeQueries->isNotEmpty()` before the `@if ($stageEditable)` switch and `$subHasQuery = $sub->activeQueries->isNotEmpty()` before the sub `@elseif(... in_progress ...)` switch. Gate the switch (`&& ! $hasQuery`) and add a 🔒 lock-card `@elseif(... && $hasQuery)` branch; add a `⚠ Query` header chip; also gate the out-of-switch legal-waive button and `valuation-map.blade.php`'s Save. The existing Active-Queries banner (Respond/Resolve) is untouched — it's where you clear it. Eager-load `activeQueries` in `getLoanStageStatus`/`getParallelSubStages` (kills N+1 the inline banner queries had).
+- **Layer 2 (server backstop)**: explicit completions wrap `updateStageStatus` in `try/catch(\RuntimeException)` → 422 `{error}` (helper `LoanStageController::queryBlock()` pre-checks for a clean message; also covers nested ODV auto-complete reached via `legalAction`). Valuation → redirect-back-with-error (blocks at top, before saving). AUTO-completions (`saveNotes`, `LoanDocumentController::store`) just **guard-and-skip** with `! hasPendingQueries()` — the save persists, the stage waits (no throw).
+- **Layer 3**: existing `.fail` handlers already read `responseJSON.error`, which the 422s now populate — no JS change needed.
+- Verified live in-browser: query on technical_valuation → lock card + ⚠ chip, no action buttons, while Rate & PF (no query) stayed fully actionable; **Resolve Query** re-rendered the actions. Tests: `StageQueryGatingTest` (4) + updated `Error403PageTest` (403 is now the standalone branded page). Full suite green bar the 2 known pre-existing failures.
+- **All error pages share a standalone layout** (`errors/layout.blade.php`): 403/404/419/429/500/503 — no app-layout/auth/DB/route deps (so they render during maintenance / DB-down). 503 keeps auto-refresh. 403 moved off the app layout (its old test asserted the header nav — updated).
+
+---
+
 ## Per-entry OTC + `partial_disbursed` status — multi-tranche disbursement (2026-10-05)
 
 - **Model**: disbursement is now multi-tranche over time with **per-entry OTC**. Each `disbursement_entries` row (cheque AND fund_transfer) has `otc_status` pending|cleared|skipped (+ handover date/by/at/remarks); "settled" = cleared|skipped. New loan status **`partial_disbursed`** is monotonic: `active → partial_disbursed (first entry) → completed (fully disbursed AND all tranches settled)`. `disbursement_details.completion_intent` (open|full) latches an explicit "fully disbursed" declaration. **Over-disbursement allowed** (cumulative may exceed sanctioned; UI warns).
