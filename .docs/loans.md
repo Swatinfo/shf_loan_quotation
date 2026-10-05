@@ -23,7 +23,8 @@ Complete list: `.claude/routes-reference.md`. Summary:
 `LoanDetail` — see `.claude/database-schema.md` and `models.md`. Key scopes and accessors:
 
 - `scopeVisibleTo(User)` — visibility rules (see below)
-- `scopeActive()` — `status = 'active'`
+- `scopeActive()` — in-flight loans: `status IN (active, partial_disbursed)` (both count as "active" in listings/dashboards/reports). `scopeOpen()` = not-closed (adds on_hold).
+- `isOverDisbursed()` — `disbursed_amount > sanctioned_amount` (over-disbursement is allowed; the UI shows a warning label)
 - `formattedAmount` — `₹ X,XX,XXX` (working amount, `loan_amount`)
 - `formattedOriginalAmount` — `₹ X,XX,XXX` from `original_loan_amount` (the as-applied amount snapshotted at loan creation), or `null`. Diverges from `loan_amount` only after a KFS-stage edit.
 - `loanAccountNumbers` — distinct `loan_account_number`s across the loan's **active** disbursement tranches (`disbursementEntries` where `is_active`), comma-joined; empty string before disbursement. There is no single account-number column — it's captured per tranche. Surfaced as a "Loan Acct #" column on the loans list + dashboard My-Tasks/Active-Loans widgets, and on the loan show page.
@@ -57,10 +58,11 @@ The DataTable endpoint (`/loans/data`) applies this scope before filtering/pagin
 Statuses (from `LoanDetail::STATUS_*` constants):
 
 - `active` — default; workflow stages actionable
+- `partial_disbursed` — **(2026-10-05)** disbursement started but loan not yet fully disbursed + OTC-settled. Monotonic in-flight state, system-managed by `DisbursementService::syncDisbursementState` (never set via the manual status endpoint). Counts as "active" everywhere (`scopeActive`, listings, dashboards, reports). Stages/disbursement remain actionable.
 - `on_hold` — paused; stages read-only, basic info read-only
 - `cancelled` — terminal (soft); can be reactivated by super_admin / admin / branch_manager / bdh
 - `rejected` — terminal (from `sanction_decision` or explicit stage rejection); includes `rejected_stage` + `rejection_reason`
-- `completed` — terminal success; set by stage flow (OTC clearance complete, or fund-transfer disbursement which skips OTC)
+- `completed` — terminal success; set by `syncDisbursementState` once the loan is fully disbursed (cumulative ≥ sanctioned target OR marked full) AND every disbursement tranche is OTC-settled (cleared/skipped)
 
 ### Status transitions (`LoanController::updateStatus`)
 
@@ -69,6 +71,8 @@ Statuses (from `LoanDetail::STATUS_*` constants):
 - `on_hold` → `active`
 - `cancelled` → `active` (reactivate, same elevated permission set)
 - `rejected` → `active` (reactivate — clears `rejected_*` fields, restores rejected stages to in_progress, recalculates progress)
+
+Manual status change is limited to `active` / `on_hold` / `cancelled` (`LoanValidationRules::statusChange`); `partial_disbursed` and `completed` are never user-set. Reactivating a loan that had already started disbursing re-runs `syncDisbursementState`, so it resumes `partial_disbursed` (or `completed`) rather than plain `active`.
 
 Every status change sets `status_reason`, `status_changed_at`, `status_changed_by` and is logged to `activity_logs`.
 

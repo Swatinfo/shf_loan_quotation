@@ -626,23 +626,11 @@ class LoanStageService
             return;
         }
 
-        // Fund transfer: skip OTC stage and complete loan (before sequential advancement)
-        if ($completedStageKey === 'disbursement') {
-            $disbursement = $loan->disbursement;
-            if ($disbursement && $disbursement->disbursement_type === 'fund_transfer') {
-                $otcAssignment = $loan->stageAssignments()->where('stage_key', 'otc_clearance')->first();
-                if ($otcAssignment && $otcAssignment->status !== 'completed') {
-                    $otcAssignment->update(['status' => 'skipped', 'completed_at' => now(), 'completed_by' => auth()->id()]);
-                }
-                $loan->update([
-                    'status' => LoanDetail::STATUS_COMPLETED,
-                    'current_stage' => 'disbursement',
-                ]);
-
-                return;
-            }
-            // Cheque: falls through to normal sequential advancement → otc_clearance
-        }
+        // Disbursement → otc_clearance is driven by DisbursementService::
+        // syncDisbursementState (per-entry OTC). When the disbursement stage
+        // completes it falls through to the normal sequential advance below,
+        // which opens otc_clearance. Loan completion + per-entry OTC settlement
+        // are owned by syncDisbursementState, NOT by this handler.
 
         // Sequential → advance to next and auto-start (skip stages not in this loan)
         $nextKey = $this->getNextStage($completedStageKey);
@@ -689,11 +677,9 @@ class LoanStageService
             }
         }
 
-        // OTC clearance completes the loan
-        if ($completedStageKey === 'otc_clearance') {
-            $loan->update(['status' => LoanDetail::STATUS_COMPLETED]);
-            app(NotificationService::class)->notifyLoanCompleted($loan);
-        }
+        // otc_clearance completion no longer completes the loan here — that is
+        // owned by DisbursementService::syncDisbursementState, which marks the
+        // loan completed only once every tranche is OTC-settled.
     }
 
     /**
@@ -1702,7 +1688,7 @@ class LoanStageService
     {
         return $loan->stageAssignments()
             ->subStagesOf('parallel_processing')
-            ->with(['stage', 'assignee'])
+            ->with(['stage', 'assignee', 'activeQueries'])
             ->get();
     }
 
@@ -1713,10 +1699,13 @@ class LoanStageService
      */
     public function recalculateProgress(LoanDetail $loan): LoanProgress
     {
-        $progress = $loan->progress ?? LoanProgress::create([
-            'loan_id' => $loan->id,
-            'total_stages' => 10,
-        ]);
+        // firstOrCreate (not `$loan->progress ?? create`) so repeated calls in a
+        // single request — e.g. completing two stages then re-syncing — can't
+        // double-insert against the cached-null relation and hit the unique index.
+        $progress = LoanProgress::firstOrCreate(
+            ['loan_id' => $loan->id],
+            ['total_stages' => 10],
+        );
 
         $mainAssignments = $loan->stageAssignments()->mainStages()->get();
         $total = $mainAssignments->count();
@@ -1745,7 +1734,7 @@ class LoanStageService
     public function getLoanStageStatus(LoanDetail $loan): Collection
     {
         return $loan->stageAssignments()
-            ->with(['stage', 'assignee'])
+            ->with(['stage', 'assignee', 'activeQueries'])
             ->get()
             ->sortBy(fn ($sa) => ($sa->stage?->sequence_order ?? 999) * 1000 + ($sa->stage?->id ?? 999));
     }
@@ -1841,6 +1830,11 @@ class LoanStageService
         }
         if ($targetIdx <= array_search('sanction', self::RESET_STAGE_ORDER, true)) {
             $loanUpdate['expected_docket_date'] = null;
+        }
+        if ($targetIdx <= array_search('disbursement', self::RESET_STAGE_ORDER, true)) {
+            // Disbursement record (incl. per-entry OTC + completion_intent) is
+            // deleted in resetClearRelatedData; clear the mirrored column too.
+            $loanUpdate['disbursed_amount'] = null;
         }
         $loan->update($loanUpdate);
         $log[] = "Loan set to active, current_stage: {$currentStage}";

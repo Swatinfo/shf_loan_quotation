@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
 use App\Services\CustomerService;
+use App\Services\DisbursementService;
 use App\Services\LoanConversionService;
 use App\Services\LoanPipelineBreakdownService;
 use App\Services\LoanStageService;
@@ -34,7 +35,7 @@ class LoanController extends Controller
         $baseQuery = LoanDetail::visibleTo(auth()->user());
         $stats = [
             'total' => (clone $baseQuery)->count(),
-            'active' => (clone $baseQuery)->where('status', 'active')->count(),
+            'active' => (clone $baseQuery)->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES)->count(),
             'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
             'this_month' => (clone $baseQuery)->whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)->count(),
@@ -115,15 +116,19 @@ class LoanController extends Controller
             $query->whereIn('id', $ids ?: [-1]);
         }
 
-        // Custom filters. Default to ACTIVE loans only — on_hold / cancelled /
-        // rejected / completed appear only when the user explicitly selects that
-        // status (or "all") from the filter. Pass status=all to see everything.
+        // Custom filters. Default to IN-FLIGHT loans (active + partial_disbursed) —
+        // on_hold / cancelled / rejected / completed appear only when the user
+        // explicitly selects that status (or "all"). Selecting "Active" also shows
+        // partially disbursed loans (both are in-flight); "Partially Disbursed"
+        // isolates just those. Pass status=all to see everything.
         if ($request->filled('status')) {
-            if ($request->status !== 'all') {
+            if ($request->status === LoanDetail::STATUS_ACTIVE) {
+                $query->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES);
+            } elseif ($request->status !== 'all') {
                 $query->where('status', $request->status);
             }
         } elseif (! $bucketFilter) {
-            $query->where('status', LoanDetail::STATUS_ACTIVE);
+            $query->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES);
         }
         if ($request->filled('customer_type')) {
             $query->where('customer_type', $request->customer_type);
@@ -292,7 +297,7 @@ class LoanController extends Controller
             $ntIcon = fn (string $path) => '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="'.$path.'"/></svg>';
             $actions = '<div class="lx-actions">';
             $actions .= '<a class="lx-act tone-info" href="'.route('loans.show', $loan).'" title="View" aria-label="View">'.$ntIcon('M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z').'</a>';
-            if (in_array($loan->status, ['active', 'on_hold'])) {
+            if (in_array($loan->status, ['active', 'partial_disbursed', 'on_hold'])) {
                 $actions .= '<a class="lx-act tone-accent" href="'.route('loans.stages', $loan).'" title="Stages" aria-label="Stages">'.$ntIcon('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4').'</a>';
             }
             if ($canEdit && ! $loan->isBasicEditLocked()) {
@@ -690,6 +695,13 @@ class LoanController extends Controller
         }
 
         $loan->update($updateData);
+
+        // Reactivating a loan that has already started disbursing must resume its
+        // in-flight disbursement state (active → partial_disbursed / completed),
+        // not leave it as plain "active".
+        if ($validated['status'] === 'active' && $loan->disbursement) {
+            app(DisbursementService::class)->syncDisbursementState($loan->fresh('disbursement'));
+        }
 
         ActivityLog::log('change_loan_status', $loan, [
             'loan_number' => $loan->loan_number,

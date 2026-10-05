@@ -180,7 +180,7 @@ breakdown" block (see `.docs/dashboard.md`). No constructor deps.
 - `build(User $requester, string $period='30', ?int $userId=null, ?string $from=null, ?string $to=null): array` — `{range, blocks[]}`. One block per allowed scope (`own`/`branch`/`all`), or a single "Selected: <name>" block when a valid `userId` is picked. Each block → sections (sanction/technical/legal/disbursement) → bucket tiles `{key,label,count,amount,url}`.
 - `loanIdsFor(User, string $scope, ?int $userId, string $period, string $section, string $bucket, ?string $from=null, ?string $to=null): array` — exact loan IDs for one bucket; powers the loan-list click-through (`LoanController@loanData` `whereIn`).
 - `allowedScopes(User)`, `canFilterByUser(User)`, `userOptions(User)` — role/permission-driven UI metadata.
-- **Classification** is single-pass in PHP by **precedence** (first match wins) so buckets are mutually exclusive within a section. Query bucket = active (`pending`/`responded`) `StageQuery` on that `stage_key`; Completed/Rejected beat Query. OTC bucket absorbs every completed loan. **Amounts**: `loan_amount` except Disbursement (Spill/Logged-in = `sanctioned_amount`; Cheque/Transfer + OTC = summed active `disbursement_entries`).
+- **Classification** is single-pass in PHP by **precedence** (first match wins) so buckets are mutually exclusive within a section. Query bucket = active (`pending`/`responded`) `StageQuery` on that `stage_key`; Completed/Rejected beat Query. OTC bucket absorbs every completed loan; a `partial_disbursed` loan (fully disbursed but OTC pending, or still partial) has entries and is not completed, so it classifies under the **Cheque/Transfer Entry** bucket until it completes — no classifier change was needed for per-entry OTC (status-agnostic load + entries-based buckets). **Amounts**: `loan_amount` except Disbursement (Spill/Logged-in = `sanctioned_amount`; Cheque/Transfer + OTC = summed active `disbursement_entries`).
 - Scope + selected-user **re-authorised server-side** (`view_all_loans` → `all`; BM/BDH → own+branch and only their branch users). Cohort = `created_at` window (preset days, all-time, or custom from/to). 60s per-block cache.
 
 ## LoanConversionService
@@ -253,8 +253,8 @@ Orchestration logic:
 - All parallel subs done → mark `parallel_processing` complete; flag off → advance to `rate_pf`; flag on → call `advanceToSanctionIfReady()`
 - **rate_pf** done (flag on only) → intercepted at top; call `advanceToSanctionIfReady()` and return
 - **sanction** done → compute `expected_docket_date` from app_number stage notes (custom_docket_date OR docket_days_offset)
-- **disbursement** (fund_transfer) → skip `otc_clearance`, mark loan `completed`
-- **otc_clearance** done → mark loan `completed`
+- **disbursement** done → normal sequential advance opens `otc_clearance`. Loan completion + per-entry OTC settlement are owned by `DisbursementService::syncDisbursementState`, NOT here (the old fund_transfer→skip-OTC→complete and otc→complete branches were removed, 2026-10-05).
+- **otc_clearance** done → no loan-completion side effect here (see `syncDisbursementState`).
 - Sequential advance + auto-assign next stage otherwise
 
 ### Feature flag: `open_rate_pf_parallel`
@@ -290,11 +290,11 @@ Pushes admin stage/task-owner config edits onto in-flight loans instead of only 
 
 ### Progress
 
-`recalculateProgress(LoanDetail): LoanProgress` — rebuilds counts + workflow_snapshot.
+`recalculateProgress(LoanDetail): LoanProgress` — rebuilds counts + workflow_snapshot. Uses `LoanProgress::firstOrCreate` (not `$loan->progress ?? create`) so repeated calls in one request (e.g. completing two stages then re-syncing) can't double-insert against a cached-null relation and hit the `loan_progress.loan_id` unique index.
 
 ### Stage reset
 
-`resetToStage(LoanDetail, string $stageKey, ?int $phase = null, ?string $variant = null): array` — rewinds a loan to `$stageKey`: target → `in_progress` (assignee via `resolveResetUsers`), all later stages → `pending`, re-opens `parallel_processing` when the target is a sub-stage, clears dependent data (disbursement/valuation rows, `application_number`, `expected_docket_date`, `is_sanctioned`, each only when the target is at/before its producing stage), then `recalculateProgress`. Phased stages default to entry phase 1. Returns log lines. Destructive/irreversible. Shared by the `loan:set-stage` command and the permission-gated `LoanStageController@resetStage` web action (`User::canResetLoanStages()` → `hasPermission('reset_loan_stages')`).
+`resetToStage(LoanDetail, string $stageKey, ?int $phase = null, ?string $variant = null): array` — rewinds a loan to `$stageKey`: target → `in_progress` (assignee via `resolveResetUsers`), all later stages → `pending`, re-opens `parallel_processing` when the target is a sub-stage, clears dependent data (disbursement/valuation rows, `application_number`, `expected_docket_date`, `is_sanctioned`, `disbursed_amount`, each only when the target is at/before its producing stage), then `recalculateProgress`. Status resets to `active` (reverting `partial_disbursed`); the disbursement row + its `disbursement_entries` (incl. per-entry OTC) + `completion_intent` are cascade-deleted. Phased stages default to entry phase 1. Returns log lines. Destructive/irreversible. Shared by the `loan:set-stage` command and the permission-gated `LoanStageController@resetStage` web action (`User::canResetLoanStages()` → `hasPermission('reset_loan_stages')`).
 
 `resolveResetUsers(LoanDetail): array` — `{task_owner, bank_employee, office_employee, branch_manager, bdh}` default user IDs for the loan (product-stage → bank/branch default → any active fallback).
 
@@ -322,24 +322,32 @@ Constructor: `ConfigService`.
 
 Constructor: `LoanStageService`.
 
+**Model (per-entry OTC + `partial_disbursed`, 2026-10-05).** Disbursement is multi-tranche over time. Each tranche (`disbursement_entries` row — cheque AND fund transfer) carries its own OTC handover: `otc_status` ∈ `pending` (default) | `cleared` (with `otc_handover_date`/`otc_cleared_by`/`otc_cleared_at`/`otc_remarks`) | `skipped`. A tranche is **settled** when cleared or skipped. The loan is monotonic: `active` → `partial_disbursed` (first entry) → `completed` (fully disbursed AND every active tranche settled). **Over-disbursement is allowed** (cumulative may exceed the sanctioned target; only the 1e11 per-entry sanity cap applies). `disbursement_details.completion_intent` (`open`|`full`) latches an explicit "fully disbursed" declaration.
+
 ### `processDisbursement(LoanDetail, array $data): DisbursementDetail`
 
-`$data = ['entries' => [...tranches...], 'notes' => ?string]` — each tranche: `disbursement_date` (Y-m-d), `method` (fund_transfer|cheque), `product_id` + `product_name` (snapshotted by controller), `loan_account_number`, `amount`, cheque fields on cheque tranches. Inside DB transaction:
+`$data = ['entries' => [...tranches...], 'notes' => ?string]` — each tranche: `disbursement_date` (Y-m-d), `method` (fund_transfer|cheque), `product_id` + `product_name` (snapshotted by controller), `loan_account_number`, `amount`, cheque fields on cheque tranches, and per-entry OTC (`otc_status`, `otc_handover_date` (Y-m-d), `otc_remarks`). Inside DB transaction:
 1. Upsert `disbursement_details` with `entries` + derived legacy columns (`disbursement_type` = 'cheque' if any cheque entry, `disbursement_date` = latest entry date, `amount_disbursed` = total, `bank_account_number` = first entry's account)
-1b. `syncEntryRows()` — mirror tranches into `disbursement_entries`: posted `row_id` owned by this disbursement → update in place; missing/foreign `row_id` → insert; live rows absent from payload → soft delete (`deleted_by` stamped by HasAuditColumns). `is_active` set from loan status. Assigned row_ids written back into the json `entries`.
-2. Mirror total to `loan_details.disbursed_amount` on EVERY save (queryable column used by listings)
-3. Set the `disbursement` relation so `handleStageCompletion` can detect & skip OTC
-4. **Auto-complete**: only if entry total ≥ `disbursementTarget()` AND stage is `in_progress` → mark `disbursement` stage completed (any-cheque → OTC opens; all-NEFT → OTC skipped + loan completed). Partial totals leave the stage open for future tranches.
-5. Log activity (action: `process_disbursement`; properties: `loan_number`, `type`, `amount`, `entry_count`, `stage_completed`)
-6. If loan completed, notify creator + advisor
+1b. `syncEntryRows()` — mirror tranches into `disbursement_entries` (incl. per-entry OTC via `otcAttrs()`, which preserves an existing clear timestamp/author when the status stays `cleared`): posted `row_id` → update in place; missing/foreign → insert; live rows absent → soft delete. `is_active` from loan status. row_ids written back into json.
+2. Mirror total to `loan_details.disbursed_amount` on EVERY save.
+3. `syncDisbursementState()` resolves status + stage completion (no more auto-complete-at-target here).
+4. Log activity (`process_disbursement`; props: `loan_number`, `type`, `amount`, `entry_count`, `loan_status`).
+
+### `syncDisbursementState(LoanDetail): void`
+
+**Single authority** for the disbursement/OTC lifecycle; called after every mutation (save, per-entry OTC, mark-full). **Completed is terminal — returns immediately (never downgrades/reopens).** Then: `cumulative` = Σ active tranche amounts; `moneyDone` = `cumulative ≥ disbursementTarget()` OR `completion_intent === full`; `allSettled` = every active tranche settled. Resolution: `cumulative==0` → revert `partial_disbursed`→`active`; promote `active`→`partial_disbursed` once any entry exists; `!moneyDone` → keep `disbursement` in_progress, stay partial; `moneyDone && !allSettled` → complete `disbursement` stage (opens `otc_clearance`), stay partial; `moneyDone && allSettled` → complete `disbursement` + `otc_clearance` (auto), loan → `completed` + notify. Completing a stage routes through `updateStageStatus` (query-block + transition rules honored), so an unresolved query leaves the loan partial.
+
+### `recordEntryOtc(DisbursementEntry, string $status, ?string $handoverDate, ?string $remarks): void`
+
+Sets one tranche's OTC state (cleared/skipped/pending) then re-runs `syncDisbursementState`. Exposed as POST `loans.disbursement.entry.otc` (used by the disbursement page and the OTC stage panel). Logs `record_entry_otc`.
 
 ### `markFullyDisbursed(LoanDetail): void`
 
-Manual completion for intentional under-disbursement (total below target). Requires saved entries; completes the stage via the same flow. Logs `mark_fully_disbursed`. Exposed as POST `loans.disbursement.complete`.
+Latches `completion_intent = full` (intentional under-disbursement, below target) then syncs. The loan still completes only once every tranche is OTC-settled. Requires saved entries. Logs `mark_fully_disbursed`. Exposed as POST `loans.disbursement.complete`.
 
 ### `disbursementTarget(LoanDetail): int`
 
-Auto-complete threshold: `loan_details.sanctioned_amount` → docket notes `sanctioned_amount` → sanction notes → `loan_amount`.
+Fully-disbursed threshold: `loan_details.sanctioned_amount` → docket notes `sanctioned_amount` → sanction notes → `loan_amount`.
 
 > **Sanctioned/disbursed amount columns**: `loan_details.sanctioned_amount` and `disbursed_amount` are real columns kept in sync at write time — sanctioned via `LoanStageController::saveNotes()` (docket stage; sanction stage fills only when empty), disbursed via `processDisbursement` above. Listings read the columns directly instead of parsing `stage_assignments.notes` JSON.
 

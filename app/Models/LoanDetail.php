@@ -24,12 +24,28 @@ class LoanDetail extends Model
 
     const STATUS_ON_HOLD = 'on_hold';
 
+    const STATUS_PARTIAL_DISBURSED = 'partial_disbursed';
+
     const STATUSES = [
         self::STATUS_ACTIVE,
+        self::STATUS_PARTIAL_DISBURSED,
         self::STATUS_COMPLETED,
         self::STATUS_REJECTED,
         self::STATUS_CANCELLED,
         self::STATUS_ON_HOLD,
+    ];
+
+    /**
+     * Statuses for loans still actively being worked (not paused, not closed).
+     * `partial_disbursed` is a monotonic in-flight state: disbursement has
+     * started but the loan is not yet fully disbursed + OTC-settled. Treated as
+     * active work everywhere (listings, dashboards, "my work").
+     *
+     * @var array<int, string>
+     */
+    const IN_FLIGHT_STATUSES = [
+        self::STATUS_ACTIVE,
+        self::STATUS_PARTIAL_DISBURSED,
     ];
 
     /**
@@ -47,6 +63,7 @@ class LoanDetail extends Model
 
     const STATUS_LABELS = [
         'active' => ['label' => 'Active', 'color' => 'primary'],
+        'partial_disbursed' => ['label' => 'Partially Disbursed', 'color' => 'info'],
         'completed' => ['label' => 'Completed', 'color' => 'success'],
         'rejected' => ['label' => 'Rejected', 'color' => 'danger'],
         'cancelled' => ['label' => 'Cancelled', 'color' => 'secondary'],
@@ -646,17 +663,34 @@ class LoanDetail extends Model
 
     // Scopes
 
+    /**
+     * In-flight loans actively being worked: active + partial_disbursed
+     * (excludes on_hold). A partially disbursed loan is still active work, so
+     * it shows wherever `active` loans do (listings, dashboards, "my work").
+     */
     public function scopeActive($query): void
     {
-        $query->where('status', self::STATUS_ACTIVE);
+        $query->whereIn('status', self::IN_FLIGHT_STATUSES);
     }
 
     /**
-     * Loans still being worked (not completed, rejected, or cancelled).
+     * Loans still being worked (not completed, rejected, or cancelled) —
+     * includes on_hold and partial_disbursed.
      */
     public function scopeOpen($query): void
     {
         $query->whereNotIn('status', self::CLOSED_STATUSES);
+    }
+
+    /**
+     * True when the disbursed total has exceeded the sanctioned amount.
+     * Over-disbursement is allowed; the UI surfaces a warning label.
+     */
+    public function isOverDisbursed(): bool
+    {
+        return $this->sanctioned_amount !== null
+            && $this->disbursed_amount !== null
+            && $this->disbursed_amount > $this->sanctioned_amount;
     }
 
     public function scopeVisibleTo($query, User $user): void

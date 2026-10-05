@@ -106,7 +106,7 @@ class ReportController extends Controller
             ->select('ld.status', DB::raw('COUNT(*) as cnt'), DB::raw('SUM(ld.loan_amount) as amount'))
             ->groupBy('ld.status')->get()->keyBy('status');
         $summary = [];
-        foreach (['active', 'on_hold', 'completed', 'rejected', 'cancelled'] as $st) {
+        foreach (['active', 'partial_disbursed', 'on_hold', 'completed', 'rejected', 'cancelled'] as $st) {
             $summary[$st] = [
                 'count' => (int) ($byStatus[$st]->cnt ?? 0),
                 'amount' => NumberToWordsService::formatCurrency((int) ($byStatus[$st]->amount ?? 0)),
@@ -132,13 +132,16 @@ class ReportController extends Controller
                 'p.name as product_name', 'br.name as branch_name', 'adv.name as advisor_name',
                 'rej.name as rejected_by_name', 'fin.done_at',
             ]);
-        if ($status !== 'all') {
+        // "Active" (and the default) means in-flight: active + partial_disbursed.
+        if ($status === 'active') {
+            $rowsQ->whereIn('ld.status', LoanDetail::IN_FLIGHT_STATUSES);
+        } elseif ($status !== 'all') {
             $rowsQ->where('ld.status', $status);
         }
         $loans = $rowsQ->orderByDesc('ld.created_at')->get();
 
         // Stage lines for open loans: in-progress + pending-inside-active-parallel.
-        $lineLoanIds = $loans->whereIn('status', ['active', 'on_hold'])->pluck('id');
+        $lineLoanIds = $loans->whereIn('status', ['active', 'partial_disbursed', 'on_hold'])->pluck('id');
         $linesByLoan = $lineLoanIds->isEmpty() ? collect() : $this->stageLines($lineLoanIds);
 
         $now = now();
@@ -197,7 +200,7 @@ class ReportController extends Controller
         }
 
         // Most-stuck first for open loans; everything else stays newest-first.
-        if (in_array($status, ['active', 'on_hold'], true)) {
+        if (in_array($status, ['active', 'partial_disbursed', 'on_hold'], true)) {
             $rows = $rows->sortByDesc('max_stage_days');
         }
 
@@ -218,7 +221,7 @@ class ReportController extends Controller
             ->join('stages as s', 's.stage_key', '=', 'sa.stage_key')
             ->join('users as u', 'u.id', '=', 'sa.assigned_to')
             ->where('sa.status', 'in_progress')
-            ->where('ld.status', 'active')
+            ->whereIn('ld.status', LoanDetail::IN_FLIGHT_STATUSES)
             ->whereNull('ld.deleted_at')
             ->select(['u.id as user_id', 'u.name as user_name', 's.stage_name_en', 'sa.started_at']);
         $this->applyFilters($q, $request, 'ld', 'sa.assigned_to');
@@ -458,7 +461,7 @@ class ReportController extends Controller
         // Currently-stuck in-progress stages (>14d) per loan, current state.
         $stuckLoanIds = DB::table('stage_assignments as sa')
             ->join('loan_details as ld', 'ld.id', '=', 'sa.loan_id')
-            ->where('sa.status', 'in_progress')->where('ld.status', 'active')
+            ->where('sa.status', 'in_progress')->whereIn('ld.status', LoanDetail::IN_FLIGHT_STATUSES)
             ->whereNull('ld.deleted_at')
             ->where('sa.started_at', '<=', now()->subDays(self::AGING_STUCK_DAYS))
             ->whereIn('sa.loan_id', $rows->pluck('id'))
@@ -472,7 +475,7 @@ class ReportController extends Controller
 
             return [
                 'created' => $group->count(),
-                'active' => $group->where('status', 'active')->count(),
+                'active' => $group->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES)->count(),
                 'completed' => $completed->count(),
                 'rejection_pct' => $group->count() ? round($group->where('status', 'rejected')->count() * 100 / $group->count(), 1) : 0,
                 'avg_tat_days' => $tats->isEmpty() ? null : round($tats->avg(), 1),
@@ -503,7 +506,7 @@ class ReportController extends Controller
             ->join('loan_details as ld', 'ld.id', '=', 'sa.loan_id')
             ->join('stages as s', 's.stage_key', '=', 'sa.stage_key')
             ->leftJoin('users as u', 'u.id', '=', 'sa.assigned_to')
-            ->where('sa.status', 'in_progress')->where('ld.status', 'active')
+            ->where('sa.status', 'in_progress')->whereIn('ld.status', LoanDetail::IN_FLIGHT_STATUSES)
             ->whereNull('ld.deleted_at')
             ->where('sa.started_at', '<=', $now->copy()->subDays(self::AGING_STUCK_DAYS))
             ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))

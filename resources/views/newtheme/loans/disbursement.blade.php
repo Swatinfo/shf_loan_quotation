@@ -109,6 +109,15 @@
             </div>
         </div>
 
+        @if ($disbursedSoFar > $target)
+            <div class="card ld-alert ld-alert-amber">
+                <div class="card-bd">
+                    <strong>⚠ Over-disbursed.</strong> Disbursed ₹ {{ number_format($disbursedSoFar) }} exceeds the
+                    sanctioned ₹ {{ number_format($target) }} by ₹ {{ number_format($disbursedSoFar - $target) }}.
+                </div>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('loans.disbursement.store', $loan) }}" id="ldForm" autocomplete="off">
             @csrf
             <fieldset {{ $isLocked ? 'disabled' : '' }} class="ld-fieldset">
@@ -127,9 +136,11 @@
                     <div class="card-bd">
                         @if (! $isLocked)
                             <div class="ld-info">
-                                Each entry is one tranche. The disbursement stage completes automatically once the
-                                total reaches <strong>₹ {{ number_format($target) }}</strong>. Partial totals can be
-                                saved now and more entries added later.
+                                Each entry is one tranche — cheque or fund transfer — with its own OTC handover.
+                                Add cheque and NEFT entries together. Partial totals can be saved now and more
+                                entries added later. The loan completes once the total reaches
+                                <strong>₹ {{ number_format($target) }}</strong> (or you mark it fully disbursed)
+                                <strong>and</strong> every entry's OTC is cleared or skipped.
                             </div>
                         @endif
 
@@ -258,6 +269,26 @@ $(function() {
                     '<input type="text" name="entries[' + idx + '][cheque_date]" class="input shf-datepicker-custom entry-cheque-date" ' +
                         'data-min-date="' + CFG.chequeDateMin + '" data-max-date="' + CFG.chequeDateMax + '" placeholder="dd/mm/yyyy" value="' + esc(data.cheque_date || '') + '"></div>' +
             '</div>' +
+            otcRowHtml(idx, data) +
+        '</div>';
+    }
+
+    // Per-entry OTC handover — applies to every method (cheque + NEFT).
+    function otcRowHtml(idx, data) {
+        var otc = data.otc_status || 'pending';
+        return '<div class="ld-entry-otc">' +
+            '<div class="ld-field"><label class="lbl lbl-sm">OTC Handover</label>' +
+                '<select name="entries[' + idx + '][otc_status]" class="input entry-otc-status">' +
+                    '<option value="pending"' + (otc === 'pending' ? ' selected' : '') + '>Pending</option>' +
+                    '<option value="cleared"' + (otc === 'cleared' ? ' selected' : '') + '>Cleared (handed over)</option>' +
+                    '<option value="skipped"' + (otc === 'skipped' ? ' selected' : '') + '>Skip (not required)</option>' +
+                '</select></div>' +
+            '<div class="ld-field entry-otc-date-wrap"' + (otc === 'cleared' ? '' : ' style="display:none;"') + '>' +
+                '<label class="lbl lbl-sm">Handover Date <span class="ld-req">*</span></label>' +
+                '<input type="text" name="entries[' + idx + '][otc_handover_date]" class="input shf-datepicker-custom entry-otc-date" ' +
+                    'data-min-date="' + CFG.entryDateMin + '" data-max-date="' + CFG.entryDateMax + '" placeholder="dd/mm/yyyy" value="' + esc(data.otc_handover_date || '') + '"></div>' +
+            '<div class="ld-field"><label class="lbl lbl-sm">OTC Remarks</label>' +
+                '<input type="text" name="entries[' + idx + '][otc_remarks]" class="input entry-otc-remarks" placeholder="Optional" value="' + esc(data.otc_remarks || '') + '"></div>' +
         '</div>';
     }
 
@@ -307,6 +338,11 @@ $(function() {
         $row.find('.entry-cheque').toggle($(this).val() === 'cheque');
     });
 
+    $(document).on('change', '.entry-otc-status', function() {
+        var $row = $(this).closest('.entry-row');
+        $row.find('.entry-otc-date-wrap').toggle($(this).val() === 'cleared');
+    });
+
     function updateTotal() {
         var total = 0;
         $('.entry-amount').each(function() { total += parseFloat($(this).val()) || 0; });
@@ -316,9 +352,9 @@ $(function() {
         }
         var $note = $('#entryTotalNote');
         if (total > CFG.target) {
-            $note.text('(exceeds ₹ ' + CFG.target.toLocaleString('en-IN') + ' — stage will complete on save)').show().removeClass('is-danger').addClass('is-warning');
+            $note.text('⚠ Over-disbursed by ₹ ' + (total - CFG.target).toLocaleString('en-IN') + ' above the sanctioned ₹ ' + CFG.target.toLocaleString('en-IN')).show().removeClass('is-warning').addClass('is-danger');
         } else if (total > 0 && total >= CFG.target) {
-            $note.text('(stage will complete on save)').show().removeClass('is-danger').addClass('is-warning');
+            $note.text('(fully disbursed — settle each entry\'s OTC to complete the loan)').show().removeClass('is-danger').addClass('is-warning');
         } else if (total > 0) {
             $note.text('(remaining ₹ ' + (CFG.target - total).toLocaleString('en-IN') + ' — you can add more entries later)').show().removeClass('is-danger is-warning');
         } else {
@@ -363,6 +399,11 @@ $(function() {
                     if (!($f.val() || '').trim()) fail($f);
                 });
             }
+
+            if ($row.find('.entry-otc-status').val() === 'cleared') {
+                var $otcDate = $row.find('.entry-otc-date');
+                if (!($otcDate.val() || '').trim()) fail($otcDate);
+            }
         });
 
         if (!valid) {
@@ -378,7 +419,7 @@ $(function() {
         Swal.fire({
             title: 'Mark as Fully Disbursed?',
             html: 'The saved total is below <strong>₹ ' + CFG.target.toLocaleString('en-IN') + '</strong>.<br>' +
-                'This completes the disbursement stage — no more entries can be added.',
+                'This declares disbursement finished. The loan completes once every entry\'s OTC is cleared or skipped.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Yes, Complete',

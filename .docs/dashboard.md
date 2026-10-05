@@ -172,7 +172,12 @@ carries no count badge.
   `disbursement_entries`). Spill/Logged-in fall back to `loan_amount` when a loan has
   no `sanctioned_amount` yet (so the tile never shows ₹0 for a real docket-phase loan).
   OTC Clearance also absorbs **every completed loan** (`status = completed`, or
-  `otc_clearance` completed/skipped).
+  `otc_clearance` completed/skipped). A `partial_disbursed` loan (disbursement started,
+  not yet completed — incl. fully disbursed but OTC-pending) has tranches and is not
+  completed, so it lands in **Cheque/Transfer Entry** until it completes; the classifier
+  needed no change for per-entry OTC (status-agnostic load + entries-based buckets).
+  Dashboard "active loan" counts/tiles/tabs/pipeline/bank-mix include `partial_disbursed`
+  via `scopeActive` (IN_FLIGHT).
 - **Scope blocks by role**: `view_all_loans` → one **All** block; branch_manager/bdh →
   **My data** + **My Branch**; everyone else → **My data**. A user dropdown (all users
   for `view_all_loans`, branch users for BM/BDH) narrows to one user's own data. Scope

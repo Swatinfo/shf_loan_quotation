@@ -365,7 +365,7 @@ Per-bank rate/charge row per quotation. FK `quotation_id` CASCADE. Fields: bank_
 | original_loan_amount | unsignedBigInt | nullable — as-applied amount snapshotted at loan creation; preserved when `loan_amount` is edited at KFS |
 | sanctioned_amount | unsignedBigInt | nullable — mirrored from docket-login notes (sanction stage = legacy fallback) |
 | disbursed_amount | unsignedBigInt | nullable — mirrored from `disbursement_details.amount_disbursed` |
-| status | string | INDEX — active / on_hold / completed / rejected / cancelled |
+| status | string | INDEX — active / **partial_disbursed** / on_hold / completed / rejected / cancelled. `partial_disbursed` (2026-10-05) = disbursement started but loan not fully disbursed + OTC-settled; monotonic in-flight (counts as "active" in `scopeActive`/listings/dashboards). System-managed (not user-settable). |
 | is_sanctioned | boolean | default false |
 | current_stage | string | INDEX — default `inquiry` |
 | bank_name | string | denormalized from bank |
@@ -469,7 +469,7 @@ One or more rows per loan. Fields: `loan_id` (CASCADE INDEX), `valuation_type` (
 
 ### disbursement_details
 
-One row per loan (`loan_id` UNIQUE CASCADE). **Source of truth is `entries` (json)** — one item per tranche: `{ row_id (PK of the mirror row in disbursement_entries), disbursement_date (Y-m-d), method (fund_transfer|cheque), product_id, product_name (snapshot), loan_account_number, amount, cheque_name?, cheque_number?, cheque_date? (d/m/Y) }`. Legacy columns are **derived at write time** for older read sites: `disbursement_type` ('cheque' if any cheque entry, else 'fund_transfer' — drives OTC-skip), `disbursement_date` (latest entry date), `amount_disbursed` (entry total), `bank_account_number` (first entry's account). Other fields: `ifsc_code`, `cheque_number`, `cheque_date`, `cheques` (json — legacy pre-multi-entry cheque rows, no longer written), `dd_number`, `dd_date`, `is_otc` (boolean), `otc_branch`, `otc_cleared` (boolean), `otc_cleared_date`, `otc_cleared_by` (FK users.id nullable), `reference_number`, `notes`, audit_columns, timestamps. Migration `2026_07_03_151044` added `entries` + backfilled from legacy columns; `DisbursementDetail::entryList()` still falls back to legacy columns for un-backfilled rows.
+One row per loan (`loan_id` UNIQUE CASCADE). **Source of truth is `entries` (json)** — one item per tranche: `{ row_id (PK of the mirror row in disbursement_entries), disbursement_date (Y-m-d), method (fund_transfer|cheque), product_id, product_name (snapshot), loan_account_number, amount, cheque_name?, cheque_number?, cheque_date? (d/m/Y) }`. Legacy columns are **derived at write time** for older read sites: `disbursement_type` ('cheque' if any cheque entry, else 'fund_transfer' — drives OTC-skip), `disbursement_date` (latest entry date), `amount_disbursed` (entry total), `bank_account_number` (first entry's account). Other fields: `ifsc_code`, `cheque_number`, `cheque_date`, `cheques` (json — legacy pre-multi-entry cheque rows, no longer written), `dd_number`, `dd_date`, `is_otc` (boolean), `otc_branch`, `otc_cleared` (boolean), `otc_cleared_date`, `otc_cleared_by` (FK users.id nullable — **legacy/unused; OTC is now per-entry on `disbursement_entries`**), `completion_intent` (varchar(10), default `open`; `full` = operator declared disbursement finished, 2026-10-05), `reference_number`, `notes`, audit_columns, timestamps. Migration `2026_07_03_151044` added `entries` + backfilled from legacy columns; `DisbursementDetail::entryList()` still falls back to legacy columns for un-backfilled rows.
 
 ### disbursement_entries
 
@@ -488,8 +488,15 @@ Normalized mirror of `disbursement_details.entries` — one row per tranche, syn
 | amount | unsignedBigInt | |
 | cheque_name / cheque_number / cheque_date | string | nullable — cheque tranches only |
 | is_active | boolean | default 1 — 0 while loan cancelled/rejected/on_hold |
+| otc_status | varchar(20) | **per-entry OTC handover** — default `pending`; `cleared` / `skipped` = settled (2026-10-05). Applies to cheque AND fund_transfer tranches. INDEX |
+| otc_handover_date | date | nullable — set when `otc_status=cleared` |
+| otc_cleared_by | FK users.id | nullable, nullOnDelete — who recorded the handover |
+| otc_cleared_at | timestamp | nullable — when the handover was recorded |
+| otc_remarks | text | nullable |
 | updated_by / deleted_by | FK users.id | nullable, auto via HasAuditColumns |
 | soft_deletes, timestamps | | |
+
+> **Per-entry OTC + loan completion (2026-10-05).** A loan completes only once it is fully disbursed (cumulative ≥ sanctioned target OR `disbursement_details.completion_intent='full'`) AND every active tranche is settled (`otc_status` cleared/skipped). Resolved by `DisbursementService::syncDisbursementState`. The old loan-level `disbursement_details.otc_*` columns are unused (per-entry is authoritative).
 
 ---
 

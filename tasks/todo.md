@@ -1,42 +1,40 @@
-# TODO — Stage-Breakdown: per-stage dates (not loan-creation cohort)
+# TODO — Block stage actions while a query is open (stage-wise for parallel)
 
-## STATUS: DONE — per-stage dates live; disbursement reconciles with Management report (Sep ₹8.77 Cr = report).
+## STATUS: IN PROGRESS
 
-## Rule (locked with user)
-Each bucket is filtered by its OWN stage event date; where the event hasn't
-happened (pending placeholders → no timestamp) fall back to the loan's created_at:
-    bucketDate = <stage event date> ?? loan.created_at
-    include ⇔ bucketDate ∈ [from,to]   ('All time' = no bound)
+## Rule
+Active query = StageQuery status `pending` OR `responded` (only `resolved` unblocks).
+While a stage has an active query, ALL its actions are hidden; only Raise/Respond/Resolve
+remain. Parallel = per sub-stage (keyed on each sub's stage_key + assignment).
 
-## Per-bucket date + amount
-- Sanction (sanction_decision):
-  - sip: started_at (in_progress) | created_at (pending)
-  - query: latest active query.created_at on sanction_decision
-  - sanctioned: completed_at
-  - hold/withdrawn: loan.status_changed_at
-  - rejected: loan.rejected_at ?? sanction_decision.completed_at
-- Technical/Legal (own stage_key):
-  - not_initiated: created_at  | under_process: started_at
-  - completed: completed_at | query: query.created_at | rejected: completed_at
-- Disbursement:
-  - spill: docket.started_at | logged_in: docket.completed_at (amount = sanctioned_amount)
-  - entry: tranche disbursement_date; INCLUDE iff ≥1 tranche in window; AMOUNT = Σ in-window tranches
-  - otc: otc_clearance.completed_at ?? loan.status_changed_at ?? created_at; amount = Σ all tranches
+## Layer 1 — UI gating + "query open" indicator (_stages-body.blade.php + valuation-map.blade.php)
+- [ ] Main stages: before action switch (~:1699) compute `$mainHasQuery = $assignment->activeQueries->isNotEmpty()`; when true render a 🔒 "Query — action blocked, resolve below" lock card INSTEAD of the action switch. Keep the Active-Queries banner (Respond/Resolve).
+- [ ] Parallel subs: before sub switch (~:850) compute per-sub `$subHasQuery = $sub->activeQueries->isNotEmpty()`; lock card for that sub only. Gate bsm_osv, legal(+waive), technical_valuation(send-to-office + valuation link), ODV, sanction_decision. Siblings unaffected.
+- [ ] Header chip "⚠ Query" on stage/sub header (stage-wise).
+- [ ] valuation-map.blade.php: disable Save when technical_valuation has an active query.
+- [ ] Eager-load stageAssignments.activeQueries on the stages page (kill N+1).
 
-## Steps
-- [ ] `loans()` — drop created_at query filter; load all visible+scope loans; eager-load
-      stageAssignments(started_at,completed_at), stageQueries(created_at), entries(disbursement_date),
-      loan status_changed_at + rejected_at.
-- [ ] `bucketDate(loan, section, bucket)` + `inWindow(date, window)` + `bucketInWindow(...)`
-      (entry special: hasTrancheInWindow); `windowedTrancheAmount(loan, window)`.
-- [ ] `aggregate()` — date-gate each classified bucket; entry amount = windowed tranches;
-      block total = DISTINCT loans appearing in any in-window bucket + Σ their loan_amount.
-- [ ] `loanIdsFor()` — apply the same date gate so click-through matches.
-- [ ] Tests — pending-in-window → Not Initiated; completed in/out of window; entry amount =
-      Σ in-window tranches (reconciles with Management report); each in-progress dates by started_at.
-- [ ] Verify live: Disbursement Entry total vs Management report "Disbursed" for a period.
+## Layer 2 — Server backstop: try/catch(\RuntimeException) → 422 {error} (AJAX) / redirect-back (valuation)
+- [ ] LoanValuationController::store (:208/:210) → redirect back + error
+- [ ] LoanStageController::legalAction (:405) → 422 (covers nested ODV :1004)
+- [ ] LoanStageController::esignAction (:551) → 422
+- [ ] LoanStageController::ratePfAction (:677) → 422
+- [ ] LoanStageController::saveNotes auto-complete (:773/:775) → 422
+- [ ] LoanDocumentController::store auto-complete (:60/:62) → 422
+- (already safe: updateStatus, decisionAction, skip, disbursement)
+
+## Layer 3 — JS
+- [ ] `.fail` handlers: `responseJSON.error ?? responseJSON.message ?? 'Failed'` consistently.
+
+## Tests
+- [ ] Blade: stage/sub with active query → no action buttons + lock card + Resolve present.
+- [ ] Stage-wise: query on technical_valuation blocks only it; legal/sanction still actionable.
+- [ ] Responded still blocks; Resolve unblocks → completion succeeds.
+- [ ] Server: each endpoint with open query → 422 / redirect-back, stage stays in_progress, no exception; nested ODV blocks legalAction cleanly.
+
+## Deploy
+- [ ] Bump SHF_VERSION/SHF_SW_VERSION + view:clear (views changed).
 
 ## Notes
-- Sanctioned stays the sanction_decision gate (user's original sketch), not the report's sanction-letter stage.
-- Backend only (no JS/CSS) → no asset bump. Docs + lessons after.
-- Test runner: `php -c .scratch/php-test.ini vendor/phpunit/phpunit/phpunit --filter=StageBreakdownTest`
+- Branch: feat/per-entry-otc-partial-disbursed (OTC+partial+error-pages already committed/pushed).
+- 4 stray *BKP.php files left untracked (flagged to user; belong in .ignore/bkp_files/).

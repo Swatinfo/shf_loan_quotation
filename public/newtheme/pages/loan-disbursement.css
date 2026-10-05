@@ -290,6 +290,19 @@
 @media (max-width: 700px) {
     .ld-entry-cheque { grid-template-columns: 1fr; }
 }
+.ld-entry-otc {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--accent-dim, rgba(241, 90, 41, 0.08));
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+@media (max-width: 700px) {
+    .ld-entry-otc { grid-template-columns: 1fr; }
+}
 .ld-entry-remove { display: flex; justify-content: center; align-items: end; }
 .ld-entry-remove .btn { height: 32px; padding: 0 10px; }
 .ld-entry-num {

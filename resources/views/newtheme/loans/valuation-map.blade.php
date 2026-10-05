@@ -7,7 +7,11 @@
     <link rel="stylesheet" href="{{ asset('newtheme/pages/loan-valuation-map.css') }}?v={{ config('app.shf_version') }}">
 @endpush
 
-@php $v = $valuations->first(); @endphp
+@php
+    $v = $valuations->first();
+    // An open query on technical_valuation blocks saving until resolved.
+    $tvHasQuery = optional($loan->getStageAssignment('technical_valuation'))->hasPendingQueries() ?? false;
+@endphp
 
 @section('content')
     <header class="page-header">
@@ -246,10 +250,16 @@
                     <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
                     Cancel
                 </a>
-                <button type="submit" class="btn primary" id="vmSave">
-                    <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-                    Save Valuation
-                </button>
+                @if ($tvHasQuery)
+                    <span class="btn" style="pointer-events:none;opacity:.6;" aria-disabled="true">
+                        🔒 Blocked — resolve the open query to save
+                    </span>
+                @else
+                    <button type="submit" class="btn primary" id="vmSave">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+                        Save Valuation
+                    </button>
+                @endif
             </div>
         </form>
     </main>

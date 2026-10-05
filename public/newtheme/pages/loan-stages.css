@@ -148,3 +148,32 @@ main.content .shf-stages-wrap {
 /* Newtheme `main.content` doesn't push up past 100; legacy modal z-index is
    1055 and offcanvas 1045 which are above the newtheme topbar (100). Nothing
    to change here, but leave this note so future changes don't invert. */
+/* ====================== Per-entry OTC handover (OTC Clearance stage) ====================== */
+/* Responsive card-list — replaces a 6-col table that overflowed on mobile.
+   Each entry is a card: meta on the left, Clear/Skip actions on the right;
+   on phones the actions wrap to a full-width row and the date input stretches. */
+.shf-otc-list { display: flex; flex-direction: column; gap: 8px; }
+.shf-otc-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border: 1px solid var(--border, #bcbec0);
+    border-radius: 10px;
+    background: var(--white, #fff);
+}
+.shf-otc-meta { min-width: 0; flex: 1 1 220px; }
+.shf-otc-headline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shf-otc-sub { margin-top: 2px; }
+.shf-otc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shf-otc-clear { display: flex; align-items: center; gap: 6px; }
+.shf-otc-actions .shf-input-sm { max-width: 122px; }
+@media (max-width: 575.98px) {
+    .shf-otc-entry { align-items: stretch; }
+    .shf-otc-actions { width: 100%; }
+    .shf-otc-clear { flex: 1 1 auto; }
+    .shf-otc-clear .shf-input-sm { flex: 1 1 auto; max-width: none; }
+    .shf-otc-clear .btn-accent-sm { flex: 0 0 auto; }
+}

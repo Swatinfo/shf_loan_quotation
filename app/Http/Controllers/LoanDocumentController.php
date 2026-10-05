@@ -55,7 +55,9 @@ class LoanDocumentController extends Controller
 
         if ($loan->current_stage === 'document_collection' && $allResolved) {
             $assignment = $loan->stageAssignments()->where('stage_key', 'document_collection')->first();
-            if ($assignment && in_array($assignment->status, ['pending', 'in_progress'])) {
+            // Auto-complete only when not blocked by an open query — otherwise the
+            // document update still persists, the stage just waits for resolution.
+            if ($assignment && in_array($assignment->status, ['pending', 'in_progress']) && ! $assignment->hasPendingQueries()) {
                 if ($assignment->status === 'pending') {
                     $this->stageService->updateStageStatus($loan, 'document_collection', 'in_progress', auth()->id());
                 }
