@@ -20,9 +20,13 @@ class DisbursementDetail extends Model
         self::TYPE_CHEQUE => 'Cheque',
     ];
 
+    const INTENT_OPEN = 'open';
+
+    const INTENT_FULL = 'full';
+
     protected $fillable = [
         'loan_id', 'disbursement_type', 'disbursement_date', 'amount_disbursed',
-        'bank_account_number', 'cheques', 'entries', 'notes',
+        'bank_account_number', 'cheques', 'entries', 'notes', 'completion_intent',
     ];
 
     protected function casts(): array

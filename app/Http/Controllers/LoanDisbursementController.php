@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use App\Models\DisbursementDetail;
+use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Services\DisbursementService;
@@ -14,6 +15,13 @@ use Illuminate\Validation\ValidationException;
 
 class LoanDisbursementController extends Controller
 {
+    /** Loan statuses where disbursement entries / OTC can still be edited. */
+    private const EDITABLE_STATUSES = [
+        LoanDetail::STATUS_ACTIVE,
+        LoanDetail::STATUS_PARTIAL_DISBURSED,
+        LoanDetail::STATUS_ON_HOLD,
+    ];
+
     public function show(LoanDetail $loan)
     {
         $disbursement = $loan->disbursement;
@@ -28,16 +36,26 @@ class LoanDisbursementController extends Controller
 
         $stageAssignment = $loan->stageAssignments()->where('stage_key', 'disbursement')->first();
         $stageCompleted = $stageAssignment?->status === 'completed';
-        $isLocked = $stageCompleted || ! in_array($loan->status, [LoanDetail::STATUS_ACTIVE, LoanDetail::STATUS_ON_HOLD]);
+        $isLocked = ! in_array($loan->status, self::EDITABLE_STATUSES);
 
-        $entries = $disbursement?->entryList() ?? [];
+        // Merge per-entry OTC state (held on the mirror rows) into the json entries.
+        $otcByRow = $disbursement
+            ? $disbursement->entryRows()->get()->keyBy('id')
+            : collect();
+        $entries = array_map(function (array $entry) use ($otcByRow) {
+            $row = $otcByRow->get($entry['row_id'] ?? null);
+            $entry['otc_status'] = $row->otc_status ?? DisbursementEntry::OTC_PENDING;
+            $entry['otc_handover_date'] = $row && $row->otc_handover_date ? $row->otc_handover_date->format('d/m/Y') : null;
+            $entry['otc_remarks'] = $row->otc_remarks ?? null;
+
+            return $entry;
+        }, $disbursement?->entryList() ?? []);
+
         $disbursedSoFar = $disbursement?->entryTotal() ?? 0;
         $target = $service->disbursementTarget($loan);
         $products = $this->bankProducts($loan);
 
-        $template = 'newtheme.loans.disbursement';
-
-        return view($template, compact(
+        return view('newtheme.loans.disbursement', compact(
             'loan', 'disbursement', 'sanctionedAmount', 'isLocked', 'stageCompleted',
             'entries', 'disbursedSoFar', 'target', 'products',
         ) + ['pageKey' => 'loans']);
@@ -45,13 +63,8 @@ class LoanDisbursementController extends Controller
 
     public function store(Request $request, LoanDetail $loan)
     {
-        if (! in_array($loan->status, [LoanDetail::STATUS_ACTIVE, LoanDetail::STATUS_ON_HOLD])) {
-            return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst($loan->status).'. Changes are not allowed.');
-        }
-
-        $stageAssignment = $loan->stageAssignments()->where('stage_key', 'disbursement')->first();
-        if ($stageAssignment?->status === 'completed') {
-            return redirect()->route('loans.stages', $loan)->with('error', 'Disbursement is already completed. Entries can no longer be changed.');
+        if (! in_array($loan->status, self::EDITABLE_STATUSES)) {
+            return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst(str_replace('_', ' ', $loan->status)).'. Changes are not allowed.');
         }
 
         $products = $this->bankProducts($loan);
@@ -68,52 +81,64 @@ class LoanDisbursementController extends Controller
             'entries.*.cheque_name' => 'nullable|string|max:100',
             'entries.*.cheque_number' => 'nullable|string|max:50',
             'entries.*.cheque_date' => 'nullable|string|max:20',
+            'entries.*.otc_status' => 'nullable|in:pending,cleared,skipped',
+            'entries.*.otc_handover_date' => 'nullable|date_format:d/m/Y',
+            'entries.*.otc_remarks' => 'nullable|string|max:2000',
             'notes' => 'nullable|string|max:5000',
         ], [
             'entries.*.product_id.in' => 'The selected product does not belong to this loan\'s bank.',
         ]);
 
-        // Cheque entries require the cheque instrument fields; snapshot product name + normalize dates.
-        $chequeErrors = [];
+        // Cheque entries require the instrument fields; cleared OTC needs a date.
+        // Snapshot product name + normalize dates to storage format.
+        $rowErrors = [];
         foreach ($validated['entries'] as $i => $entry) {
             if ($entry['method'] === DisbursementDetail::TYPE_CHEQUE) {
                 foreach (['cheque_name', 'cheque_number', 'cheque_date'] as $field) {
                     if (empty($entry[$field])) {
-                        $chequeErrors["entries.{$i}.{$field}"] = 'This field is required for cheque entries.';
+                        $rowErrors["entries.{$i}.{$field}"] = 'This field is required for cheque entries.';
                     }
                 }
             }
+            if (($entry['otc_status'] ?? null) === DisbursementEntry::OTC_CLEARED && empty($entry['otc_handover_date'])) {
+                $rowErrors["entries.{$i}.otc_handover_date"] = 'Handover date is required when OTC is marked cleared.';
+            }
+
             $validated['entries'][$i]['disbursement_date'] = Carbon::createFromFormat('d/m/Y', $entry['disbursement_date'])->toDateString();
             $validated['entries'][$i]['product_id'] = (int) $entry['product_id'];
             $validated['entries'][$i]['product_name'] = $productNames[(int) $entry['product_id']];
             $validated['entries'][$i]['amount'] = (int) $entry['amount'];
+            $validated['entries'][$i]['otc_status'] = $entry['otc_status'] ?? DisbursementEntry::OTC_PENDING;
+            $validated['entries'][$i]['otc_handover_date'] = ! empty($entry['otc_handover_date'])
+                ? Carbon::createFromFormat('d/m/Y', $entry['otc_handover_date'])->toDateString()
+                : null;
         }
-        if ($chequeErrors) {
-            throw ValidationException::withMessages($chequeErrors);
+        if ($rowErrors) {
+            throw ValidationException::withMessages($rowErrors);
         }
 
         $disbursement = app(DisbursementService::class)->processDisbursement($loan, $validated);
+        $loan->refresh();
 
-        $stageCompleted = $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status') === 'completed';
-
-        if ($stageCompleted) {
-            $successMsg = $disbursement->hasChequeEntries()
-                ? 'Disbursement completed. OTC stage opened.'
-                : 'Loan fully disbursed and completed!';
-
-            return redirect()->route('loans.show', $loan)->with('success', $successMsg);
+        if ($loan->status === LoanDetail::STATUS_COMPLETED) {
+            return redirect()->route('loans.show', $loan)->with('success', 'Loan fully disbursed and completed!');
         }
 
-        $remaining = max(0, app(DisbursementService::class)->disbursementTarget($loan) - $disbursement->entryTotal());
+        $service = app(DisbursementService::class);
+        $remaining = max(0, $service->disbursementTarget($loan) - $disbursement->entryTotal());
+        $pendingOtc = $disbursement->entryRows()->whereNotIn('otc_status', DisbursementEntry::OTC_SETTLED)->count();
 
-        return redirect()->route('loans.disbursement', $loan)
-            ->with('success', 'Disbursement entries saved — remaining ₹ '.number_format($remaining).'.');
+        $msg = $remaining > 0
+            ? 'Disbursement entries saved — remaining ₹ '.number_format($remaining).'.'
+            : 'Fully disbursed — '.$pendingOtc.' '.str('entry')->plural($pendingOtc).' awaiting OTC handover.';
+
+        return redirect()->route('loans.disbursement', $loan)->with('success', $msg);
     }
 
     public function complete(LoanDetail $loan)
     {
-        if (! in_array($loan->status, [LoanDetail::STATUS_ACTIVE, LoanDetail::STATUS_ON_HOLD])) {
-            return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst($loan->status).'. Changes are not allowed.');
+        if (! in_array($loan->status, self::EDITABLE_STATUSES)) {
+            return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst(str_replace('_', ' ', $loan->status)).'. Changes are not allowed.');
         }
 
         $disbursement = $loan->disbursement;
@@ -121,18 +146,53 @@ class LoanDisbursementController extends Controller
             return redirect()->route('loans.disbursement', $loan)->with('error', 'Save at least one disbursement entry first.');
         }
 
-        $stageAssignment = $loan->stageAssignments()->where('stage_key', 'disbursement')->first();
-        if ($stageAssignment?->status !== 'in_progress') {
-            return redirect()->route('loans.stages', $loan)->with('error', 'Disbursement stage is not open.');
+        app(DisbursementService::class)->markFullyDisbursed($loan);
+        $loan->refresh();
+
+        if ($loan->status === LoanDetail::STATUS_COMPLETED) {
+            return redirect()->route('loans.show', $loan)->with('success', 'Disbursement marked as complete. Loan completed!');
         }
 
-        app(DisbursementService::class)->markFullyDisbursed($loan);
+        $pendingOtc = $disbursement->entryRows()->whereNotIn('otc_status', DisbursementEntry::OTC_SETTLED)->count();
 
-        $successMsg = $disbursement->hasChequeEntries()
-            ? 'Disbursement marked as complete. OTC stage opened.'
-            : 'Disbursement marked as complete. Loan completed!';
+        return redirect()->route('loans.disbursement', $loan)
+            ->with('success', 'Marked as fully disbursed — '.$pendingOtc.' '.str('entry')->plural($pendingOtc).' awaiting OTC handover.');
+    }
 
-        return redirect()->route('loans.show', $loan)->with('success', $successMsg);
+    /**
+     * Record / change the OTC handover state of a single disbursement tranche.
+     */
+    public function entryOtc(Request $request, LoanDetail $loan, int $entry)
+    {
+        if (! in_array($loan->status, self::EDITABLE_STATUSES)) {
+            return redirect()->route('loans.stages', $loan)->with('error', 'Loan is '.ucfirst(str_replace('_', ' ', $loan->status)).'. Changes are not allowed.');
+        }
+
+        $validated = $request->validate([
+            'otc_status' => 'required|in:cleared,skipped,pending',
+            'otc_handover_date' => 'nullable|date_format:d/m/Y|required_if:otc_status,cleared',
+            'otc_remarks' => 'nullable|string|max:2000',
+        ]);
+
+        $entryRow = $loan->disbursementEntries()->findOrFail($entry);
+
+        $handoverDate = ! empty($validated['otc_handover_date'])
+            ? Carbon::createFromFormat('d/m/Y', $validated['otc_handover_date'])->toDateString()
+            : null;
+
+        app(DisbursementService::class)->recordEntryOtc(
+            $entryRow,
+            $validated['otc_status'],
+            $handoverDate,
+            $validated['otc_remarks'] ?? null,
+        );
+
+        $loan->refresh();
+        $msg = $loan->status === LoanDetail::STATUS_COMPLETED
+            ? 'OTC handover recorded. Loan completed!'
+            : 'OTC handover updated.';
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**

@@ -94,4 +94,33 @@ class LoanListingActiveDefaultTest extends TestCase
         $this->assertStringContainsString($active->loan_number, $nums);
         $this->assertStringContainsString($cancelled->loan_number, $nums);
     }
+
+    public function test_default_includes_partial_disbursed_as_in_flight(): void
+    {
+        $admin = $this->admin();
+        $active = $this->loan($admin, 'active');
+        $partial = $this->loan($admin, 'partial_disbursed');
+        $completed = $this->loan($admin, 'completed');
+
+        $nums = $this->nums($this->actingAs($admin)->getJson(route('loans.data'))->assertOk());
+
+        $this->assertStringContainsString($active->loan_number, $nums);
+        $this->assertStringContainsString($partial->loan_number, $nums);
+        $this->assertStringNotContainsString($completed->loan_number, $nums);
+    }
+
+    public function test_active_filter_includes_partial_but_partial_filter_isolates(): void
+    {
+        $admin = $this->admin();
+        $active = $this->loan($admin, 'active');
+        $partial = $this->loan($admin, 'partial_disbursed');
+
+        $activeNums = $this->nums($this->actingAs($admin)->getJson(route('loans.data', ['status' => 'active']))->assertOk());
+        $this->assertStringContainsString($active->loan_number, $activeNums);
+        $this->assertStringContainsString($partial->loan_number, $activeNums);
+
+        $partialNums = $this->nums($this->actingAs($admin)->getJson(route('loans.data', ['status' => 'partial_disbursed']))->assertOk());
+        $this->assertStringContainsString($partial->loan_number, $partialNums);
+        $this->assertStringNotContainsString($active->loan_number, $partialNums);
+    }
 }

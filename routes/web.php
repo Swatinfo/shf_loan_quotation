@@ -196,6 +196,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/loans/{loan}/disbursement', [LoanDisbursementController::class, 'show'])->name('loans.disbursement');
         Route::post('/loans/{loan}/disbursement', [LoanDisbursementController::class, 'store'])->name('loans.disbursement.store');
         Route::post('/loans/{loan}/disbursement/complete', [LoanDisbursementController::class, 'complete'])->name('loans.disbursement.complete');
+        Route::post('/loans/{loan}/disbursement/entries/{entry}/otc', [LoanDisbursementController::class, 'entryOtc'])->name('loans.disbursement.entry.otc');
     });
 
     // Valuation
@@ -382,4 +383,4 @@ Route::middleware(['auth'])->group(function () {
 
 // Note: Package Route::impersonate() removed — custom take/leave routes in auth group handle impersonation with smart redirect
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

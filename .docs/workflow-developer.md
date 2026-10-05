@@ -32,9 +32,11 @@ The loan workflow engine: stages, phases, transfers, queries, auto-assignment, a
 7. docket                  (3-phase)
 8. kfs
 9. esign                   (4-phase)
-10. disbursement
-11. otc_clearance          (cheque only — skipped for fund_transfer)
+10. disbursement           (multi-tranche; each tranche carries its own OTC)
+11. otc_clearance          (per-entry handover — cheque AND fund_transfer; auto-completes when all tranches settled)
 ```
+
+> **Disbursement + OTC lifecycle (2026-10-05).** Disbursement is multi-tranche over time with **per-entry OTC**: every `disbursement_entries` row (cheque or fund_transfer) has `otc_status` ∈ pending/cleared/skipped. The loan is monotonic `active → partial_disbursed → completed`; it completes only once fully disbursed (cumulative ≥ sanctioned target OR `completion_intent=full`) AND every tranche is settled. `DisbursementService::syncDisbursementState` is the single authority — `handleStageCompletion` no longer terminates the loan on disbursement/otc. Over-disbursement is allowed. See `services-reference.md → DisbursementService`.
 
 Sub-stages of `parallel_processing` set `parent_stage_key = parallel_processing` and `is_parallel_stage = true` on their `StageAssignment`.
 

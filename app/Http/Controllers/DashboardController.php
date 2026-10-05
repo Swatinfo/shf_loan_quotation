@@ -92,8 +92,8 @@ class DashboardController extends Controller
             // Default: only quotations not yet converted to a loan
             $query->whereNull('loan_id');
         } elseif ($loanStatus === 'active') {
-            // Converted with active loan
-            $query->whereHas('loan', fn ($q) => $q->where('status', 'active'));
+            // Converted with an in-flight loan (active + partial_disbursed)
+            $query->whereHas('loan', fn ($q) => $q->active());
         } elseif ($loanStatus === 'completed') {
             $query->whereHas('loan', fn ($q) => $q->where('status', 'completed'));
         } elseif ($loanStatus === 'rejected') {
@@ -346,12 +346,16 @@ class DashboardController extends Controller
 
         $recordsTotal = (clone $query)->count();
 
-        // Filters (same as loan listing)
+        // Filters (same as loan listing). "Active" and the default both mean
+        // in-flight (active + partial_disbursed).
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            if ($request->status === LoanDetail::STATUS_ACTIVE) {
+                $query->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES);
+            } else {
+                $query->where('status', $request->status);
+            }
         } else {
-            // Default: exclude closed loans
-            $query->where('status', LoanDetail::STATUS_ACTIVE);
+            $query->whereIn('status', LoanDetail::IN_FLIGHT_STATUSES);
         }
         if ($request->filled('stage')) {
             $query->where('current_stage', $request->stage);
@@ -414,7 +418,7 @@ class DashboardController extends Controller
 
             $actions = '<div class="d-flex gap-1">';
             $actions .= '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">'.$viewIcon.' View</a>';
-            if (in_array($loan->status, ['active', 'on_hold'])) {
+            if (in_array($loan->status, ['active', 'partial_disbursed', 'on_hold'])) {
                 $actions .= '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#2563eb,#3b82f6);">'.$stagesIcon.' Stages</a>';
             }
             $actions .= '</div>';
@@ -900,7 +904,7 @@ class DashboardController extends Controller
         $hasLoanContext = $user->hasPermission('view_loans') || $user->hasWorkflowRole();
         if ($hasLoanContext) {
             $loanBase = LoanDetail::visibleTo($user);
-            $tiles[] = ['val' => (clone $loanBase)->where('status', LoanDetail::STATUS_ACTIVE)->count(), 'lbl' => 'Active Loans', 'tone' => 'blue', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'];
+            $tiles[] = ['val' => (clone $loanBase)->active()->count(), 'lbl' => 'Active Loans', 'tone' => 'blue', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'];
             $tiles[] = ['val' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->active())->count(), 'lbl' => 'My Tasks', 'tone' => 'amber', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'];
             $tiles[] = ['val' => (clone $loanBase)->where('status', 'completed')->count(), 'lbl' => 'Completed', 'tone' => 'green', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'];
         }
@@ -933,7 +937,7 @@ class DashboardController extends Controller
         return [
             'personal_tasks' => GeneralTask::visibleTo($user)->withActiveLinks()->whereIn('status', ['pending', 'in_progress'])->count(),
             'my_tasks' => StageAssignment::where('assigned_to', $user->id)->whereIn('status', ['pending', 'in_progress'])->whereHas('loan', fn ($q) => $q->active())->count(),
-            'loans' => LoanDetail::visibleTo($user)->where('status', LoanDetail::STATUS_ACTIVE)->count(),
+            'loans' => LoanDetail::visibleTo($user)->active()->count(),
             'dvr' => DailyVisitReport::visibleTo($user)->where('follow_up_needed', true)->where('is_follow_up_done', false)->count(),
             'quotations' => Quotation::visibleTo($user)->where('status', Quotation::STATUS_ACTIVE)->whereNull('loan_id')->count(),
         ];
@@ -944,7 +948,7 @@ class DashboardController extends Controller
     {
         return [
             'branch' => optional($user->branches()->first())->name ?? '—',
-            'activeFiles' => LoanDetail::visibleTo($user)->where('status', LoanDetail::STATUS_ACTIVE)->count(),
+            'activeFiles' => LoanDetail::visibleTo($user)->active()->count(),
             'disbursementsToday' => LoanDetail::visibleTo($user)
                 ->where('current_stage', 'disbursement')
                 ->whereDate('updated_at', today())
@@ -1064,7 +1068,7 @@ class DashboardController extends Controller
     private function newthemeLoans(User $user): array
     {
         return LoanDetail::visibleTo($user)
-            ->where('status', LoanDetail::STATUS_ACTIVE)
+            ->active()
             ->with(['bank', 'product', 'creator', 'advisor', 'stageAssignments.assignee', 'stageAssignments.stage', 'disbursementEntries'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -1266,7 +1270,7 @@ class DashboardController extends Controller
     {
         $stages = Stage::query()->mainStages()->get();
         $loanCounts = LoanDetail::visibleTo($user)
-            ->where('status', LoanDetail::STATUS_ACTIVE)
+            ->active()
             ->selectRaw('current_stage, COUNT(*) as c')
             ->groupBy('current_stage')
             ->pluck('c', 'current_stage')
@@ -1384,7 +1388,7 @@ class DashboardController extends Controller
         $banks = Bank::query()->active()->get();
 
         $monthlyLoans = LoanDetail::visibleTo($user)
-            ->where('status', LoanDetail::STATUS_ACTIVE)
+            ->active()
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->select('bank_id')

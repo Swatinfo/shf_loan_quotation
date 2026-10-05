@@ -3126,116 +3126,116 @@ $canSkipLegalBank =
                                             @php
                                                 $otcNotes = $assignment->getNotesData();
                                                 $disbursementData = $loan->disbursement;
-                                                $chequeList = collect($disbursementData?->entryList() ?? [])
-                                                    ->filter(fn ($entry) => ($entry['method'] ?? null) === 'cheque')
-                                                    ->values()
-                                                    ->all();
+                                                $otcRows = $disbursementData ? $disbursementData->entryRows()->get() : collect();
                                                 $isOtcAssignee =
                                                     $assignment->assigned_to === auth()->id() ||
-                                                    auth()
-                                                        ->user()
-                                                        ->hasAnyRole(['super_admin', 'admin']);
+                                                    auth()->user()->hasAnyRole(['super_admin', 'admin']);
+                                                $otcEditable =
+                                                    $isOtcAssignee &&
+                                                    $assignment->status === 'in_progress' &&
+                                                    in_array($loan->status, [
+                                                        \App\Models\LoanDetail::STATUS_ACTIVE,
+                                                        \App\Models\LoanDetail::STATUS_PARTIAL_DISBURSED,
+                                                        \App\Models\LoanDetail::STATUS_ON_HOLD,
+                                                    ]);
+                                                $otcPending = $otcRows
+                                                    ->whereNotIn('otc_status', \App\Models\DisbursementEntry::OTC_SETTLED)
+                                                    ->count();
+                                                $otcBadgeClass = [
+                                                    'pending' => 'shf-badge-orange',
+                                                    'cleared' => 'shf-badge-green',
+                                                    'skipped' => 'shf-badge-gray',
+                                                ];
                                             @endphp
                                             <div class="mt-2 border-top pt-2">
-                                                @if (!empty($chequeList))
-                                                    <small class="fw-semibold text-muted d-block mb-2">Cheques to be handed
-                                                        over:</small>
-                                                    <div class="table-responsive mb-2">
-                                                        <table class="table table-sm table-hover mb-0 shf-text-sm">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Name</th>
-                                                                    <th>Cheque No.</th>
-                                                                    <th>Date</th>
-                                                                    <th>Product</th>
-                                                                    <th class="text-end">Amount</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach ($chequeList as $chq)
-                                                                    <tr>
-                                                                        <td>{{ $chq['cheque_name'] ?? '—' }}</td>
-                                                                        <td>{{ $chq['cheque_number'] ?? '—' }}</td>
-                                                                        <td>{{ $chq['cheque_date'] ?? '—' }}</td>
-                                                                        <td>{{ $chq['product_name'] ?? '—' }}</td>
-                                                                        <td class="text-end">₹
-                                                                            {{ number_format($chq['amount'] ?? ($chq['cheque_amount'] ?? 0)) }}
-                                                                        </td>
-                                                                    </tr>
-                                                                @endforeach
-                                                            </tbody>
-                                                        </table>
+                                                @if ($otcRows->isEmpty())
+                                                    <div class="alert alert-info py-2 mb-0 shf-text-sm">No disbursement
+                                                        entries yet.</div>
+                                                @else
+                                                    <small class="fw-semibold text-muted d-block mb-2">Per-entry OTC handover
+                                                        — {{ $otcPending }} pending:</small>
+                                                    <div class="shf-otc-list">
+                                                        @foreach ($otcRows as $row)
+                                                            <div class="shf-otc-entry">
+                                                                <div class="shf-otc-meta">
+                                                                    <div class="shf-otc-headline">
+                                                                        <span
+                                                                            class="shf-badge {{ $otcBadgeClass[$row->otc_status] ?? 'shf-badge-gray' }} shf-text-2xs">{{ ucfirst($row->otc_status) }}</span>
+                                                                        <strong class="shf-text-sm">₹
+                                                                            {{ number_format($row->amount) }}</strong>
+                                                                        <span
+                                                                            class="shf-text-2xs text-muted">{{ $row->method === 'cheque' ? 'Cheque' : 'Fund Transfer' }}</span>
+                                                                    </div>
+                                                                    <div class="shf-otc-sub shf-text-2xs text-muted">
+                                                                        {{ optional($row->disbursement_date)->format('d/m/Y') ?? '—' }}
+                                                                        @if ($row->cheque_number)
+                                                                            · Cheque #{{ $row->cheque_number }}
+                                                                        @endif
+                                                                        @if ($row->otc_status === 'cleared' && $row->otc_handover_date)
+                                                                            · Handed over {{ $row->otc_handover_date->format('d/m/Y') }}
+                                                                        @endif
+                                                                    </div>
+                                                                </div>
+                                                                @if ($otcEditable && !$row->isOtcSettled())
+                                                                    <div class="shf-otc-actions">
+                                                                        <form method="POST"
+                                                                            action="{{ route('loans.disbursement.entry.otc', ['loan' => $loan, 'entry' => $row->id]) }}"
+                                                                            class="shf-otc-clear">
+                                                                            @csrf
+                                                                            <input type="hidden" name="otc_status"
+                                                                                value="cleared">
+                                                                            <input type="text" name="otc_handover_date"
+                                                                                class="shf-input shf-input-sm shf-datepicker-past"
+                                                                                placeholder="dd/mm/yyyy"
+                                                                                value="{{ now()->format('d/m/Y') }}" required>
+                                                                            <button class="btn-accent-sm"
+                                                                                type="submit">Clear</button>
+                                                                        </form>
+                                                                        <form method="POST"
+                                                                            action="{{ route('loans.disbursement.entry.otc', ['loan' => $loan, 'entry' => $row->id]) }}">
+                                                                            @csrf
+                                                                            <input type="hidden" name="otc_status"
+                                                                                value="skipped">
+                                                                            <button class="btn-accent-outline btn-accent-sm"
+                                                                                type="submit">Skip</button>
+                                                                        </form>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
                                                     </div>
+                                                    <div class="shf-text-2xs text-muted mt-2">The stage auto-completes once
+                                                        every entry is cleared or skipped.</div>
                                                 @endif
 
-                                                @if ($isOtcAssignee && $assignment->status === 'in_progress')
-                                                    @include('newtheme.loans.partials.stage-notes-form', [
-                                                        'hideSubmit' => true,
-                                                        'fields' => [
-                                                            [
-                                                                'name' => 'handover_date',
-                                                                'label' => 'Handover Date',
-                                                                'type' => 'date',
-                                                                'required' => true,
-                                                                'default' => now()->format('d/m/Y'),
-                                                            ],
-                                                            [
-                                                                'name' => 'stageRemarks',
-                                                                'label' => 'Remarks',
-                                                                'type' => 'textarea',
-                                                                'col' => 12,
-                                                            ],
-                                                        ],
-                                                    ])
-
-                                                    <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-                                                        <button class="btn-accent-sm shf-stage-action"
-                                                            data-loan-id="{{ $loan->id }}" data-stage="otc_clearance"
-                                                            data-action="completed">
-                                                            <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                            Complete OTC Clearance
-                                                        </button>
-                                                    </div>
-
-                                                    {{-- OTC: Transfer to Office Employee option (only for non-office-employee roles) --}}
-                                                    @if (!auth()->user()->hasRole('office_employee'))
-                                                        <div class="mt-2 border-top pt-2">
-                                                            <small class="fw-semibold text-muted d-block mb-2">Or transfer to
-                                                                Office Employee:</small>
-                                                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                                <select class="shf-input shf-input-sm shf-transfer-user"
-                                                                    data-stage="otc_clearance" data-role="office_employee"
-                                                                    data-loan-id="{{ $loan->id }}"
-                                                                    style="max-width:220px">
-                                                                    <option value="">Select Office Employee...</option>
-                                                                </select>
-                                                                <button
-                                                                    class="btn-accent-outline btn-accent-sm shf-otc-transfer"
-                                                                    data-loan-id="{{ $loan->id }}">
-                                                                    Transfer to Office Employee
-                                                                </button>
-                                                            </div>
+                                                {{-- OTC: Transfer to Office Employee option (only for non-office-employee roles) --}}
+                                                @if ($otcEditable && !auth()->user()->hasRole('office_employee'))
+                                                    <div class="mt-2 border-top pt-2">
+                                                        <small class="fw-semibold text-muted d-block mb-2">Or transfer to
+                                                            Office Employee:</small>
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                            <select class="shf-input shf-input-sm shf-transfer-user"
+                                                                data-stage="otc_clearance" data-role="office_employee"
+                                                                data-loan-id="{{ $loan->id }}" style="max-width:220px">
+                                                                <option value="">Select Office Employee...</option>
+                                                            </select>
+                                                            <button class="btn-accent-outline btn-accent-sm shf-otc-transfer"
+                                                                data-loan-id="{{ $loan->id }}">
+                                                                Transfer to Office Employee
+                                                            </button>
                                                         </div>
-                                                    @endif
+                                                    </div>
                                                 @elseif($assignment->status === 'in_progress' && !$isOtcAssignee)
                                                     <div class="alert alert-info py-2 mt-2 shf-text-sm">
                                                         <strong>Transferred to {{ $assignment->assignee?->name }}.</strong>
                                                         Waiting for them to complete the handover.
                                                     </div>
                                                 @elseif($assignment->status === 'completed')
-                                                    <div class="mt-2">
+                                                    <div class="alert alert-success py-2 mt-2 mb-0 shf-text-sm">
+                                                        OTC clearance completed — all handovers settled.
                                                         @if (!empty($otcNotes['handover_date']))
-                                                            <div class="small"><span class="text-muted">Handover Date:</span>
-                                                                <strong>{{ $otcNotes['handover_date'] }}</strong>
-                                                            </div>
-                                                        @endif
-                                                        @if (!empty($otcNotes['stageRemarks']))
-                                                            <div class="small text-muted">{{ $otcNotes['stageRemarks'] }}
-                                                            </div>
+                                                            <span class="text-muted">(legacy handover date
+                                                                {{ $otcNotes['handover_date'] }})</span>
                                                         @endif
                                                     </div>
                                                 @endif
