@@ -1,0 +1,364 @@
+/* shf-readability.css — GENERATED (see .scratch/gen_readability.py).
+   Single-file readability floor: no app text below 12px.
+   Revert = remove the one <link> in newtheme/layouts/app.blade.php.
+   Loaded LAST (after @stack('page-styles')) so these win by source order. */
+
+:root { --shf-text-2xs: 0.75rem; } /* was 0.65rem (10.4px) -> 12px; lifts .shf-text-2xs + var() usages */
+
+/* Utility for blades that previously used inline font-size below the floor. */
+.shf-fs-min { font-size: 12px !important; }
+
+/* ---- Per-selector overrides for hardcoded sub-12px sizes ---- */
+.shf-section-number { font-size: 12px !important; }
+.shf-tag-remove { font-size: 12px !important; }
+.shf-form-label { font-size: 12px !important; }
+.shf-badge { font-size: 12px !important; }
+.shf-per-page .shf-per-page-total { font-size: 12px !important; }
+.shf-bottom-nav-item { font-size: 12px !important; }
+.shf-notification-badge { font-size: 12px !important; }
+.shf-phase-num { font-size: 12px !important; }
+.shf-substage-role-label { font-size: 12px !important; }
+.shf-filter-count { font-size: 12px !important; }
+.logo-text .line-2 { font-size: 12px !important; }
+.icon-btn .dot { font-size: 12px !important; }
+.role-pill { font-size: 12px !important; }
+.user-chip { font-size: 12px !important; }
+.avatar { font-size: 12px !important; }
+.page-header .crumbs { font-size: 12px !important; }
+.page-header .tabs .tab .count { font-size: 12px !important; }
+.card-hd .t .num { font-size: 12px !important; }
+.card-hd .sub { font-size: 12px !important; }
+.section-hd .num { font-size: 12px !important; }
+.btn.sm { font-size: 12px !important; }
+.field label { font-size: 12px !important; }
+.field .hint { font-size: 12px !important; }
+.field .bi-label .guj { font-size: 12px !important; }
+.badge { font-size: 12px !important; }
+.badge.sq { font-size: 12px !important; }
+.tbl thead th { font-size: 12px !important; }
+.tbl-footbar { font-size: 12px !important; }
+.pager .pg { font-size: 12px !important; }
+.kpi .lbl { font-size: 12px !important; }
+.kpi .delta { font-size: 12px !important; }
+.kpi .foot { font-size: 12px !important; }
+.acs .avatar { font-size: 12px !important; }
+.stepper .step { font-size: 12px !important; }
+.stepper .step .n { font-size: 12px !important; }
+.rail .r-step .dot { font-size: 12px !important; }
+.rail .r-step .s { font-size: 12px !important; }
+.rail .r-step .guj { font-size: 12px !important; }
+.m-bottomnav .bn-item { font-size: 12px !important; }
+.timeline .tl-meta { font-size: 12px !important; }
+.chart-grid .gl { font-size: 12px !important; }
+.bars .bar .v { font-size: 12px !important; }
+.bar-lbls { font-size: 12px !important; }
+.tweaks-panel .tw-group > label { font-size: 12px !important; }
+.text-sm { font-size: 12px !important; }
+.text-xs { font-size: 12px !important; }
+.pill { font-size: 12px !important; }
+.placeholder-img { font-size: 12px !important; }
+.phase-tile .n { font-size: 12px !important; }
+.strip .lbl { font-size: 12px !important; }
+.subnav .sn .count { font-size: 12px !important; }
+.kv-stack dt { font-size: 12px !important; }
+.kv-stack dd .guj { font-size: 12px !important; }
+.file-row .fs { font-size: 12px !important; }
+.crumbs { font-size: 12px !important; }
+.tab .count { font-size: 12px !important; }
+.card-ft { font-size: 12px !important; }
+.step .sn { font-size: 12px !important; }
+.stage-rail .stg .st { font-size: 12px !important; }
+.stage-rail .stg .sm { font-size: 12px !important; }
+.stage-card .d { font-size: 12px !important; }
+.pp-s { font-size: 12px !important; }
+.dvr-time { font-size: 12px !important; }
+.dvr-m { font-size: 12px !important; }
+.dvr-tag { font-size: 12px !important; }
+.task-m { font-size: 12px !important; }
+.task-f { font-size: 12px !important; }
+.doc-m { font-size: 12px !important; }
+.doc-s { font-size: 12px !important; }
+.n-m { font-size: 12px !important; }
+.n-t2 { font-size: 12px !important; }
+.matrix th { font-size: 12px !important; }
+.cibil .lbl { font-size: 12px !important; }
+.compare .bl.selected::before { font-size: 12px !important; }
+.compare .bl .lbl { font-size: 12px !important; }
+.summary-card .lbl { font-size: 12px !important; }
+.stat-cell .lbl { font-size: 12px !important; }
+.stat-cell .delta { font-size: 12px !important; }
+.q-m { font-size: 12px !important; }
+.pdf-preview::before { font-size: 12px !important; }
+.compact { font-size: 12px !important; }
+.slider-row .lbl { font-size: 12px !important; }
+.avatar.xs { font-size: 12px !important; }
+.avatar.sm { font-size: 12px !important; }
+.pager button,
+.pager .pg { font-size: 12px !important; }
+.toast-msg .icon { font-size: 12px !important; }
+.ph-img { font-size: 12px !important; }
+.tl-event .when { font-size: 12px !important; }
+.tl-event .body .m { font-size: 12px !important; }
+.tl-event .body .meta { font-size: 12px !important; }
+.tbl.compact th,
+.tbl.compact td { font-size: 12px !important; }
+.segmented button { font-size: 12px !important; }
+kbd { font-size: 12px !important; }
+.stage-rail .stg .lbl { font-size: 12px !important; }
+.stage-rail .stg .meta { font-size: 12px !important; }
+.cibil .l { font-size: 12px !important; }
+.map-placeholder::after { font-size: 12px !important; }
+.stage-card .sh::after { font-size: 12px !important; }
+.tl-day { font-size: 12px !important; }
+.stat-card .stat-lbl { font-size: 12px !important; }
+.filter-panel-hd .count { font-size: 12px !important; }
+.filter-grid label { font-size: 12px !important; }
+.per-page { font-size: 12px !important; }
+.per-page select { font-size: 12px !important; }
+.phase-strip-lbl { font-size: 12px !important; }
+.phase-pill { font-size: 12px !important; }
+.phase-pill .pn { font-size: 12px !important; }
+.role-chip { font-size: 12px !important; }
+.sub-actions .btn { font-size: 12px !important; }
+.handoff { font-size: 12px !important; }
+.decision-tile { font-size: 12px !important; }
+.flag-banner { font-size: 12px !important; }
+.stage-meta-row { font-size: 12px !important; }
+.m-card .m-row .k { font-size: 12px !important; }
+.doc-tile .doc-sub { font-size: 12px !important; }
+.note-thread .note .who { font-size: 12px !important; }
+.query-item .q-hd { font-size: 12px !important; }
+.tag-input-wrap .tag { font-size: 12px !important; }
+.amt-words { font-size: 12px !important; }
+.bank-chip { font-size: 12px !important; }
+.topbar .icon-btn .dot { font-size: 12px !important; }
+.topbar .avatar { font-size: 12px !important; }
+.kpi-chip .kpi-lbl { font-size: 12px !important; }
+.shf-text-2xs { font-size: 12px !important; }
+.shf-text-xs { font-size: 12px !important; }
+.gt-field .lbl { font-size: 12px !important; }
+.gt-field .err { font-size: 12px !important; }
+.shf-validation-error { font-size: 12px !important; }
+.al-lbl { font-size: 12px !important; }
+.al-results .tbl thead th { font-size: 12px !important; }
+.al-date .t { font-size: 12px !important; }
+.al-ip { font-size: 12px !important; }
+.al-act { font-size: 12px !important; }
+.al-m-row .k { font-size: 12px !important; }
+.auth-field .lbl { font-size: 12px !important; }
+.auth-err { font-size: 12px !important; }
+.cx-loan-count { font-size: 12px !important; }
+.cxs-k { font-size: 12px !important; }
+.cxf-lbl { font-size: 12px !important; }
+.cxf-err { font-size: 12px !important; }
+.sb-caret { font-size: 12px !important; }
+.ds-k { font-size: 12px !important; }
+.ds-block-label { font-size: 12px !important; }
+.ds-linked-label { font-size: 12px !important; }
+.ds-follow-row .ds-k { font-size: 12px !important; }
+.ds-tl-dot { font-size: 12px !important; }
+.dx-filters-card .dx-active-count { font-size: 12px !important; }
+.dx-field .lbl { font-size: 12px !important; }
+.dx-followup-overdue, .dx-followup-urgent { font-size: 12px !important; }
+.dx-followup-soon { font-size: 12px !important; }
+.dx-followup-done { font-size: 12px !important; }
+.gt-filters-card .gt-active-count { font-size: 12px !important; }
+.gt-pill-overdue { font-size: 12px !important; }
+.gt-pill-today { font-size: 12px !important; }
+.gt-pill-soon { font-size: 12px !important; }
+.ld-chip { font-size: 12px !important; }
+.ld-field .lbl { font-size: 12px !important; }
+.lbl-sm { font-size: 12px !important; }
+.ld-words { font-size: 12px !important; }
+.ld-charge-breakdown { font-size: 12px !important; }
+.ld-warning { font-size: 12px !important; }
+.ld-summary-detail .ld-summary-box .k { font-size: 12px !important; }
+.ld-summary-box .k { font-size: 12px !important; }
+.ld-charge-note { font-size: 12px !important; }
+.ld-entry-num { font-size: 12px !important; }
+.loan-documents-nt-card-hd .t .num { font-size: 12px !important; }
+.loan-documents-nt-breadcrumb { font-size: 12px !important; }
+.loan-documents-nt .shf-text-2xs { font-size: 12px !important; }
+.loan-documents-nt .shf-text-xs { font-size: 12px !important; }
+.loan-documents-nt .shf-badge { font-size: 12px !important; }
+.loan-documents-nt .shf-doc-actions .btn-accent-sm,
+.loan-documents-nt .shf-doc-actions .shf-upload-label { font-size: 12px !important; }
+.loan-documents-nt .shf-doc-actions .btn-accent-sm.shf-btn-danger { font-size: 12px !important; }
+.le-field .lbl { font-size: 12px !important; }
+.le-amount-words { font-size: 12px !important; }
+.le-client-error { font-size: 12px !important; }
+.lr-lbl { font-size: 12px !important; }
+.lr-total-lbl { font-size: 12px !important; }
+.lr-panel .tbl thead th { font-size: 12px !important; }
+.lr-status { font-size: 12px !important; }
+.loan-settings-nt-rail-label { font-size: 12px !important; }
+.loan-settings-nt-rail-item .num { font-size: 12px !important; }
+.loan-settings-nt-card-hd .t .num { font-size: 12px !important; }
+.loan-settings-nt-breadcrumb { font-size: 12px !important; }
+.loan-settings-nt .shf-section-number { font-size: 12px !important; }
+.loan-settings-nt .shf-text-gray,
+.loan-settings-nt .text-muted,
+.loan-settings-nt small { font-size: 12px !important; }
+.loan-settings-nt .shf-text-xs { font-size: 12px !important; }
+.loan-settings-nt .shf-form-label { font-size: 12px !important; }
+.loan-settings-nt table.table thead th { font-size: 12px !important; }
+.loan-settings-nt .shf-badge { font-size: 12px !important; }
+.loan-settings-nt .shf-reason-row code,
+.loan-settings-nt .shf-reason-row .shf-badge { font-size: 12px !important; }
+.loan-settings-nt code { font-size: 12px !important; }
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-text-xs { font-size: 12px !important; }
+.loan-settings-nt .shf-stage-card .btn-accent-sm.shf-btn-danger { font-size: 12px !important; }
+.loan-settings-nt [data-reason-group-label],
+.loan-settings-nt strong[style*="accent"] { font-size: 12px !important; }
+.ls-banner-label { font-size: 12px !important; }
+.ls-kv-grid > div > span:first-child { font-size: 12px !important; }
+.ls-remark-head .ls-remark-time { font-size: 12px !important; }
+.ls-progress-chip { font-size: 12px !important; }
+.lt-count { font-size: 12px !important; }
+.lt-by { font-size: 12px !important; }
+.lt-date { font-size: 12px !important; }
+.lt-clock { font-size: 12px !important; }
+.lx-count { font-size: 12px !important; }
+.lx-time { font-size: 12px !important; }
+.lx-party-label { font-size: 12px !important; }
+.vm-chip { font-size: 12px !important; }
+.vm-field .lbl { font-size: 12px !important; }
+.vm-words { font-size: 12px !important; }
+.vm-map-hint { font-size: 12px !important; }
+.vm-coord-display { font-size: 12px !important; }
+.lx-filters-card .lx-active-count { font-size: 12px !important; }
+.lx-field .lbl { font-size: 12px !important; }
+.mg-lbl { font-size: 12px !important; }
+.mg-step-lbl { font-size: 12px !important; }
+.mg-pill { font-size: 12px !important; }
+.mg-panel .tbl thead th { font-size: 12px !important; }
+.mg-days { font-size: 12px !important; }
+.notif-age { font-size: 12px !important; }
+.pm-table thead th { font-size: 12px !important; }
+.pm-role-name { font-size: 12px !important; }
+.pm-bulk { font-size: 12px !important; }
+.pm-group-label { font-size: 12px !important; }
+.pm-group-count { font-size: 12px !important; }
+.pm-perm-desc { font-size: 12px !important; }
+.pl-chip-label { font-size: 12px !important; }
+.pl-chip-amount { font-size: 12px !important; }
+.pl-chip-sub { font-size: 12px !important; }
+.pl-lbl { font-size: 12px !important; }
+.pl-panel .tbl thead th { font-size: 12px !important; }
+.pl-days { font-size: 12px !important; }
+.pl-status { font-size: 12px !important; }
+.product-stages-nt-card-hd .t .num { font-size: 12px !important; }
+.product-stages-nt-breadcrumb { font-size: 12px !important; }
+.product-stages-nt .shf-text-xs { font-size: 12px !important; }
+.product-stages-nt .shf-text-2xs { font-size: 12px !important; }
+.product-stages-nt .shf-badge { font-size: 12px !important; }
+.product-stages-nt .shf-inline-error { font-size: 12px !important; }
+.product-stages-nt .d-none.d-md-flex.align-items-center { font-size: 12px !important; }
+.form-row .lbl { font-size: 12px !important; }
+.form-row .err { font-size: 12px !important; }
+.field-error { font-size: 12px !important; }
+.qx-filters-card .qx-active-count { font-size: 12px !important; }
+.qx-field .lbl { font-size: 12px !important; }
+.qx-bank-chips .bank-chip { font-size: 12px !important; }
+.rl-table thead th { font-size: 12px !important; }
+.rl-slug { font-size: 12px !important; }
+.rl-user-count { font-size: 12px !important; }
+.rl-m-row .k { font-size: 12px !important; }
+.rlf-lbl { font-size: 12px !important; }
+.rlf-hint { font-size: 12px !important; }
+.rlf-err { font-size: 12px !important; }
+.rle-card .card-hd .actions .btn.sm { font-size: 12px !important; }
+.rle-group-name { font-size: 12px !important; }
+.rle-group-toggle { font-size: 12px !important; }
+.rle-perm-desc { font-size: 12px !important; }
+.settings-nt-rail-label { font-size: 12px !important; }
+.settings-nt-rail-item .num { font-size: 12px !important; }
+.settings-nt-card-hd .t .num { font-size: 12px !important; }
+.settings-nt-breadcrumb { font-size: 12px !important; }
+.settings-nt .shf-text-xs { font-size: 12px !important; }
+.settings-nt .shf-form-label { font-size: 12px !important; }
+.settings-nt table.table thead th { font-size: 12px !important; }
+.settings-nt .shf-badge { font-size: 12px !important; }
+.settings-nt .shf-reason-row code,
+.settings-nt .shf-reason-row .shf-badge { font-size: 12px !important; }
+.settings-nt code { font-size: 12px !important; }
+.settings-nt [data-reason-group-label],
+.settings-nt strong[style*="accent"] { font-size: 12px !important; }
+.ts-linked-label { font-size: 12px !important; }
+.ts-linked-file .text-xs { font-size: 12px !important; }
+.ts-comment-meta .ts-muted { font-size: 12px !important; }
+.tat-lbl { font-size: 12px !important; }
+.tat-panel .tbl thead th { font-size: 12px !important; }
+.uf-field .lbl { font-size: 12px !important; }
+.uf-check .uf-muted { font-size: 12px !important; }
+.uf-psu strong { font-size: 12px !important; }
+.uf-perm-group-title { font-size: 12px !important; }
+.uf-client-error { font-size: 12px !important; }
+.ux-filters-card .ux-active-count { font-size: 12px !important; }
+.ux-field .lbl { font-size: 12px !important; }
+@media (max-width: 768px) {
+    .shf-tab { font-size: 12px !important; }
+    .shf-stat-label { font-size: 12px !important; }
+    .table>thead>tr>th { font-size: 12px !important; }
+    .shf-form-label { font-size: 12px !important; }
+    .shf-table-mobile tbody td::before { font-size: 12px !important; }
+    .shf-dt-bottom .dataTables_info { font-size: 12px !important; }
+    .shf-dt-bottom .dataTables_paginate .page-item .page-link { font-size: 12px !important; }
+    .tbl { font-size: 12px !important; }
+    .matrix { font-size: 12px !important; }
+    .kpi .sub { font-size: 12px !important; }
+    table.tbl td::before { font-size: 12px !important; }
+    .tab .count { font-size: 12px !important; }
+    .stage-rail .stg .lbl { font-size: 12px !important; }
+    .stage-rail .stg .meta { font-size: 12px !important; }
+    table.tbl td.col-actions::before { font-size: 12px !important; }
+    .pm-bulk { font-size: 12px !important; }
+}
+@media (max-width: 480px) {
+    .shf-section-number { font-size: 12px !important; }
+    .shf-tab { font-size: 12px !important; }
+    .shf-badge { font-size: 12px !important; }
+    .shf-tag { font-size: 12px !important; }
+    .shf-chip { font-size: 12px !important; }
+    .btn { font-size: 12px !important; }
+    .stage-rail .stg .st { font-size: 12px !important; }
+    .page-header .tabs .tab { font-size: 12px !important; }
+    .page-header .tabs .tab .count { font-size: 12px !important; }
+}
+@media (max-width: 991.98px) and (min-width: 768px) {
+    .shf-stage-label { font-size: 12px !important; }
+}
+@media (max-width: 899px) {
+    .phase-pill { font-size: 12px !important; }
+    .kpi-chip .kpi-lbl { font-size: 12px !important; }
+    .page-header .tabs .tab { font-size: 12px !important; }
+}
+@media (max-width: 1024px) {
+    .topbar .role-pill { font-size: 12px !important; }
+    .m-bottomnav .bn-item { font-size: 12px !important; }
+}
+@media (max-width: 991.98px) {
+    .page-header .tabs .tab { font-size: 12px !important; }
+}
+@media (max-width: 1199.98px) {
+    #rows-ptasks .tbl td::before,
+    #rows-mytasks .tbl td::before,
+    #rows-loans .tbl td::before,
+    #rows-dvr .tbl td::before,
+    #rows-quotations .tbl td::before { font-size: 12px !important; }
+}
+@media (max-width: 700px) {
+    .ld-summary-box .k { font-size: 12px !important; }
+    .ld-info { font-size: 12px !important; }
+    .ld-summary-detail .ld-summary-box .k { font-size: 12px !important; }
+}
+@media (max-width: 640px) {
+    .loan-settings-nt-card-hd .t .num { font-size: 12px !important; }
+    .loan-settings-nt h6.font-display { font-size: 12px !important; }
+    .settings-nt-card-hd .t .num { font-size: 12px !important; }
+    .settings-nt h6.font-display { font-size: 12px !important; }
+}
+@media (max-width: 600px) {
+    .lt-date, .lt-clock { font-size: 12px !important; }
+    .lx-time { font-size: 12px !important; }
+}

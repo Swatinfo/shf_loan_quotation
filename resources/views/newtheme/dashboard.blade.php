@@ -108,8 +108,8 @@
                         <div class="t"><span class="num">2</span>My Loan Tasks <span class="sub">stages assigned
                                 to me</span></div>
                         <div class="actions">
-                            <select class="select" id="dashTaskStageFilter"
-                                style="height:28px;font-size:11.5px;width:auto;">
+                            <select class="select shf-fs-min" id="dashTaskStageFilter"
+                                style="height:28px;width:auto;">
                                 <option value="">All stages</option>
                             </select>
                             <a class="btn sm ghost" href="{{ route('loans.index') }}">View loans →</a>
@@ -151,8 +151,8 @@
                         <div class="t"><span class="num">5</span>Quotations <span class="sub"
                                 id="quotSub"></span></div>
                         <div class="actions">
-                            <select class="select" id="dashQuotStatusFilter"
-                                style="height:28px;font-size:11.5px;width:auto;">
+                            <select class="select shf-fs-min" id="dashQuotStatusFilter"
+                                style="height:28px;width:auto;">
                                 <option value="">All status</option>
                                 <option value="active">Active</option>
                                 <option value="on_hold">On hold</option>

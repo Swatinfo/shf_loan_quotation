@@ -3191,44 +3191,18 @@ $canSkipLegalBank =
                                             <div class="mt-2 border-top pt-2">
                                                 {{-- Disbursement totals summary (gross = net + PF + admin; insurance shown separately). --}}
                                                 @if ($disbursementData)
-                                                    <div class="table-responsive mb-2">
-                                                        <table class="table table-sm mb-0 shf-text-sm">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td class="text-muted">Net Transferred</td>
-                                                                    <td class="text-end">₹
-                                                                        {{ inr($disbursementData->entryTotal()) }}</td>
-                                                                </tr>
-                                                                @if ($disbursementData->pfTotal() > 0)
-                                                                    <tr>
-                                                                        <td class="text-muted">Processing Fee (PF)</td>
-                                                                        <td class="text-end">₹
-                                                                            {{ inr($disbursementData->pfTotal()) }}</td>
-                                                                    </tr>
-                                                                @endif
-                                                                @if ($disbursementData->adminTotal() > 0)
-                                                                    <tr>
-                                                                        <td class="text-muted">Admin Charges</td>
-                                                                        <td class="text-end">₹
-                                                                            {{ inr($disbursementData->adminTotal()) }}</td>
-                                                                    </tr>
-                                                                @endif
-                                                                @if ($disbursementData->insuranceTotal() > 0)
-                                                                    <tr>
-                                                                        <td class="text-muted">Insurance (excluded)</td>
-                                                                        <td class="text-end text-muted">₹
-                                                                            {{ inr($disbursementData->insuranceTotal()) }}</td>
-                                                                    </tr>
-                                                                @endif
-                                                            </tbody>
-                                                            <tfoot>
-                                                                <tr>
-                                                                    <th class="text-end">Total</th>
-                                                                    <th class="text-end">₹
-                                                                        {{ inr($disbursementData->grossTotal()) }}</th>
-                                                                </tr>
-                                                            </tfoot>
-                                                        </table>
+                                                    <div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1 mb-2 shf-text-sm">
+                                                        <span class="text-muted">Net <strong class="text-dark">₹ {{ inr($disbursementData->entryTotal()) }}</strong></span>
+                                                        @if ($disbursementData->pfTotal() > 0)
+                                                            <span class="text-muted">PF <strong class="text-dark">₹ {{ inr($disbursementData->pfTotal()) }}</strong></span>
+                                                        @endif
+                                                        @if ($disbursementData->adminTotal() > 0)
+                                                            <span class="text-muted">Admin <strong class="text-dark">₹ {{ inr($disbursementData->adminTotal()) }}</strong></span>
+                                                        @endif
+                                                        @if ($disbursementData->insuranceTotal() > 0)
+                                                            <span class="text-muted">Insurance (excl.) <strong>₹ {{ inr($disbursementData->insuranceTotal()) }}</strong></span>
+                                                        @endif
+                                                        <span class="ms-sm-auto fw-semibold shf-text-accent">Total ₹ {{ inr($disbursementData->grossTotal()) }}</span>
                                                     </div>
                                                 @endif
                                                 {{-- Show the cheque-handover block only while a cheque OTC is still pending. --}}

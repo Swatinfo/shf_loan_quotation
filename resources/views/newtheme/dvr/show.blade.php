@@ -250,7 +250,7 @@
                                         <a href="{{ route('dvr.show', $dvr->parent_visit_id) }}" class="ds-link">
                                             Visit #{{ $dvr->parent_visit_id }}
                                         </a>
-                                        <div class="ds-muted" style="font-size:11.5px;">{{ $dvr->parentVisit->visit_date->format('d M Y') }}</div>
+                                        <div class="ds-muted shf-fs-min">{{ $dvr->parentVisit->visit_date->format('d M Y') }}</div>
                                     </span>
                                 </div>
                             @endif

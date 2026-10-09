@@ -180,6 +180,10 @@
     {{-- Page-specific stylesheet (one file per Blade page) --}}
     @stack('page-styles')
 
+    {{-- Readability floor (no app text below 12px). Loaded LAST so it wins by
+         source order. Remove this one line to fully revert. --}}
+    <link rel="stylesheet" href="{{ asset('newtheme/assets/shf-readability.css') }}?v={{ $v }}">
+
     {{-- Vendor (jQuery first, datepicker, sortable, sweetalert) --}}
     <link rel="stylesheet"
         href="{{ asset('newtheme/vendor/datepicker/css/bootstrap-datepicker3.min.css') }}?v={{ $v }}">

@@ -17,17 +17,17 @@
         .dd-loan { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
         .dd-loan-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; }
         .dd-loan-hd a { font-weight: 600; }
-        .dd-ld { font-size: 11.5px; color: var(--ink-3); }
+        .dd-ld { font-size: 12px; color: var(--ink-3); }
         .dd-ld .o { color: var(--ink-3); }
         .dd-ld.is-chg { color: var(--ink); }
         .dd-ld.is-chg .n { color: var(--red, #c0392b); font-weight: 700; }
         .dd-entry { margin-top: 8px; }
-        .dd-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 10px; }
+        .dd-badge { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 10px; }
         .dd-badge.dd-update { background: rgba(37,99,235,.12); color: #2563eb; }
         .dd-badge.dd-delete { background: rgba(192,57,43,.12); color: var(--red, #c0392b); }
         .dd-badge.dd-delete-blocked { background: rgba(217,119,6,.14); color: var(--amber, #b85a00); }
         .dd-fields { width: 100%; margin-top: 4px; font-size: 12px; }
-        .dd-fields th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+        .dd-fields th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
         .dd-fields td { padding: 3px 8px; }
         .dd-fields .dd-old { color: var(--ink-3); }
         .dd-row-chg .dd-old { text-decoration: line-through; }
