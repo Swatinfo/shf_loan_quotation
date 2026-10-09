@@ -48,32 +48,32 @@
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">PF Amount:</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['processing_fee_amount'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['processing_fee_amount'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">GST ({{ $roNotes['gst_percent'] ?? '18' }}%):</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['pf_gst_amount'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['pf_gst_amount'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">Total PF:</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['total_pf'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['total_pf'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">Admin Charges:</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['admin_charges'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['admin_charges'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">Admin GST ({{ $roNotes['admin_charges_gst_percent'] ?? '18' }}%):</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['admin_charges_gst_amount'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['admin_charges_gst_amount'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 <div class="col-sm-6">
                     <div class="small"><span class="text-muted">Total Admin:</span>
-                        <strong>₹ {{ number_format((float) ($roNotes['total_admin_charges'] ?? 0)) }}</strong>
+                        <strong>₹ {{ inr((float) ($roNotes['total_admin_charges'] ?? 0)) }}</strong>
                     </div>
                 </div>
                 @if (!empty($roNotes['special_conditions']))
@@ -253,7 +253,7 @@
                                         </td>
                                         <td>{{ $entry['product_name'] ?? '—' }}</td>
                                         <td>{{ $entry['loan_account_number'] ?? '—' }}</td>
-                                        <td class="text-end">₹ {{ number_format($entry['amount'] ?? 0) }}
+                                        <td class="text-end">₹ {{ inr($entry['amount'] ?? 0) }}
                                         </td>
                                     </tr>
                                 @endforeach
@@ -261,8 +261,14 @@
                             <tfoot>
                                 <tr>
                                     <th colspan="4" class="text-end">Total</th>
-                                    <th class="text-end">₹ {{ number_format($disbData->entryTotal()) }}</th>
+                                    <th class="text-end">₹ {{ inr($disbData->grossTotal()) }}</th>
                                 </tr>
+                                @if ($disbData->insuranceTotal() > 0)
+                                    <tr>
+                                        <td colspan="4" class="text-end text-muted">Insurance (excluded)</td>
+                                        <td class="text-end text-muted">₹ {{ inr($disbData->insuranceTotal()) }}</td>
+                                    </tr>
+                                @endif
                             </tfoot>
                         </table>
                     </div>

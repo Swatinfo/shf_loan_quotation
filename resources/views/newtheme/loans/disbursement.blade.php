@@ -15,6 +15,9 @@
                 $e['disbursement_date'] = ! empty($e['disbursement_date'])
                     ? \Carbon\Carbon::parse($e['disbursement_date'])->format('d/m/Y')
                     : '';
+                $e['transfer_date'] = ! empty($e['transfer_date'])
+                    ? \Carbon\Carbon::parse($e['transfer_date'])->format('d/m/Y')
+                    : '';
 
                 return $e;
             }, $entries);
@@ -41,7 +44,7 @@
                     <strong>{{ $loan->customer_name }}</strong>
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
                     @if ($sanctionedAmount)
-                        <span class="ld-chip">Sanctioned ₹ {{ number_format((float) $sanctionedAmount) }}</span>
+                        <span class="ld-chip">Sanctioned ₹ {{ inr((float) $sanctionedAmount) }}</span>
                     @endif
                     @if ($isLocked)
                         <span class="badge red" style="margin-left:6px;vertical-align:middle;">{{ $stageCompleted && $loan->status === 'active' ? 'Completed' : ucfirst($loan->status) }}</span>
@@ -97,23 +100,44 @@
         <div class="ld-summary">
             <div class="ld-summary-box is-blue">
                 <div class="k">{{ $sanctionedAmount ? 'Sanctioned Amount' : 'Loan Amount (no sanction figure)' }}</div>
-                <div class="v">₹ {{ number_format($target) }}</div>
+                <div class="v">₹ {{ inr($target) }}</div>
             </div>
             <div class="ld-summary-box is-green">
-                <div class="k">Disbursed So Far</div>
-                <div class="v">₹ {{ number_format($disbursedSoFar) }}</div>
+                <div class="k">Gross Disbursed (net + PF + admin)</div>
+                <div class="v">₹ {{ inr($disbursedSoFar) }}</div>
             </div>
             <div class="ld-summary-box">
                 <div class="k">Remaining</div>
-                <div class="v">₹ {{ number_format($remaining) }}</div>
+                <div class="v">₹ {{ inr($remaining) }}</div>
             </div>
         </div>
+
+        @if ($netDisbursed || $pfTotal || $adminTotal || $insuranceTotal)
+            <div class="ld-summary ld-summary-detail">
+                <div class="ld-summary-box">
+                    <div class="k">Net Transferred</div>
+                    <div class="v">₹ {{ inr($netDisbursed) }}</div>
+                </div>
+                <div class="ld-summary-box">
+                    <div class="k">Processing Fee (PF)</div>
+                    <div class="v">₹ {{ inr($pfTotal) }}</div>
+                </div>
+                <div class="ld-summary-box">
+                    <div class="k">Admin Charges</div>
+                    <div class="v">₹ {{ inr($adminTotal) }}</div>
+                </div>
+                <div class="ld-summary-box">
+                    <div class="k">Insurance (excluded)</div>
+                    <div class="v">₹ {{ inr($insuranceTotal) }}</div>
+                </div>
+            </div>
+        @endif
 
         @if ($disbursedSoFar > $target)
             <div class="card ld-alert ld-alert-amber">
                 <div class="card-bd">
-                    <strong>⚠ Over-disbursed.</strong> Disbursed ₹ {{ number_format($disbursedSoFar) }} exceeds the
-                    sanctioned ₹ {{ number_format($target) }} by ₹ {{ number_format($disbursedSoFar - $target) }}.
+                    <strong>⚠ Over-disbursed.</strong> Disbursed ₹ {{ inr($disbursedSoFar) }} exceeds the
+                    sanctioned ₹ {{ inr($target) }} by ₹ {{ inr($disbursedSoFar - $target) }}.
                 </div>
             </div>
         @endif
@@ -137,28 +161,86 @@
                         @if (! $isLocked)
                             <div class="ld-info">
                                 Each entry is one tranche — cheque or fund transfer — with its own OTC handover.
-                                Add cheque and NEFT entries together. Partial totals can be saved now and more
-                                entries added later. The loan completes once the total reaches
-                                <strong>₹ {{ number_format($target) }}</strong> (or you mark it fully disbursed)
-                                <strong>and</strong> every entry's OTC is cleared or skipped.
+                                PF &amp; Admin charges are entered once below (section 2) and add to the disbursed
+                                total; insurance is recorded but excluded. Add cheque and NEFT entries together.
+                                Partial totals can be saved now and more entries added later. The loan completes once
+                                the gross total (transfers + PF + admin) reaches <strong>₹ {{ inr($target) }}</strong>
+                                (or you mark it fully disbursed) <strong>and</strong> every entry's OTC is cleared or
+                                skipped.
                             </div>
                         @endif
 
                         <div id="entryList"></div>
+
+                        @if (! $isLocked)
+                            <button type="button" id="addEntryBottom" class="btn primary sm ld-add-bottom">
+                                <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16m8-8H4"/></svg>
+                                Add another entry
+                            </button>
+                        @endif
+
                         <div class="ld-warning" id="entryValidationError" style="display:none;"></div>
 
                         <div class="ld-entry-total">
-                            <span>Total:</span>
+                            <span>Gross Total:</span>
                             <strong id="entryTotal">₹ 0</strong>
                             <span class="ld-warning ld-warning-inline" id="entryTotalNote" style="display:none;"></span>
                         </div>
+                        <div class="ld-charge-breakdown" id="entryBreakdown"></div>
                         <div class="ld-words" data-total-words></div>
+                    </div>
+                </div>
+
+                {{-- ===== One-time Charges (PF / Admin / Insurance) ===== --}}
+                <div class="card ld-card">
+                    <div class="card-hd"><div class="t"><span class="num">2</span>Charges / ચાર્જિસ (one-time)</div></div>
+                    <div class="card-bd">
+                        <div class="ld-info">
+                            These are charged <strong>once per disbursement</strong>, not per tranche. Enter the
+                            <strong>GST-inclusive</strong> amounts — the GST included in PF &amp; Admin is shown below
+                            (PF @ {{ rtrim(rtrim(number_format(($rates['pf_gst'] ?? 0) * 100, 2), '0'), '.') }}%,
+                            Admin @ {{ rtrim(rtrim(number_format(($rates['admin_gst'] ?? 0) * 100, 2), '0'), '.') }}%).
+                            PF &amp; Admin add to the gross disbursed total; <strong>Insurance is recorded but excluded</strong>
+                            (and carries no GST).
+                        </div>
+                        @if ($chargesLocked)
+                            <div class="ld-info ld-info-locked">
+                                🔒 <strong>Locked.</strong> These one-time charges were set on the first disbursement and
+                                an OTC has since been cleared, so they can no longer be edited here.
+                            </div>
+                        @endif
+                        <div class="ld-charge-grid">
+                            <div class="ld-field">
+                                <label class="lbl lbl-sm">Processing Fee (PF) — incl. GST</label>
+                                <div class="ld-amount shf-amount-wrap"><span class="ld-rupee">₹</span>
+                                    <input type="text" class="input shf-amount-input ld-amount-input" id="pfDisplay" value="{{ old('pf_amount', $disbursement?->pf_amount ?: '') }}" {{ $chargesLocked ? 'readonly' : '' }}>
+                                    <input type="hidden" name="pf_amount" class="shf-amount-raw" id="pfAmount" value="{{ old('pf_amount', $disbursement?->pf_amount ?: '') }}">
+                                </div>
+                                <div class="ld-charge-note" id="pfNote"></div>
+                            </div>
+                            <div class="ld-field">
+                                <label class="lbl lbl-sm">Admin Charges — incl. GST</label>
+                                <div class="ld-amount shf-amount-wrap"><span class="ld-rupee">₹</span>
+                                    <input type="text" class="input shf-amount-input ld-amount-input" id="adminDisplay" value="{{ old('admin_charges', $disbursement?->admin_charges ?: '') }}" {{ $chargesLocked ? 'readonly' : '' }}>
+                                    <input type="hidden" name="admin_charges" class="shf-amount-raw" id="adminAmount" value="{{ old('admin_charges', $disbursement?->admin_charges ?: '') }}">
+                                </div>
+                                <div class="ld-charge-note" id="adminNote"></div>
+                            </div>
+                            <div class="ld-field">
+                                <label class="lbl lbl-sm">Insurance — excluded, no GST</label>
+                                <div class="ld-amount shf-amount-wrap"><span class="ld-rupee">₹</span>
+                                    <input type="text" class="input shf-amount-input ld-amount-input" id="insuranceDisplay" value="{{ old('insurance_amount', $disbursement?->insurance_amount ?: '') }}" {{ $chargesLocked ? 'readonly' : '' }}>
+                                    <input type="hidden" name="insurance_amount" class="shf-amount-raw" id="insuranceAmount" value="{{ old('insurance_amount', $disbursement?->insurance_amount ?: '') }}">
+                                </div>
+                                <div class="ld-charge-note">Not added to the disbursed total.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {{-- ===== Notes ===== --}}
                 <div class="card ld-card">
-                    <div class="card-hd"><div class="t"><span class="num">2</span>Notes</div></div>
+                    <div class="card-hd"><div class="t"><span class="num">3</span>Notes</div></div>
                     <div class="card-bd">
                         <div class="ld-field">
                             <textarea name="notes" id="ldNotes" class="input ld-textarea" rows="3">{{ old('notes', $disbursement?->notes) }}</textarea>
@@ -213,6 +295,8 @@
         'entryDateMax' => now()->addDays(3)->format('d/m/Y'),
         'chequeDateMin' => $loan->created_at->format('d/m/Y'),
         'chequeDateMax' => now()->addDays(90)->format('d/m/Y'),
+        'pfGst' => (float) ($rates['pf_gst'] ?? 0),
+        'adminGst' => (float) ($rates['admin_gst'] ?? 0),
     ];
 @endphp
 <script>
@@ -237,8 +321,19 @@ $(function() {
         var method = data.method || 'fund_transfer';
         return '<div class="ld-entry-row entry-row" data-index="' + idx + '">' +
             '<input type="hidden" name="entries[' + idx + '][row_id]" value="' + esc(data.row_id || '') + '">' +
+            '<div class="ld-entry-head">' +
+                '<button type="button" class="ld-entry-toggle" aria-label="Collapse or expand this entry">' +
+                    '<svg class="i chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>' +
+                '</button>' +
+                '<span class="ld-entry-num entry-num"></span>' +
+                '<span class="ld-entry-summary"></span>' +
+                '<button type="button" class="btn danger sm remove-entry ld-entry-head-remove" aria-label="Remove entry">' +
+                    '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                '</button>' +
+            '</div>' +
+            '<div class="ld-entry-body">' +
             '<div class="ld-entry-grid">' +
-                '<div class="ld-field"><label class="lbl lbl-sm"><span class="ld-entry-num entry-num"></span>Date <span class="ld-req">*</span></label>' +
+                '<div class="ld-field"><label class="lbl lbl-sm">Date <span class="ld-req">*</span></label>' +
                     '<input type="text" name="entries[' + idx + '][disbursement_date]" class="input shf-datepicker-custom entry-date" ' +
                         'data-min-date="' + CFG.entryDateMin + '" data-max-date="' + CFG.entryDateMax + '" placeholder="dd/mm/yyyy" value="' + esc(data.disbursement_date || '') + '"></div>' +
                 '<div class="ld-field"><label class="lbl lbl-sm">Method <span class="ld-req">*</span></label>' +
@@ -255,10 +350,11 @@ $(function() {
                         '<input type="text" class="input shf-amount-input ld-amount-input entry-amount-display" value="' + esc(data.amount || '') + '">' +
                         '<input type="hidden" name="entries[' + idx + '][amount]" class="shf-amount-raw entry-amount" value="' + esc(data.amount || '') + '">' +
                     '</div></div>' +
-                '<div class="ld-entry-remove">' +
-                    '<button type="button" class="btn danger sm remove-entry" aria-label="Remove entry">' +
-                        '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
-                    '</button></div>' +
+            '</div>' +
+            '<div class="ld-entry-neft entry-neft"' + (method === 'cheque' ? ' style="display:none;"' : '') + '>' +
+                '<div class="ld-field"><label class="lbl lbl-sm">Transfer Date <span class="ld-req">*</span></label>' +
+                    '<input type="text" name="entries[' + idx + '][transfer_date]" class="input shf-datepicker-custom entry-transfer-date" ' +
+                        'data-min-date="' + CFG.entryDateMin + '" data-max-date="' + CFG.entryDateMax + '" placeholder="dd/mm/yyyy" value="' + esc(data.transfer_date || data.disbursement_date || '') + '"></div>' +
             '</div>' +
             '<div class="ld-entry-cheque entry-cheque"' + (method === 'cheque' ? '' : ' style="display:none;"') + '>' +
                 '<div class="ld-field"><label class="lbl lbl-sm">Name on Cheque <span class="ld-req">*</span></label>' +
@@ -269,19 +365,31 @@ $(function() {
                     '<input type="text" name="entries[' + idx + '][cheque_date]" class="input shf-datepicker-custom entry-cheque-date" ' +
                         'data-min-date="' + CFG.chequeDateMin + '" data-max-date="' + CFG.chequeDateMax + '" placeholder="dd/mm/yyyy" value="' + esc(data.cheque_date || '') + '"></div>' +
             '</div>' +
-            otcRowHtml(idx, data) +
+            otcRowHtml(idx, data, method) +
+            '</div>' + // .ld-entry-body
         '</div>';
     }
 
-    // Per-entry OTC handover — applies to every method (cheque + NEFT).
-    function otcRowHtml(idx, data) {
-        var otc = data.otc_status || 'pending';
+    // Per-entry OTC handover — applies to every method. NEFT has no physical
+    // instrument, so its OTC defaults to "skipped" (the backend enforces this too).
+    // OTC status options are method-specific: cheque → Pending / Cleared (a cheque
+    // is a physical instrument that must be handed over); NEFT → Skip only (no
+    // instrument; always settled). "Skip" is never offered for cheques.
+    function otcOptions(method, otc) {
+        if (method === 'cheque') {
+            return '<option value="pending"' + (otc === 'pending' ? ' selected' : '') + '>Pending</option>' +
+                '<option value="cleared"' + (otc === 'cleared' ? ' selected' : '') + '>Cleared (handed over)</option>';
+        }
+        return '<option value="skipped" selected>Skip (not required)</option>';
+    }
+
+    function otcRowHtml(idx, data, method) {
+        // NEFT OTC is always "skipped"; cheque defaults to its stored state (else pending).
+        var otc = (method === 'cheque') ? (data.otc_status || 'pending') : 'skipped';
         return '<div class="ld-entry-otc">' +
             '<div class="ld-field"><label class="lbl lbl-sm">OTC Handover</label>' +
                 '<select name="entries[' + idx + '][otc_status]" class="input entry-otc-status">' +
-                    '<option value="pending"' + (otc === 'pending' ? ' selected' : '') + '>Pending</option>' +
-                    '<option value="cleared"' + (otc === 'cleared' ? ' selected' : '') + '>Cleared (handed over)</option>' +
-                    '<option value="skipped"' + (otc === 'skipped' ? ' selected' : '') + '>Skip (not required)</option>' +
+                    otcOptions(method, otc) +
                 '</select></div>' +
             '<div class="ld-field entry-otc-date-wrap"' + (otc === 'cleared' ? '' : ' style="display:none;"') + '>' +
                 '<label class="lbl lbl-sm">Handover Date <span class="ld-req">*</span></label>' +
@@ -300,6 +408,26 @@ $(function() {
             $(this).datepicker(opts);
         });
         if (window.SHF && typeof SHF.initAmountFields === 'function') { SHF.initAmountFields(); }
+        updateRowSummary($row);
+    }
+
+    // Collapsed-head summary: Method · ₹ Amount · A/c No · cheque/NEFT date.
+    function updateRowSummary($row) {
+        var isCheque = $row.find('.entry-method').val() === 'cheque';
+        var amt = parseFloat(($row.find('.entry-amount-display').val() || '').replace(/[^0-9.]/g, '')) || 0;
+        var acc = ($row.find('.entry-account').val() || '').trim();
+        var dateVal = (isCheque ? $row.find('.entry-cheque-date').val() : $row.find('.entry-transfer-date').val())
+            || $row.find('.entry-date').val() || '';
+        var amtStr = '₹ ' + (window.SHF && SHF.formatIndianNumber ? SHF.formatIndianNumber(amt) : amt);
+        var parts = [isCheque ? 'Cheque' : 'NEFT'];
+        if (isCheque) {
+            var chqName = ($row.find('.entry-cheque-name').val() || '').trim();
+            if (chqName) { parts.push(chqName); }
+        }
+        parts.push(amtStr);
+        if (acc) { parts.push('A/c ' + acc); }
+        if (dateVal) { parts.push(dateVal); }
+        $row.find('.ld-entry-summary').text(parts.join('  ·  '));
     }
 
     function renumberRows() {
@@ -310,21 +438,45 @@ $(function() {
 
     function addEntry(data) {
         $('#entryList').append(entryRowHtml(entryIndex, data));
-        initRow($('#entryList .entry-row:last'));
+        var $row = $('#entryList .entry-row:last');
+        initRow($row);
         entryIndex++;
         renumberRows();
         updateTotal();
+        return $row;
+    }
+
+    // User-initiated add: collapse the existing entries, append a fresh (expanded)
+    // one, then bring it into view + flash it.
+    function userAddEntry() {
+        $('#entryList .entry-row').addClass('is-collapsed');
+        var $row = addEntry({ disbursement_date: '{{ now()->format('d/m/Y') }}' });
+        if ($row && $row.length) {
+            $row[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            $row.addClass('ld-row-flash');
+            setTimeout(function () { $row.removeClass('ld-row-flash'); }, 1300);
+        }
     }
 
     // Hydrate saved / old-input rows; start with one empty row on a fresh form.
+    // Saved entries load COLLAPSED (compact summary); a fresh empty row stays expanded.
     if (CFG.entries.length) {
         CFG.entries.forEach(function(e) { addEntry(e); });
+        $('#entryList .entry-row').addClass('is-collapsed');
     } else if (!CFG.locked) {
         addEntry();
     }
 
-    $('#addEntry').on('click', function() {
-        addEntry({ disbursement_date: '{{ now()->format('d/m/Y') }}' });
+    $('#addEntry, #addEntryBottom').on('click', userAddEntry);
+
+    // Toggle a tranche's collapsed state (clicking the head, not the remove button).
+    $(document).on('click', '.ld-entry-toggle, .ld-entry-summary, .ld-entry-num', function() {
+        $(this).closest('.entry-row').toggleClass('is-collapsed');
+    });
+
+    // Keep the collapsed summary in sync as the key fields change.
+    $(document).on('input change', '.entry-method, .entry-account, .entry-amount-display, .entry-date, .entry-cheque-date, .entry-transfer-date, .entry-cheque-name', function() {
+        updateRowSummary($(this).closest('.entry-row'));
     });
 
     $(document).on('click', '.remove-entry', function() {
@@ -335,7 +487,18 @@ $(function() {
 
     $(document).on('change', '.entry-method', function() {
         var $row = $(this).closest('.entry-row');
-        $row.find('.entry-cheque').toggle($(this).val() === 'cheque');
+        var isCheque = $(this).val() === 'cheque';
+        $row.find('.entry-cheque').toggle(isCheque);
+        $row.find('.entry-neft').toggle(!isCheque);
+        if (!isCheque) {
+            // NEFT: default Transfer Date to the entry Date.
+            var $td = $row.find('.entry-transfer-date');
+            if (!($td.val() || '').trim()) $td.val($row.find('.entry-date').val() || '');
+        }
+        // Rebuild OTC options for the method (cheque: Pending/Cleared; NEFT: Skip only).
+        $row.find('.entry-otc-status')
+            .html(otcOptions(isCheque ? 'cheque' : 'fund_transfer', isCheque ? 'pending' : 'skipped'))
+            .trigger('change');
     });
 
     $(document).on('change', '.entry-otc-status', function() {
@@ -343,25 +506,63 @@ $(function() {
         $row.find('.entry-otc-date-wrap').toggle($(this).val() === 'cleared');
     });
 
+    function sumClass(sel) {
+        var t = 0;
+        $(sel).each(function() { t += parseFloat($(this).val()) || 0; });
+        return t;
+    }
+
+    // GST-exclusive base of a GST-inclusive amount; and the GST portion.
+    function exGst(incl, r) { return r > 0 ? Math.round(incl / (1 + r)) : incl; }
+    function pct(r) { return (r * 100).toFixed(2).replace(/\.?0+$/, ''); }
+
     function updateTotal() {
-        var total = 0;
-        $('.entry-amount').each(function() { total += parseFloat($(this).val()) || 0; });
-        $('#entryTotal').text('₹ ' + total.toLocaleString('en-IN'));
+        var inr = function(n) { return n.toLocaleString('en-IN'); };
+        var net = sumClass('.entry-amount');
+        var pf = parseFloat($('#pfAmount').val()) || 0;
+        var admin = parseFloat($('#adminAmount').val()) || 0;
+        var insurance = parseFloat($('#insuranceAmount').val()) || 0;
+        // Gross (what counts toward the sanctioned target) = net + PF + admin (one-time).
+        var total = net + pf + admin;
+
+        // GST back-calc notes on the one-time charges.
+        if (pf) {
+            var pfBase = exGst(pf, CFG.pfGst), pfGst = pf - pfBase;
+            $('#pfNote').text('incl. GST @ ' + pct(CFG.pfGst) + '% = ₹ ' + inr(pfGst) + ' · base ₹ ' + inr(pfBase));
+        } else { $('#pfNote').text(''); }
+        if (admin) {
+            var adBase = exGst(admin, CFG.adminGst), adGst = admin - adBase;
+            $('#adminNote').text('incl. GST @ ' + pct(CFG.adminGst) + '% = ₹ ' + inr(adGst) + ' · base ₹ ' + inr(adBase));
+        } else { $('#adminNote').text(''); }
+
+        $('#entryTotal').text('₹ ' + inr(total));
         if (window.SHF && typeof SHF.bilingualAmountWords === 'function') {
             $('[data-total-words]').text(total > 0 ? SHF.bilingualAmountWords(total) : '');
         }
+
+        var parts = ['Net ₹ ' + inr(net)];
+        if (pf) { parts.push('PF ₹ ' + inr(pf)); }
+        if (admin) { parts.push('Admin ₹ ' + inr(admin)); }
+        var breakdown = (pf || admin) ? parts.join(' + ') + ' = Gross ₹ ' + inr(total) : '';
+        if (insurance) { breakdown += (breakdown ? ' · ' : '') + 'Insurance ₹ ' + inr(insurance) + ' (excluded)'; }
+        $('#entryBreakdown').text(breakdown);
+
         var $note = $('#entryTotalNote');
         if (total > CFG.target) {
-            $note.text('⚠ Over-disbursed by ₹ ' + (total - CFG.target).toLocaleString('en-IN') + ' above the sanctioned ₹ ' + CFG.target.toLocaleString('en-IN')).show().removeClass('is-warning').addClass('is-danger');
+            $note.text('⚠ Over-disbursed by ₹ ' + inr(total - CFG.target) + ' above the sanctioned ₹ ' + inr(CFG.target)).show().removeClass('is-warning').addClass('is-danger');
         } else if (total > 0 && total >= CFG.target) {
             $note.text('(fully disbursed — settle each entry\'s OTC to complete the loan)').show().removeClass('is-danger').addClass('is-warning');
         } else if (total > 0) {
-            $note.text('(remaining ₹ ' + (CFG.target - total).toLocaleString('en-IN') + ' — you can add more entries later)').show().removeClass('is-danger is-warning');
+            $note.text('(remaining ₹ ' + inr(CFG.target - total) + ' — you can add more entries later)').show().removeClass('is-danger is-warning');
         } else {
             $note.hide();
         }
     }
-    $(document).on('input', '.entry-amount-display', updateTotal);
+    // Format the one-time charge inputs (section 2) — they exist at page load,
+    // not only after an entry row is appended.
+    if (window.SHF && typeof SHF.initAmountFields === 'function') { SHF.initAmountFields(); }
+
+    $(document).on('input', '.entry-amount-display, #pfDisplay, #adminDisplay, #insuranceDisplay', updateTotal);
     updateTotal();
 
     $(document).on('input change', '.is-invalid', function() { $(this).removeClass('is-invalid'); });
@@ -372,6 +573,8 @@ $(function() {
 
         function fail($input) {
             $input.addClass('is-invalid');
+            // Reveal the field's tranche if it was collapsed, so the error is visible.
+            $input.closest('.entry-row').removeClass('is-collapsed');
             if (!$first) $first = $input;
             valid = false;
         }
@@ -398,6 +601,9 @@ $(function() {
                     var $f = $row.find(sel);
                     if (!($f.val() || '').trim()) fail($f);
                 });
+            } else {
+                var $tr = $row.find('.entry-transfer-date');
+                if (!($tr.val() || '').trim()) fail($tr);
             }
 
             if ($row.find('.entry-otc-status').val() === 'cleared') {

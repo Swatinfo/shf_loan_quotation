@@ -8,6 +8,7 @@ use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Services\DisbursementService;
+use App\Services\PayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -38,6 +39,11 @@ class LoanDisbursementController extends Controller
         $stageCompleted = $stageAssignment?->status === 'completed';
         $isLocked = ! in_array($loan->status, self::EDITABLE_STATUSES);
 
+        // One-time charges (PF / admin / insurance) freeze once any OTC is settled,
+        // so they can only be set on the first disbursement — even while the form
+        // itself is still editable for adding later tranches.
+        $chargesLocked = $disbursement?->chargesLocked() ?? false;
+
         // Merge per-entry OTC state (held on the mirror rows) into the json entries.
         $otcByRow = $disbursement
             ? $disbursement->entryRows()->get()->keyBy('id')
@@ -51,13 +57,23 @@ class LoanDisbursementController extends Controller
             return $entry;
         }, $disbursement?->entryList() ?? []);
 
-        $disbursedSoFar = $disbursement?->entryTotal() ?? 0;
+        // Gross (net + PF + admin) is what counts toward the sanctioned target;
+        // insurance is recorded but excluded. Net + per-charge totals shown too.
+        $disbursedSoFar = $disbursement?->grossTotal() ?? 0;
+        $netDisbursed = $disbursement?->entryTotal() ?? 0;
+        $pfTotal = $disbursement?->pfTotal() ?? 0;
+        $adminTotal = $disbursement?->adminTotal() ?? 0;
+        $insuranceTotal = $disbursement?->insuranceTotal() ?? 0;
         $target = $service->disbursementTarget($loan);
         $products = $this->bankProducts($loan);
+        // GST rates (decimals) in force today — the form back-calculates the GST
+        // included in the entered (GST-inclusive) PF + Admin charges.
+        $rates = app(PayoutService::class)->payoutRates();
 
         return view('newtheme.loans.disbursement', compact(
-            'loan', 'disbursement', 'sanctionedAmount', 'isLocked', 'stageCompleted',
-            'entries', 'disbursedSoFar', 'target', 'products',
+            'loan', 'disbursement', 'sanctionedAmount', 'isLocked', 'stageCompleted', 'chargesLocked',
+            'entries', 'disbursedSoFar', 'netDisbursed', 'pfTotal', 'adminTotal', 'insuranceTotal',
+            'target', 'products', 'rates',
         ) + ['pageKey' => 'loans']);
     }
 
@@ -81,9 +97,14 @@ class LoanDisbursementController extends Controller
             'entries.*.cheque_name' => 'nullable|string|max:100',
             'entries.*.cheque_number' => 'nullable|string|max:50',
             'entries.*.cheque_date' => 'nullable|string|max:20',
+            'entries.*.transfer_date' => 'nullable|date_format:d/m/Y',
             'entries.*.otc_status' => 'nullable|in:pending,cleared,skipped',
             'entries.*.otc_handover_date' => 'nullable|date_format:d/m/Y',
             'entries.*.otc_remarks' => 'nullable|string|max:2000',
+            // One-time per-disbursement charges (GST-inclusive); insurance has no GST.
+            'pf_amount' => 'nullable|numeric|min:0|max:100000000000',
+            'admin_charges' => 'nullable|numeric|min:0|max:100000000000',
+            'insurance_amount' => 'nullable|numeric|min:0|max:100000000000',
             'notes' => 'nullable|string|max:5000',
         ], [
             'entries.*.product_id.in' => 'The selected product does not belong to this loan\'s bank.',
@@ -104,6 +125,11 @@ class LoanDisbursementController extends Controller
                 $rowErrors["entries.{$i}.otc_handover_date"] = 'Handover date is required when OTC is marked cleared.';
             }
 
+            // NEFT transfer date (parallel to cheque_date for cheques): defaults to
+            // the entry's disbursement date when left blank; not applicable to cheques.
+            $validated['entries'][$i]['transfer_date'] = $entry['method'] === DisbursementDetail::TYPE_FUND_TRANSFER
+                ? Carbon::createFromFormat('d/m/Y', $entry['transfer_date'] ?? null ?: $entry['disbursement_date'])->toDateString()
+                : null;
             $validated['entries'][$i]['disbursement_date'] = Carbon::createFromFormat('d/m/Y', $entry['disbursement_date'])->toDateString();
             $validated['entries'][$i]['product_id'] = (int) $entry['product_id'];
             $validated['entries'][$i]['product_name'] = $productNames[(int) $entry['product_id']];
@@ -125,11 +151,11 @@ class LoanDisbursementController extends Controller
         }
 
         $service = app(DisbursementService::class);
-        $remaining = max(0, $service->disbursementTarget($loan) - $disbursement->entryTotal());
+        $remaining = max(0, $service->disbursementTarget($loan) - $disbursement->grossTotal());
         $pendingOtc = $disbursement->entryRows()->whereNotIn('otc_status', DisbursementEntry::OTC_SETTLED)->count();
 
         $msg = $remaining > 0
-            ? 'Disbursement entries saved — remaining ₹ '.number_format($remaining).'.'
+            ? 'Disbursement entries saved — remaining ₹ '.inr($remaining).'.'
             : 'Fully disbursed — '.$pendingOtc.' '.str('entry')->plural($pendingOtc).' awaiting OTC handover.';
 
         return redirect()->route('loans.disbursement', $loan)->with('success', $msg);

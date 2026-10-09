@@ -26,13 +26,18 @@ class DisbursementDetail extends Model
 
     protected $fillable = [
         'loan_id', 'disbursement_type', 'disbursement_date', 'amount_disbursed',
+        'pf_amount', 'admin_charges', 'insurance_amount',
         'bank_account_number', 'cheques', 'entries', 'notes', 'completion_intent',
+        'pf_payout_run_id', 'insurance_payout_run_id',
     ];
 
     protected function casts(): array
     {
         return [
             'amount_disbursed' => 'integer',
+            'pf_amount' => 'integer',
+            'admin_charges' => 'integer',
+            'insurance_amount' => 'integer',
             'disbursement_date' => 'date',
             'cheques' => 'array',
             'entries' => 'array',
@@ -81,6 +86,68 @@ class DisbursementDetail extends Model
     public function entryTotal(): int
     {
         return (int) array_sum(array_column($this->entryList(), 'amount'));
+    }
+
+    /** One-time processing fee (header-level, GST-inclusive). */
+    public function pfTotal(): int
+    {
+        return (int) $this->pf_amount;
+    }
+
+    /** One-time admin charges (header-level, GST-inclusive). */
+    public function adminTotal(): int
+    {
+        return (int) $this->admin_charges;
+    }
+
+    /** One-time insurance (header-level; no GST; excluded from gross). */
+    public function insuranceTotal(): int
+    {
+        return (int) $this->insurance_amount;
+    }
+
+    /**
+     * Overall ("gross") disbursed amount = net transfers + PF + admin charges
+     * (both one-time, GST-inclusive). Insurance is excluded. This is the figure
+     * the fully-disbursed check uses.
+     */
+    public function grossTotal(): int
+    {
+        return $this->entryTotal() + $this->pfTotal() + $this->adminTotal();
+    }
+
+    /**
+     * One-time charge add-on (PF + admin, insurance excluded) — the amount that
+     * rides the loan's first tranche in gross/period calculations.
+     */
+    public function chargeAddon(): int
+    {
+        return $this->pfTotal() + $this->adminTotal();
+    }
+
+    /**
+     * Whether the one-time charges (PF / admin / insurance) are frozen. They
+     * lock the moment any disbursement entry's OTC is settled (a cleared cheque,
+     * or any fund transfer — auto-skipped at save), so they can only ever be set
+     * on the first disbursement. The super-admin correction tool bypasses this.
+     */
+    public function chargesLocked(): bool
+    {
+        return $this->entryRows()
+            ->whereIn('otc_status', DisbursementEntry::OTC_SETTLED)
+            ->exists();
+    }
+
+    /** GST-exclusive base of a GST-inclusive amount at rate $r (e.g. 0.18). */
+    public static function exGst(int $inclusive, float $r): int
+    {
+        return $r > 0 ? (int) round($inclusive / (1 + $r)) : $inclusive;
+    }
+
+    /** GST portion included in a GST-inclusive amount at rate $r. */
+    public static function gstPortion(int $inclusive, float $r): int
+    {
+        return $inclusive - self::exGst($inclusive, $r);
     }
 
     public function hasChequeEntries(): bool

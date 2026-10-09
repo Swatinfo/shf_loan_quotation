@@ -22,11 +22,30 @@ class DisbursementService
      *
      * @param  array{entries: array<int, array<string, mixed>>, notes?: string|null}  $data
      */
-    public function processDisbursement(LoanDetail $loan, array $data): DisbursementDetail
+    public function processDisbursement(LoanDetail $loan, array $data, bool $allowReopen = false): DisbursementDetail
     {
-        return DB::transaction(function () use ($loan, $data) {
+        return DB::transaction(function () use ($loan, $data, $allowReopen) {
             $entries = array_values($data['entries']);
-            $total = (int) array_sum(array_column($entries, 'amount'));
+            $net = (int) array_sum(array_column($entries, 'amount'));
+            // PF / Admin / Insurance are ONE-TIME per disbursement (header-level,
+            // GST-inclusive) — taken from the form, not summed across tranches.
+            $pf = (int) ($data['pf_amount'] ?? 0);
+            $admin = (int) ($data['admin_charges'] ?? 0);
+            $insurance = (int) ($data['insurance_amount'] ?? 0);
+
+            // Charges attach to the FIRST disbursement only. Once any entry's OTC
+            // is settled they are frozen: a normal re-save (adding later tranches)
+            // keeps the stored values instead of whatever the form posted. The
+            // super-admin correction tool ($allowReopen) bypasses this to correct them.
+            $existing = $loan->disbursement;
+            if (! $allowReopen && $existing && $existing->chargesLocked()) {
+                $pf = (int) $existing->pf_amount;
+                $admin = (int) $existing->admin_charges;
+                $insurance = (int) $existing->insurance_amount;
+            }
+
+            // Overall ("gross") disbursed = net transfers + PF + admin (insurance excluded).
+            $total = $net + $pf + $admin;
             $hasCheque = collect($entries)->contains(fn (array $entry) => $entry['method'] === DisbursementDetail::TYPE_CHEQUE);
 
             $disbursement = DisbursementDetail::updateOrCreate(
@@ -38,6 +57,9 @@ class DisbursementService
                     'disbursement_type' => $hasCheque ? DisbursementDetail::TYPE_CHEQUE : DisbursementDetail::TYPE_FUND_TRANSFER,
                     'disbursement_date' => collect($entries)->pluck('disbursement_date')->filter()->max(),
                     'amount_disbursed' => $total,
+                    'pf_amount' => $pf,
+                    'admin_charges' => $admin,
+                    'insurance_amount' => $insurance,
                     'bank_account_number' => $entries[0]['loan_account_number'] ?? null,
                 ],
             );
@@ -53,7 +75,7 @@ class DisbursementService
             // Refresh the relationship so syncDisbursementState sees the latest rows.
             $loan->setRelation('disbursement', $disbursement);
 
-            $this->syncDisbursementState($loan);
+            $this->syncDisbursementState($loan, $allowReopen);
 
             ActivityLog::log('process_disbursement', $disbursement, [
                 'loan_number' => $loan->loan_number,
@@ -119,7 +141,7 @@ class DisbursementService
 
             ActivityLog::log('mark_fully_disbursed', $disbursement, [
                 'loan_number' => $loan->loan_number,
-                'amount' => $disbursement->entryTotal(),
+                'amount' => $disbursement->grossTotal(),
                 'target' => $this->disbursementTarget($loan),
             ]);
 
@@ -133,10 +155,11 @@ class DisbursementService
      * disbursement / otc_clearance stages based on cumulative amount and
      * per-entry OTC settlement. Completed loans are terminal — never reopened.
      */
-    public function syncDisbursementState(LoanDetail $loan): void
+    public function syncDisbursementState(LoanDetail $loan, bool $allowReopen = false): void
     {
-        // Completed is terminal: never downgrade or reopen (protects historical loans).
-        if ($loan->status === LoanDetail::STATUS_COMPLETED) {
+        // Completed is terminal: never downgrade or reopen (protects historical loans)
+        // UNLESS $allowReopen (the super-admin correction tool fully re-resolves).
+        if (! $allowReopen && $loan->status === LoanDetail::STATUS_COMPLETED) {
             return;
         }
 
@@ -145,31 +168,47 @@ class DisbursementService
             return;
         }
 
+        $wasCompleted = $loan->status === LoanDetail::STATUS_COMPLETED;
         $entries = $disbursement->entryRows()->get();
         $cumulative = (int) $entries->sum('amount');
 
         // Nothing (or no longer anything) disbursed → not in-flight.
         if ($cumulative === 0) {
-            if ($loan->status === LoanDetail::STATUS_PARTIAL_DISBURSED) {
+            if (in_array($loan->status, [LoanDetail::STATUS_PARTIAL_DISBURSED, LoanDetail::STATUS_COMPLETED], true)) {
                 $loan->update(['status' => LoanDetail::STATUS_ACTIVE]);
+                if ($allowReopen) {
+                    $this->reopenStage($loan, 'disbursement');
+                    $this->resetStageToPending($loan, 'otc_clearance');
+                }
             }
+            $this->stageService->recalculateProgress($loan);
 
             return;
         }
 
         $target = $this->disbursementTarget($loan);
-        $moneyDone = $cumulative >= $target
+        // Overall ("gross") disbursed = net transfers + PF + admin charges — this is
+        // what consumes the sanctioned amount. Insurance is excluded. Legacy rows
+        // carry 0 for both charges, so their gross equals the old net total.
+        $gross = $cumulative + (int) $disbursement->pf_amount + (int) $disbursement->admin_charges;
+        $moneyDone = $gross >= $target
             || $disbursement->completion_intent === DisbursementDetail::INTENT_FULL;
         $allSettled = $entries->every(fn (DisbursementEntry $e) => $e->isOtcSettled());
+        $fullyDone = $moneyDone && $allSettled;
 
-        // Once disbursement has started, the loan is in-flight. Don't override a
-        // deliberate hold/close — only promote a plain active loan.
-        if ($loan->status === LoanDetail::STATUS_ACTIVE) {
+        // Promote a plain active loan; with $allowReopen, also downgrade a completed
+        // loan back to partial when the corrected totals/OTC say it isn't fully done.
+        if ($loan->status === LoanDetail::STATUS_ACTIVE
+            || ($allowReopen && $wasCompleted && ! $fullyDone)) {
             $loan->update(['status' => LoanDetail::STATUS_PARTIAL_DISBURSED]);
         }
 
         // Money not yet complete → keep disbursement open, stay partial.
         if (! $moneyDone) {
+            if ($allowReopen) {
+                $this->reopenStage($loan, 'disbursement');
+                $this->resetStageToPending($loan, 'otc_clearance');
+            }
             $this->ensureInProgress($loan, 'disbursement');
             $this->stageService->recalculateProgress($loan);
 
@@ -180,8 +219,22 @@ class DisbursementService
         $this->completeStageIfInProgress($loan, 'disbursement');
         $loan->load('stageAssignments');
 
+        // If the disbursement stage could not close (e.g. an open query is blocking
+        // it), do NOT advance OTC or complete the loan — that would leave an
+        // inconsistent state (loan completed while disbursement is still in_progress).
+        $disbursementAssignment = $loan->stageAssignments->firstWhere('stage_key', 'disbursement');
+        if ($disbursementAssignment && $disbursementAssignment->status !== 'completed') {
+            $this->ensureInProgress($loan, 'disbursement');
+            $this->stageService->recalculateProgress($loan);
+
+            return;
+        }
+
         if (! $allSettled) {
             // Fully disbursed but handovers outstanding → stay partial on OTC.
+            if ($allowReopen) {
+                $this->reopenStage($loan, 'otc_clearance');
+            }
             $this->ensureInProgress($loan, 'otc_clearance');
             $this->stageService->recalculateProgress($loan);
 
@@ -198,7 +251,10 @@ class DisbursementService
                 'status' => LoanDetail::STATUS_COMPLETED,
                 'current_stage' => 'otc_clearance',
             ]);
-            app(NotificationService::class)->notifyLoanCompleted($loan);
+            // Only fire the completion notification on a genuine transition.
+            if (! $wasCompleted) {
+                app(NotificationService::class)->notifyLoanCompleted($loan);
+            }
         }
 
         $this->stageService->recalculateProgress($loan->refresh());
@@ -258,6 +314,7 @@ class DisbursementService
                 'cheque_name' => $entry['cheque_name'] ?? null,
                 'cheque_number' => $entry['cheque_number'] ?? null,
                 'cheque_date' => $entry['cheque_date'] ?? null,
+                'transfer_date' => $entry['transfer_date'] ?? null,
                 'is_active' => $isActive,
             ] + $this->otcAttrs($entry, $current);
 
@@ -287,6 +344,22 @@ class DisbursementService
      */
     private function otcAttrs(array $entry, ?DisbursementEntry $current): array
     {
+        // Only cheques require an over-the-counter handover. A fund transfer (NEFT/
+        // RTGS) has no physical instrument, so its OTC is always "skipped" and never
+        // blocks the otc_clearance stage / loan completion.
+        if (($entry['method'] ?? null) !== DisbursementEntry::METHOD_CHEQUE) {
+            // NEFT/RTGS: OTC is "skipped" (no physical instrument), but it still
+            // carries a settlement date = its transfer date (falling back to the
+            // disbursement date). Payout + reports key on otc_handover_date.
+            return [
+                'otc_status' => DisbursementEntry::OTC_SKIPPED,
+                'otc_handover_date' => $entry['transfer_date'] ?? $entry['disbursement_date'] ?? null,
+                'otc_cleared_by' => null,
+                'otc_cleared_at' => null,
+                'otc_remarks' => $entry['otc_remarks'] ?? null,
+            ];
+        }
+
         $status = $entry['otc_status'] ?? $current?->otc_status ?? DisbursementEntry::OTC_PENDING;
 
         if ($status === DisbursementEntry::OTC_CLEARED) {
@@ -329,6 +402,41 @@ class DisbursementService
         $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
         if ($assignment && $assignment->status === 'pending') {
             $assignment->update(['status' => 'in_progress', 'started_at' => $assignment->started_at ?? now()]);
+        }
+    }
+
+    /**
+     * Reopen a completed stage back to in_progress (correction tool only). Clears
+     * its completion stamps and points the loan's current_stage back here.
+     */
+    private function reopenStage(LoanDetail $loan, string $stageKey): void
+    {
+        $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
+        if ($assignment && $assignment->status === 'completed') {
+            $assignment->update([
+                'status' => 'in_progress',
+                'started_at' => $assignment->started_at ?? now(),
+                'completed_at' => null,
+                'completed_by' => null,
+            ]);
+            $loan->update(['current_stage' => $stageKey]);
+        }
+    }
+
+    /**
+     * Push a completed/in-progress stage back to pending (correction tool only) —
+     * used for otc_clearance when the loan is no longer fully disbursed.
+     */
+    private function resetStageToPending(LoanDetail $loan, string $stageKey): void
+    {
+        $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->first();
+        if ($assignment && $assignment->status !== 'pending') {
+            $assignment->update([
+                'status' => 'pending',
+                'started_at' => null,
+                'completed_at' => null,
+                'completed_by' => null,
+            ]);
         }
     }
 }

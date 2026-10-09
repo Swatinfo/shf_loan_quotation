@@ -35,6 +35,11 @@
     font-size: 13px;
 }
 
+.ld-info-locked {
+    background: rgba(241,90,41,0.10);
+    color: var(--accent, #f15a29);
+}
+
 /* ========== Grid + fields ========== */
 .ld-grid {
     display: grid;
@@ -95,6 +100,8 @@
 .ld-amount-sm .ld-amount-input { padding-left: 20px !important; font-size: 13px; }
 
 .ld-words { font-size: 11.5px; color: var(--ink-4); min-height: 14px; line-height: 1.4; margin-top: 2px; }
+.ld-charge-breakdown { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; margin-top: 3px; }
+.ld-charge-breakdown:empty { display: none; }
 .ld-warning { font-size: 11.5px; color: var(--amber, #d97706); margin-top: 4px; }
 .ld-warning.is-danger { color: var(--red, #c0392b); }
 .ld-warning.is-warning { color: var(--amber, #d97706); }
@@ -228,8 +235,44 @@
     gap: 12px;
     margin-bottom: 14px;
 }
+/* Secondary breakdown (Net / PF / Admin / Insurance) → compact inline chips at
+   ALL widths (phones, landscape phones, tablets, desktop), so it's one tidy strip
+   instead of stacking into full cards. */
+.ld-summary-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    background: var(--paper-2, #f4f2f0);
+    border-radius: 8px;
+    padding: 9px 12px;
+    margin-bottom: 14px;
+}
+.ld-summary-detail .ld-summary-box {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+}
+.ld-summary-detail .ld-summary-box .k { font-size: 10px; }
+.ld-summary-detail .ld-summary-box .v { font-size: 13px; margin-top: 0; }
+
+@media (max-width: 900px) {
+    /* Landscape phones / small tablets: 2-up primary so it stays one or two rows. */
+    .ld-summary:not(.ld-summary-detail) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+}
 @media (max-width: 700px) {
-    .ld-summary { grid-template-columns: 1fr; }
+    /* Phones: tighter still + trimmed help text so entries are reachable sooner. */
+    .ld-summary:not(.ld-summary-detail) { gap: 6px; margin-bottom: 8px; }
+    .ld-summary-box { padding: 6px 9px; }
+    .ld-summary-box .k { font-size: 9px; letter-spacing: 0.02em; }
+    .ld-summary-box .v { font-size: 14px; margin-top: 1px; }
+    .ld-info { font-size: 11px; line-height: 1.4; padding: 8px 10px; margin-bottom: 10px; }
+    .ld-summary-detail { gap: 4px 14px; padding: 8px 10px; margin-bottom: 10px; }
+    .ld-summary-detail .ld-summary-box .k { font-size: 9px; }
+    .ld-summary-detail .ld-summary-box .v { font-size: 12px; }
 }
 .ld-summary-box {
     padding: 10px 14px;
@@ -265,7 +308,7 @@
 }
 .ld-entry-grid {
     display: grid;
-    grid-template-columns: 1fr 1.1fr 1.3fr 1.3fr 1.1fr 44px;
+    grid-template-columns: 1fr 1.1fr 1.3fr 1.3fr 1.1fr;
     gap: 10px;
     align-items: end;
 }
@@ -303,21 +346,39 @@
 @media (max-width: 700px) {
     .ld-entry-otc { grid-template-columns: 1fr; }
 }
+/* One-time charges (section 2) — PF + admin add to the gross; insurance excluded. */
+.ld-charge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-top: 10px;
+}
+.ld-charge-note {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.4;
+    margin-top: 4px;
+    min-height: 16px;
+}
+@media (max-width: 700px) {
+    .ld-charge-grid { grid-template-columns: 1fr; }
+}
 .ld-entry-remove { display: flex; justify-content: center; align-items: end; }
 .ld-entry-remove .btn { height: 32px; padding: 0 10px; }
 .ld-entry-num {
+    flex: 0 0 20px; /* never shrink — keeps it a perfect circle in the flex head */
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 20px;
     height: 20px;
+    min-width: 20px;
     border-radius: 50%;
     background: var(--accent, #f15a29);
     color: #fff;
     font-family: 'Jost', sans-serif;
     font-size: 11px;
     font-weight: 700;
-    margin-right: 6px;
 }
 .ld-entry-total {
     display: flex;
@@ -348,3 +409,75 @@
 }
 
 .datepicker-dropdown { z-index: 10050; }
+
+/* Bottom "Add another entry" — always reachable after the last tranche. */
+.ld-add-bottom {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+}
+@media (max-width: 640px) {
+    .ld-add-bottom { width: 100%; justify-content: center; }
+}
+
+/* Flash the newly added entry so the scroll target is obvious. */
+.ld-row-flash {
+    animation: ldRowFlash 1.3s ease-out;
+}
+@keyframes ldRowFlash {
+    0%   { box-shadow: 0 0 0 2px var(--accent, #f15a29), 0 0 0 6px rgba(241, 90, 41, 0.18); }
+    100% { box-shadow: 0 0 0 2px rgba(241, 90, 41, 0); }
+}
+
+/* ===== Collapsible tranche entry ===== */
+.ld-entry-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.entry-row:not(.is-collapsed) > .ld-entry-head {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+.ld-entry-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--ink-3, #6b7280);
+    cursor: pointer;
+}
+.ld-entry-toggle .chev {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.18s ease;
+    transform: rotate(90deg); /* expanded → points down */
+}
+.entry-row.is-collapsed .ld-entry-toggle .chev { transform: rotate(0deg); } /* collapsed → points right */
+.ld-entry-summary {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.85rem;
+    color: var(--ink-2, #374151);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ld-entry-head-remove {
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 10px;
+}
+.entry-row.is-collapsed > .ld-entry-body { display: none; }
+@media (max-width: 600px) {
+    .ld-entry-summary { white-space: normal; font-size: 0.8rem; }
+}

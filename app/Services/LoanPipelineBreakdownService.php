@@ -68,7 +68,7 @@ class LoanPipelineBreakdownService
      * Users selectable in the dropdown: all active users for view_all_loans holders,
      * branch users for BM/BDH, none for everyone else.
      *
-     * @return array<int,array{id:int,name:string}>
+     * @return array<int,array{id:int,name:string,role:string}>
      */
     public function userOptions(User $requester): array
     {
@@ -76,7 +76,7 @@ class LoanPipelineBreakdownService
             return [];
         }
 
-        $query = User::query()->where('is_active', true);
+        $query = User::selectable()->with('roles');
 
         if (! $requester->hasPermission('view_all_loans')) {
             $branchIds = $requester->branches()->pluck('branches.id')->all();
@@ -87,8 +87,8 @@ class LoanPipelineBreakdownService
         }
 
         return $query->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])
+            ->get()
+            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'role' => $u->workflow_role_label ?: $u->role_label])
             ->all();
     }
 
@@ -186,9 +186,10 @@ class LoanPipelineBreakdownService
         $ids = [];
         foreach ($this->loans($requester, $scope, $userId, $window, $filters) as $loan) {
             $classified = $this->classifyLoan($loan)[$section] ?? null;
-            // The derived "Total Disbursed" tile matches any loan in Entry OR OTC.
+            // The derived "Total Disbursed" tile matches any disbursed loan
+            // (OTC pending, partially completed, or OTC clearance).
             $matches = $bucket === 'total' && $section === 'disbursement'
-                ? in_array($classified, ['entry', 'otc'], true)
+                ? in_array($classified, ['entry', 'entry_settled', 'otc'], true)
                 : $classified === $bucket;
 
             if ($matches && $this->bucketInWindow($loan, $section, $bucket, $window)) {
@@ -324,7 +325,8 @@ class LoanPipelineBreakdownService
             ->with([
                 'stageAssignments:id,loan_id,stage_key,status,started_at,completed_at',
                 'stageQueries' => fn ($q) => $q->active()->select(['id', 'loan_id', 'stage_key', 'status', 'created_at']),
-                'disbursementEntries:id,loan_id,amount,disbursement_date',
+                'disbursementEntries:id,loan_id,amount,disbursement_date,otc_handover_date,method,otc_status',
+                'disbursement:id,loan_id,pf_amount,admin_charges',
             ]);
 
         $this->applyScope($query, $requester, $scope, $userId);
@@ -396,6 +398,13 @@ class LoanPipelineBreakdownService
                 $acc[$sectionKey][$bucketKey]['count']++;
                 $acc[$sectionKey][$bucketKey]['amount'] += $this->bucketAmount($loan, $sectionKey, $bucketKey, $window);
                 $counted = true;
+
+                // An "Awaiting OTC" loan only contributes its PENDING money to that tile;
+                // its already-settled tranches (e.g. a settled NEFT) are disbursed-and-settled,
+                // so fold that amount into Partially Completed to keep Total Disbursed = all money.
+                if ($sectionKey === 'disbursement' && $bucketKey === 'entry') {
+                    $acc['disbursement']['entry_settled']['amount'] += $this->windowedTrancheAmount($loan, $window, settled: true);
+                }
             }
             // Block total = distinct loans that appear in ≥1 in-window bucket.
             if ($counted && ! isset($totalLoanIds[$loan->id])) {
@@ -404,10 +413,11 @@ class LoanPipelineBreakdownService
             }
         }
 
-        // Derived "Total Disbursed" tile = Entry + OTC (they're disjoint, so no double count).
+        // Derived "Total Disbursed" tile = Entry (OTC pending) + Partially Completed
+        // (OTC settled) + OTC Clearance — all disjoint, so no double count.
         $acc['disbursement']['total'] = [
-            'count' => $acc['disbursement']['entry']['count'] + $acc['disbursement']['otc']['count'],
-            'amount' => $acc['disbursement']['entry']['amount'] + $acc['disbursement']['otc']['amount'],
+            'count' => $acc['disbursement']['entry']['count'] + $acc['disbursement']['entry_settled']['count'] + $acc['disbursement']['otc']['count'],
+            'amount' => $acc['disbursement']['entry']['amount'] + $acc['disbursement']['entry_settled']['amount'] + $acc['disbursement']['otc']['amount'],
         ];
 
         $sections = [];
@@ -573,7 +583,12 @@ class LoanPipelineBreakdownService
             return 'otc';
         }
         if ($loan->disbursementEntries->isNotEmpty()) {
-            return 'entry';
+            // Partially disbursed (gross < target). Split by OTC: "entry_settled"
+            // ("Partially Completed" — every tranche's OTC is settled, awaiting the
+            // next disbursement) vs "entry" (at least one cheque OTC still pending).
+            $allSettled = $loan->disbursementEntries->every(fn ($e) => $e->isOtcSettled());
+
+            return $allSettled ? 'entry_settled' : 'entry';
         }
         // Docket is a sequential stage AFTER parallel processing. Its pending row is a
         // pre-created placeholder (loan hasn't reached docket) — only `in_progress`
@@ -597,24 +612,36 @@ class LoanPipelineBreakdownService
     /**
      * Σ of tranche amounts whose disbursement_date falls inside the window
      * (the Management-report basis — this is what makes "Cheque/Transfer Entry" reconcile).
+     * $settled: null = all tranches, true = OTC-settled only (otc_handover_date set),
+     * false = unsettled only (pending cheques awaiting OTC).
      *
      * @param  array{period:string,from:?string,to:?string,label:string}  $window
      */
-    private function windowedTrancheAmount(LoanDetail $loan, array $window): int
+    private function windowedTrancheAmount(LoanDetail $loan, array $window, ?bool $settled = null): int
     {
         $from = $window['from'] ? CarbonImmutable::parse($window['from'])->startOfDay() : null;
         $to = $window['to'] ? CarbonImmutable::parse($window['to'])->endOfDay() : null;
 
+        // One-time PF + admin ride the loan's FIRST tranche (earliest date, tie id)
+        // so the gross total is counted exactly once, in that tranche's window/bucket.
+        $addon = (int) ($loan->disbursement?->pf_amount ?? 0) + (int) ($loan->disbursement?->admin_charges ?? 0);
+        $firstId = $loan->disbursementEntries
+            ->sortBy(fn ($e) => ($e->disbursement_date?->format('Ymd') ?? '00000000').str_pad((string) $e->id, 12, '0', STR_PAD_LEFT))
+            ->first()?->id;
+
         return (int) $loan->disbursementEntries
-            ->filter(function ($e) use ($from, $to) {
+            ->filter(function ($e) use ($from, $to, $settled) {
                 if ($e->disbursement_date === null) {
+                    return false;
+                }
+                if ($settled !== null && ($e->otc_handover_date !== null) !== $settled) {
                     return false;
                 }
                 $d = CarbonImmutable::parse($e->disbursement_date);
 
                 return ($from === null || $d >= $from) && ($to === null || $d <= $to);
             })
-            ->sum('amount');
+            ->sum(fn ($e) => (int) $e->amount + ($e->id === $firstId ? $addon : 0));
     }
 
     /**
@@ -626,9 +653,12 @@ class LoanPipelineBreakdownService
     {
         if ($section === 'disbursement') {
             return match ($bucket) {
-                // Both disbursed-money buckets sum only the tranches dated in the window,
-                // so Entry + OTC = the Management report's "Disbursed" for that window.
-                'entry', 'otc' => $this->windowedTrancheAmount($loan, $window),
+                // Awaiting OTC shows only the still-PENDING (unsettled) money; its settled
+                // portion is folded into Partially Completed by aggregate(). Settled/OTC
+                // buckets sum the loan's tranches. So Entry + Partially Completed + OTC still
+                // = all disbursed money in window (reconciles with the report).
+                'entry' => $this->windowedTrancheAmount($loan, $window, settled: false),
+                'entry_settled', 'otc' => $this->windowedTrancheAmount($loan, $window),
                 // Sanctioned amount for the docket phase; fall back to the requested loan
                 // amount when a loan carries no sanctioned figure yet (never ₹0 for a real loan).
                 'spill', 'logged_in' => (int) ($loan->sanctioned_amount ?: $loan->loan_amount ?: 0),
@@ -651,7 +681,7 @@ class LoanPipelineBreakdownService
     {
         // The disbursed-money buckets (and the derived Total) are dated per-tranche:
         // include iff ≥1 tranche in window (so they reconcile with the report's "Disbursed").
-        if ($section === 'disbursement' && in_array($bucket, ['entry', 'otc', 'total'], true)) {
+        if ($section === 'disbursement' && in_array($bucket, ['entry', 'entry_settled', 'otc', 'total'], true)) {
             return $this->hasTrancheInWindow($loan, $window);
         }
 
@@ -805,10 +835,11 @@ class LoanPipelineBreakdownService
                 'buckets' => [
                     'spill' => 'Spill (docket pending)',
                     'logged_in' => 'Logged In',
-                    'entry' => 'Cheque / Transfer Entry',
-                    'otc' => 'OTC Clearance',
-                    // Derived summary tile = Entry + OTC (all disbursed money in window).
-                    // Excluded from the section subtotal; reconciles with the Management report.
+                    'entry' => 'Awaiting OTC Clearance',
+                    'entry_settled' => 'Partially Completed',
+                    'otc' => 'OTC Cleared',
+                    // Derived summary tile = Entry + Partially Completed + OTC (all disbursed
+                    // money in window). Excluded from the subtotal; reconciles with the report.
                     'total' => 'Total Disbursed',
                 ],
             ],

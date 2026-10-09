@@ -15,7 +15,7 @@
                             <strong>{{ $loan->product?->name ?? '—' }}</strong>
                         </div>
                         <div class="col-6 col-md-3"><span class="text-muted">Amount:</span> <strong>₹
-                                {{ number_format($loan->loan_amount) }}</strong></div>
+                                {{ inr($loan->loan_amount) }}</strong></div>
                         @if ($loan->branch)
                             <div class="col-6 col-md-3"><span class="text-muted">Branch:</span>
                                 <strong>{{ $loan->branch->name }}</strong>
@@ -696,7 +696,7 @@
                                                                                 <div class="small"><span
                                                                                         class="text-muted">Valuation:</span>
                                                                                     <strong>₹
-                                                                                        {{ number_format($val->final_valuation) }}</strong>
+                                                                                        {{ inr($val->final_valuation) }}</strong>
                                                                                 </div>
                                                                             @endif
                                                                             @if ($val->property_type)
@@ -904,7 +904,7 @@
                                                                                         $loan->assigned_advisor,
                                                                                     'options' =>
                                                                                         ['' => 'Select DME...'] +
-                                                                                        $allActiveUsers->pluck('name', 'id')->all(),
+                                                                                        $allActiveUsers->mapWithKeys(fn ($u) => [$u->id => $u->name.($u->workflow_role_label ? ' ('.$u->workflow_role_label.')' : '')])->all(),
                                                                                 ],
                                                                                 [
                                                                                     'name' => 'docket_days_offset',
@@ -1202,7 +1202,7 @@ $canSkipLegalBank =
                                                                                     <div class="small"><span
                                                                                             class="text-muted">Valuation:</span>
                                                                                         <strong>₹
-                                                                                            {{ number_format($tvVal->final_valuation) }}</strong>
+                                                                                            {{ inr($tvVal->final_valuation) }}</strong>
                                                                                     </div>
                                                                                 @endif
                                                                                 @if ($tvVal->property_type)
@@ -1320,7 +1320,7 @@ $canSkipLegalBank =
                                                                                 <div class="small"><span
                                                                                         class="text-muted">Valuation:</span>
                                                                                     <strong>₹
-                                                                                        {{ number_format($pvVal->final_valuation) }}</strong>
+                                                                                        {{ inr($pvVal->final_valuation) }}</strong>
                                                                                 </div>
                                                                             @endif
                                                                             @if ($pvVal->property_type)
@@ -1866,39 +1866,39 @@ $canSkipLegalBank =
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">PF Amount:</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['processing_fee_amount'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['processing_fee_amount'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">GST
                                                                     ({{ $ratePfNotes['gst_percent'] ?? '18' }}%):</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['pf_gst_amount'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['pf_gst_amount'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">Total PF:</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['total_pf'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['total_pf'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">Admin Charges:</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['admin_charges'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['admin_charges'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">Admin GST
                                                                     ({{ $ratePfNotes['admin_charges_gst_percent'] ?? '18' }}%):</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['admin_charges_gst_amount'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['admin_charges_gst_amount'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         <div class="col-sm-6">
                                                             <div class="small"><span class="text-muted">Total Admin:</span>
                                                                 <strong>₹
-                                                                    {{ number_format((float) ($ratePfNotes['total_admin_charges'] ?? 0)) }}</strong>
+                                                                    {{ inr((float) ($ratePfNotes['total_admin_charges'] ?? 0)) }}</strong>
                                                             </div>
                                                         </div>
                                                         @if (!empty($ratePfNotes['special_conditions']))
@@ -3094,7 +3094,7 @@ $canSkipLegalBank =
                                                                             <td>{{ $entry['product_name'] ?? '—' }}</td>
                                                                             <td>{{ $entry['loan_account_number'] ?? '—' }}</td>
                                                                             <td class="text-end">₹
-                                                                                {{ number_format($entry['amount'] ?? 0) }}
+                                                                                {{ inr($entry['amount'] ?? 0) }}
                                                                             </td>
                                                                         </tr>
                                                                     @endforeach
@@ -3103,8 +3103,16 @@ $canSkipLegalBank =
                                                                     <tr>
                                                                         <th colspan="4" class="text-end">Total</th>
                                                                         <th class="text-end">₹
-                                                                            {{ number_format($disbData->entryTotal()) }}</th>
+                                                                            {{ inr($disbData->grossTotal()) }}</th>
                                                                     </tr>
+                                                                    @if ($disbData->insuranceTotal() > 0)
+                                                                        <tr>
+                                                                            <td colspan="4" class="text-end text-muted">
+                                                                                Insurance (excluded)</td>
+                                                                            <td class="text-end text-muted">₹
+                                                                                {{ inr($disbData->insuranceTotal()) }}</td>
+                                                                        </tr>
+                                                                    @endif
                                                                 </tfoot>
                                                             </table>
                                                         </div>
@@ -3131,7 +3139,7 @@ $canSkipLegalBank =
                                                     @if (!empty($disbEntries))
                                                         <div class="small mb-2"><span class="text-muted">Disbursed so
                                                                 far:</span>
-                                                            <strong>₹ {{ number_format($disbData->entryTotal()) }}</strong>
+                                                            <strong>₹ {{ inr($disbData->grossTotal()) }}</strong>
                                                             <span class="text-muted">({{ count($disbEntries) }}
                                                                 {{ count($disbEntries) === 1 ? 'entry' : 'entries' }})</span>
                                                         </div>
@@ -3155,6 +3163,11 @@ $canSkipLegalBank =
                                                 $otcNotes = $assignment->getNotesData();
                                                 $disbursementData = $loan->disbursement;
                                                 $otcRows = $disbursementData ? $disbursementData->entryRows()->get() : collect();
+                                                // Only cheques need an over-the-counter handover; fund transfers settle
+                                                // immediately and are never listed / never block completion.
+                                                $otcCheques = $otcRows->filter(
+                                                    fn ($r) => $r->method === \App\Models\DisbursementEntry::METHOD_CHEQUE,
+                                                );
                                                 $isOtcAssignee =
                                                     $assignment->assigned_to === auth()->id() ||
                                                     auth()->user()->hasAnyRole(['super_admin', 'admin']);
@@ -3166,8 +3179,8 @@ $canSkipLegalBank =
                                                         \App\Models\LoanDetail::STATUS_PARTIAL_DISBURSED,
                                                         \App\Models\LoanDetail::STATUS_ON_HOLD,
                                                     ]);
-                                                $otcPending = $otcRows
-                                                    ->whereNotIn('otc_status', \App\Models\DisbursementEntry::OTC_SETTLED)
+                                                $otcPending = $otcCheques
+                                                    ->filter(fn ($r) => !$r->isOtcSettled())
                                                     ->count();
                                                 $otcBadgeClass = [
                                                     'pending' => 'shf-badge-orange',
@@ -3176,21 +3189,61 @@ $canSkipLegalBank =
                                                 ];
                                             @endphp
                                             <div class="mt-2 border-top pt-2">
-                                                @if ($otcRows->isEmpty())
-                                                    <div class="alert alert-info py-2 mb-0 shf-text-sm">No disbursement
-                                                        entries yet.</div>
-                                                @else
-                                                    <small class="fw-semibold text-muted d-block mb-2">Per-entry OTC handover
+                                                {{-- Disbursement totals summary (gross = net + PF + admin; insurance shown separately). --}}
+                                                @if ($disbursementData)
+                                                    <div class="table-responsive mb-2">
+                                                        <table class="table table-sm mb-0 shf-text-sm">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="text-muted">Net Transferred</td>
+                                                                    <td class="text-end">₹
+                                                                        {{ inr($disbursementData->entryTotal()) }}</td>
+                                                                </tr>
+                                                                @if ($disbursementData->pfTotal() > 0)
+                                                                    <tr>
+                                                                        <td class="text-muted">Processing Fee (PF)</td>
+                                                                        <td class="text-end">₹
+                                                                            {{ inr($disbursementData->pfTotal()) }}</td>
+                                                                    </tr>
+                                                                @endif
+                                                                @if ($disbursementData->adminTotal() > 0)
+                                                                    <tr>
+                                                                        <td class="text-muted">Admin Charges</td>
+                                                                        <td class="text-end">₹
+                                                                            {{ inr($disbursementData->adminTotal()) }}</td>
+                                                                    </tr>
+                                                                @endif
+                                                                @if ($disbursementData->insuranceTotal() > 0)
+                                                                    <tr>
+                                                                        <td class="text-muted">Insurance (excluded)</td>
+                                                                        <td class="text-end text-muted">₹
+                                                                            {{ inr($disbursementData->insuranceTotal()) }}</td>
+                                                                    </tr>
+                                                                @endif
+                                                            </tbody>
+                                                            <tfoot>
+                                                                <tr>
+                                                                    <th class="text-end">Total</th>
+                                                                    <th class="text-end">₹
+                                                                        {{ inr($disbursementData->grossTotal()) }}</th>
+                                                                </tr>
+                                                            </tfoot>
+                                                        </table>
+                                                    </div>
+                                                @endif
+                                                {{-- Show the cheque-handover block only while a cheque OTC is still pending. --}}
+                                                @if ($otcPending > 0)
+                                                    <small class="fw-semibold text-muted d-block mb-2">Cheque OTC handover
                                                         — {{ $otcPending }} pending:</small>
                                                     <div class="shf-otc-list">
-                                                        @foreach ($otcRows as $row)
+                                                        @foreach ($otcCheques as $row)
                                                             <div class="shf-otc-entry">
                                                                 <div class="shf-otc-meta">
                                                                     <div class="shf-otc-headline">
                                                                         <span
                                                                             class="shf-badge {{ $otcBadgeClass[$row->otc_status] ?? 'shf-badge-gray' }} shf-text-2xs">{{ ucfirst($row->otc_status) }}</span>
                                                                         <strong class="shf-text-sm">₹
-                                                                            {{ number_format($row->amount) }}</strong>
+                                                                            {{ inr($row->amount) }}</strong>
                                                                         <span
                                                                             class="shf-text-2xs text-muted">{{ $row->method === 'cheque' ? 'Cheque' : 'Fund Transfer' }}</span>
                                                                     </div>
@@ -3233,11 +3286,11 @@ $canSkipLegalBank =
                                                         @endforeach
                                                     </div>
                                                     <div class="shf-text-2xs text-muted mt-2">The stage auto-completes once
-                                                        every entry is cleared or skipped.</div>
+                                                        every cheque is cleared or skipped.</div>
                                                 @endif
 
-                                                {{-- OTC: Transfer to Office Employee option (only for non-office-employee roles) --}}
-                                                @if ($otcEditable && !auth()->user()->hasRole('office_employee'))
+                                                {{-- OTC: Transfer to Office Employee option (only when a cheque OTC is pending, non-office roles) --}}
+                                                @if ($otcPending > 0 && $otcEditable && !auth()->user()->hasRole('office_employee'))
                                                     <div class="mt-2 border-top pt-2">
                                                         <small class="fw-semibold text-muted d-block mb-2">Or transfer to
                                                             Office Employee:</small>

@@ -70,6 +70,7 @@ class ReportController extends Controller
             'max_stage_days' => $r['max_stage_days'],
             'sanctioned_amount' => $r['sanctioned_amount'] ? NumberToWordsService::formatCurrency($r['sanctioned_amount']) : '—',
             'disbursed_amount' => $r['disbursed_amount'] ? NumberToWordsService::formatCurrency($r['disbursed_amount']) : '—',
+            'settled_amount' => $r['settled_amount'] ? NumberToWordsService::formatCurrency($r['settled_amount']) : '—',
             'tat_days' => $r['tat_days'],
             'status_reason' => $r['status_reason'],
             'status_since' => $r['status_since'] ? date('d/m/Y', strtotime($r['status_since'])) : '—',
@@ -140,12 +141,21 @@ class ReportController extends Controller
         }
         $loans = $rowsQ->orderByDesc('ld.created_at')->get();
 
+        // Per-loan OTC-settled amount (Σ tranches with a settlement date) — shown
+        // beside gross Disbursed so the pending-OTC gap is visible.
+        $settledByLoan = $loans->isEmpty() ? collect() : DB::table('disbursement_entries')
+            ->whereNull('deleted_at')->whereNotNull('otc_handover_date')
+            ->whereIn('loan_id', $loans->pluck('id'))
+            ->groupBy('loan_id')
+            ->selectRaw('loan_id, COALESCE(SUM(amount), 0) as s')
+            ->pluck('s', 'loan_id');
+
         // Stage lines for open loans: in-progress + pending-inside-active-parallel.
         $lineLoanIds = $loans->whereIn('status', ['active', 'partial_disbursed', 'on_hold'])->pluck('id');
         $linesByLoan = $lineLoanIds->isEmpty() ? collect() : $this->stageLines($lineLoanIds);
 
         $now = now();
-        $rows = $loans->map(function ($r) use ($linesByLoan, $now) {
+        $rows = $loans->map(function ($r) use ($linesByLoan, $now, $settledByLoan) {
             $lines = ($linesByLoan[$r->id] ?? collect())->map(function ($l) use ($now) {
                 $pending = $l->status === 'pending';
                 $heldSince = $pending ? null : max(
@@ -179,6 +189,7 @@ class ReportController extends Controller
                 'max_stage_days' => (int) $lines->max(fn ($l) => $l['days_in_stage'] ?? 0),
                 'sanctioned_amount' => $r->sanctioned_amount !== null ? (int) $r->sanctioned_amount : null,
                 'disbursed_amount' => $r->disbursed_amount !== null ? (int) $r->disbursed_amount : null,
+                'settled_amount' => (int) ($settledByLoan[$r->id] ?? 0),
                 'tat_days' => $r->status === 'completed' && $r->done_at ? (int) Carbon::parse($r->created_at)->diffInDays(Carbon::parse($r->done_at)) : null,
                 'status_reason' => $r->status_reason,
                 'status_since' => $r->status_changed_at,
@@ -324,6 +335,7 @@ class ReportController extends Controller
         // with a tranche in the window; amount = sum of those tranches.
         $disbursed = DB::table('disbursement_entries as de')
             ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
+            ->leftJoin('disbursement_details as dd', 'dd.loan_id', '=', 'de.loan_id')
             ->leftJoin('stage_assignments as ssa', function ($j) {
                 $j->on('ssa.loan_id', '=', 'de.loan_id')->where('ssa.stage_key', 'sanction')->where('ssa.status', 'completed');
             })
@@ -335,7 +347,9 @@ class ReportController extends Controller
             ->select([
                 'de.loan_id',
                 DB::raw('MIN(de.disbursement_date) as first_disbursed_on'),
-                DB::raw('SUM(de.amount) as period_amount'),
+                // GROSS: net tranches + the loan's one-time PF/admin on its first tranche.
+                DB::raw('SUM('.$this->grossTrancheExpr().') as period_amount'),
+                DB::raw('SUM(CASE WHEN de.otc_handover_date IS NOT NULL THEN de.amount ELSE 0 END) as settled_amount'),
                 DB::raw('MAX(ssa.completed_at) as sanctioned_at'),
             ])
             ->get();
@@ -369,6 +383,8 @@ class ReportController extends Controller
             'disbursed' => [
                 'count' => $disbursed->count(),
                 'amount' => NumberToWordsService::formatCurrency((int) $disbursed->sum('period_amount')),
+                'settled' => NumberToWordsService::formatCurrency((int) $disbursed->sum('settled_amount')),
+                'pending_otc' => NumberToWordsService::formatCurrency(max(0, (int) $disbursed->sum('period_amount') - (int) $disbursed->sum('settled_amount'))),
                 'pct' => $pct($disbursed->count(), $sanctioned->count()),
                 'avg_days' => $avgDays($disbursed, fn ($r) => $r->sanctioned_at, fn ($r) => $r->first_disbursed_on),
             ],
@@ -409,10 +425,13 @@ class ReportController extends Controller
         // its own month); count = distinct loans disbursed that month.
         $disbursedBuckets = DB::table('disbursement_entries as de')
             ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
+            ->leftJoin('disbursement_details as dd', 'dd.loan_id', '=', 'de.loan_id')
             ->whereNull('de.deleted_at')->whereNull('ld.deleted_at')
             ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))
             ->where('de.disbursement_date', '>=', $start->toDateString())
-            ->select(['de.loan_id', 'de.disbursement_date', 'de.amount'])
+            // GROSS per tranche: net + the loan's one-time PF/admin on its first tranche,
+            // so the fees land in the first-tranche month (never double-counted).
+            ->select(['de.loan_id', 'de.disbursement_date', DB::raw('('.$this->grossTrancheExpr().') as amount')])
             ->get()
             ->groupBy(fn ($r) => Carbon::parse($r->disbursement_date)->format('Y-m'))
             ->map(fn ($g) => ['count' => $g->pluck('loan_id')->unique()->count(), 'amount' => (int) $g->sum('amount')]);
@@ -593,6 +612,7 @@ class ReportController extends Controller
             'loan_amount' => $r->loan_amount ? NumberToWordsService::formatCurrency($r->loan_amount) : '—',
             'sanctioned_amount' => $r->sanctioned_amount ? NumberToWordsService::formatCurrency($r->sanctioned_amount) : '—',
             'disbursed_amount' => $r->disbursed_amount ? NumberToWordsService::formatCurrency($r->disbursed_amount) : '—',
+            'settled_amount' => (int) $r->settled_amount ? NumberToWordsService::formatCurrency((int) $r->settled_amount) : '—',
             'sanctioned_on' => $r->sanctioned_on ? date('d/m/Y', strtotime($r->sanctioned_on)) : '—',
             'disbursed_on' => $r->disbursed_on ? date('d/m/Y', strtotime($r->disbursed_on)) : '—',
             'status' => $r->status,
@@ -608,8 +628,27 @@ class ReportController extends Controller
                 'sanctioned_count' => $totals['sanctioned']['count'],
                 'disbursed' => NumberToWordsService::formatCurrency($totals['disbursed']['amount']),
                 'disbursed_count' => $totals['disbursed']['count'],
+                'settled' => NumberToWordsService::formatCurrency($totals['disbursed']['settled']),
+                'pending_otc' => NumberToWordsService::formatCurrency(max(0, $totals['disbursed']['amount'] - $totals['disbursed']['settled'])),
             ],
         ]);
+    }
+
+    /**
+     * SQL fragment for a tranche's GROSS contribution: its own net amount plus,
+     * on the loan's FIRST tranche only (earliest disbursement_date, tie-break id),
+     * the one-time PF + admin charges. Because the fee rides a single tranche, any
+     * date-windowed SUM over this expression includes it exactly once, in the
+     * first-tranche's period. Requires `disbursement_entries as de` and a join to
+     * `disbursement_details as dd` on dd.loan_id = de.loan_id. Insurance excluded.
+     */
+    private function grossTrancheExpr(): string
+    {
+        return 'de.amount + CASE WHEN de.id = ('
+            .'SELECT de2.id FROM disbursement_entries de2 '
+            .'WHERE de2.loan_id = de.loan_id AND de2.deleted_at IS NULL '
+            .'ORDER BY de2.disbursement_date ASC, de2.id ASC LIMIT 1'
+            .') THEN COALESCE(dd.pf_amount, 0) + COALESCE(dd.admin_charges, 0) ELSE 0 END';
     }
 
     /**
@@ -618,7 +657,7 @@ class ReportController extends Controller
      * milestones regardless of the status toggle. Same non-date filters,
      * date window and scope as the row query.
      *
-     * @return array{sanctioned: array{count: int, amount: int}, disbursed: array{count: int, amount: int}}
+     * @return array{sanctioned: array{count: int, amount: int}, disbursed: array{count: int, amount: int, settled: int}}
      */
     private function loanReportTotals(Request $request, array $scope): array
     {
@@ -634,19 +673,27 @@ class ReportController extends Controller
         $this->applyScope($sanctionedQuery, $scope);
         $sanctioned = $sanctionedQuery->selectRaw('COUNT(*) as c, COALESCE(SUM(ld.sanctioned_amount), 0) as s')->first();
 
-        // Disbursed: per-tranche, so partial disbursements count and each
-        // tranche lands in its own period (management-funnel semantics).
+        // Disbursed: per-tranche, windowed on disbursement_date ("money out"), so
+        // partial disbursements count and each tranche lands in its own period.
+        // `s` = disbursed (all tranches); `settled` = the portion whose OTC has
+        // settled (otc_handover_date set) — the gap is money awaiting OTC clearance.
         $disbursedQuery = DB::table('disbursement_entries as de')
             ->join('loan_details as ld', 'ld.id', '=', 'de.loan_id')
+            ->leftJoin('disbursement_details as dd', 'dd.loan_id', '=', 'de.loan_id')
             ->whereNull('de.deleted_at')
             ->whereNull('ld.deleted_at');
         $this->applyFilters($disbursedQuery, $request, 'ld', null, 'de.disbursement_date');
         $this->applyScope($disbursedQuery, $scope);
-        $disbursed = $disbursedQuery->selectRaw('COUNT(DISTINCT de.loan_id) as c, COALESCE(SUM(de.amount), 0) as s')->first();
+        // `s` = GROSS disbursed (net tranches + first-tranche PF/admin); `settled`
+        // stays NET (OTC settlement applies only to the tranche money).
+        $disbursed = $disbursedQuery->selectRaw(
+            'COUNT(DISTINCT de.loan_id) as c, COALESCE(SUM('.$this->grossTrancheExpr().'), 0) as s, '.
+            'COALESCE(SUM(CASE WHEN de.otc_handover_date IS NOT NULL THEN de.amount ELSE 0 END), 0) as settled'
+        )->first();
 
         return [
             'sanctioned' => ['count' => (int) $sanctioned->c, 'amount' => (int) $sanctioned->s],
-            'disbursed' => ['count' => (int) $disbursed->c, 'amount' => (int) $disbursed->s],
+            'disbursed' => ['count' => (int) $disbursed->c, 'amount' => (int) $disbursed->s, 'settled' => (int) $disbursed->settled],
         ];
     }
 
@@ -666,7 +713,11 @@ class ReportController extends Controller
         $entryAgg = DB::table('disbursement_entries')
             ->whereNull('deleted_at')
             ->groupBy('loan_id')
-            ->select(['loan_id', DB::raw('MAX(disbursement_date) as last_disbursed_on')]);
+            ->select([
+                'loan_id',
+                DB::raw('MAX(disbursement_date) as last_disbursed_on'),
+                DB::raw('COALESCE(SUM(CASE WHEN otc_handover_date IS NOT NULL THEN amount ELSE 0 END), 0) as settled_amount'),
+            ]);
 
         $query = DB::table('loan_details as ld')
             ->leftJoin('users as adv', DB::raw('COALESCE(ld.assigned_advisor, ld.created_by)'), '=', DB::raw('adv.id'))
@@ -684,6 +735,7 @@ class ReportController extends Controller
                 'ld.loan_amount', 'ld.sanctioned_amount', 'ld.disbursed_amount', 'ld.status',
                 'ld.created_at',
                 'ssa.completed_at as sanctioned_on', 'dea.last_disbursed_on as disbursed_on',
+                DB::raw('COALESCE(dea.settled_amount, 0) as settled_amount'),
             ]);
 
         // Period filter runs on the milestone date (sanction completion, or
@@ -757,6 +809,7 @@ class ReportController extends Controller
             $r['max_stage_days'] ?: null,
             $r['sanctioned_amount'],
             $r['disbursed_amount'],
+            $r['settled_amount'],
             $r['tat_days'],
             $r['status_reason'],
             $r['status_since'],
@@ -771,7 +824,7 @@ class ReportController extends Controller
         return $xlsx->download(
             "loan-pipeline-{$status}-{$date}.xlsx",
             ['Loan #', 'Customer', 'Bank / Product', 'Branch', 'Advisor', 'Loan Amount', 'Age (days)', 'Status',
-                'Current Stage(s)', 'Max Stage Days', 'Sanctioned', 'Disbursed', 'TAT (days)', 'Status Reason',
+                'Current Stage(s)', 'Max Stage Days', 'Sanctioned', 'Disbursed', 'Settled (OTC)', 'TAT (days)', 'Status Reason',
                 'Status Since', 'Rejected At Stage', 'Rejection Reason', 'Rejected By', 'Rejected On'],
             $rows,
             [
@@ -782,8 +835,9 @@ class ReportController extends Controller
                 10 => XlsxExportService::TYPE_NUMBER,
                 11 => XlsxExportService::TYPE_NUMBER,
                 12 => XlsxExportService::TYPE_NUMBER,
-                14 => XlsxExportService::TYPE_DATE,
-                18 => XlsxExportService::TYPE_DATE,
+                13 => XlsxExportService::TYPE_NUMBER,
+                15 => XlsxExportService::TYPE_DATE,
+                19 => XlsxExportService::TYPE_DATE,
             ],
             [],
             'Pipeline',
@@ -810,6 +864,7 @@ class ReportController extends Controller
             $r->loan_amount !== null ? (int) $r->loan_amount : null,
             $r->sanctioned_amount !== null ? (int) $r->sanctioned_amount : null,
             $r->disbursed_amount !== null ? (int) $r->disbursed_amount : null,
+            (int) $r->settled_amount,
             $r->sanctioned_on,
             $r->disbursed_on,
             str_replace('_', ' ', (string) $r->status),
@@ -824,19 +879,20 @@ class ReportController extends Controller
         return $xlsx->download(
             'loan-report-'.$status.'-'.now()->format('Y-m-d').'.xlsx',
             ['Loan #', 'Customer', 'Bank / Product', 'Branch', 'Advisor', 'Loan Amount',
-                'Sanctioned', 'Disbursed', 'Sanctioned On', 'Disbursed On', 'Status'],
+                'Sanctioned', 'Disbursed', 'Settled (OTC)', 'Sanctioned On', 'Disbursed On', 'Status'],
             $data,
             [
                 5 => XlsxExportService::TYPE_NUMBER,
                 6 => XlsxExportService::TYPE_NUMBER,
                 7 => XlsxExportService::TYPE_NUMBER,
-                8 => XlsxExportService::TYPE_DATE,
+                8 => XlsxExportService::TYPE_NUMBER,
                 9 => XlsxExportService::TYPE_DATE,
+                10 => XlsxExportService::TYPE_DATE,
             ],
             [[
                 'Period totals — sanctioned '.$totals['sanctioned']['count'].' / disbursed '.$totals['disbursed']['count'].' loans',
                 null, null, null, null, null,
-                $totals['sanctioned']['amount'], $totals['disbursed']['amount'], null, null, null,
+                $totals['sanctioned']['amount'], $totals['disbursed']['amount'], $totals['disbursed']['settled'], null, null, null,
             ]],
             'Loan Report',
         );
@@ -947,14 +1003,14 @@ class ReportController extends Controller
     {
         if ($scope['type'] === 'all') {
             $branches = Branch::active()->orderBy('name')->get();
-            $users = User::where('is_active', true)
+            $users = User::selectable()
                 ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['loan_advisor', 'branch_manager', 'bdh', 'bank_employee', 'office_employee']))
-                ->orderBy('name')->get();
+                ->with('roles')->orderBy('name')->get();
         } elseif ($scope['type'] === 'branch') {
             $branches = Branch::active()->whereIn('id', $scope['branch_ids'])->orderBy('name')->get();
-            $users = User::where('is_active', true)
+            $users = User::selectable()
                 ->whereHas('branches', fn ($q) => $q->whereIn('branches.id', $scope['branch_ids']))
-                ->orderBy('name')->get();
+                ->with('roles')->orderBy('name')->get();
         } else {
             // Own scope — the branch/user filters are hidden, so no options needed.
             $branches = collect();

@@ -103,6 +103,7 @@ class ManagementReportTest extends TestCase
         DB::table('disbursement_entries')->insert([
             'loan_id' => $loan->id, 'disbursement_detail_id' => $detailId,
             'disbursement_date' => $date, 'method' => 'fund_transfer', 'amount' => $amount,
+            'transfer_date' => $date, 'otc_status' => 'skipped', 'otc_handover_date' => $date,
             'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -159,6 +160,51 @@ class ManagementReportTest extends TestCase
         $this->assertEquals(3, $funnel['disbursed']['avg_days']);   // sanction -> first tranche
         $this->assertStringContainsString('9,00,000', $funnel['sanctioned']['amount']);
         $this->assertStringContainsString('8,50,000', $funnel['disbursed']['amount']); // tranche sum
+    }
+
+    public function test_funnel_disbursed_amount_includes_first_tranche_pf_admin(): void
+    {
+        $admin = $this->makeUser('admin');
+        $advisor = $this->makeUser('loan_advisor');
+        $branch = $this->makeBranch();
+        $day = fn (int $daysAgo) => now()->startOfDay()->subDays($daysAgo);
+
+        $loan = $this->makeLoan($advisor, $branch, ['sanctioned_amount' => 2000000]);
+        $this->completeStage($loan, 'sanction', $day(17)->toDateTimeString(), $day(13)->toDateTimeString());
+        $this->addDisbursementEntry($loan, $day(10)->toDateString(), 600000);
+        $this->addDisbursementEntry($loan, $day(8)->toDateString(), 250000);
+        // One-time PF + admin ride the first tranche; insurance is excluded from "disbursed".
+        DB::table('disbursement_details')->where('loan_id', $loan->id)
+            ->update(['pf_amount' => 150000, 'admin_charges' => 50000, 'insurance_amount' => 300000]);
+
+        $funnel = $this->actingAs($admin)->getJson(route('reports.management.data'))
+            ->assertOk()->json('funnel');
+
+        // Net 8,50,000 + PF 1,50,000 + admin 50,000 = gross 10,50,000 (insurance excluded).
+        $this->assertStringContainsString('10,50,000', $funnel['disbursed']['amount']);
+    }
+
+    public function test_trend_puts_pf_admin_only_in_first_tranche_month(): void
+    {
+        $admin = $this->makeUser('admin');
+        $advisor = $this->makeUser('loan_advisor');
+        $branch = $this->makeBranch();
+
+        $firstMonth = now()->subMonthNoOverflow()->startOfMonth()->addDays(10); // 11th of last month
+        $thisMonth = now()->startOfDay();
+
+        $loan = $this->makeLoan($advisor, $branch, ['sanctioned_amount' => 2000000]);
+        $this->addDisbursementEntry($loan, $firstMonth->toDateString(), 600000);  // first tranche
+        $this->addDisbursementEntry($loan, $thisMonth->toDateString(), 250000);
+        DB::table('disbursement_details')->where('loan_id', $loan->id)
+            ->update(['pf_amount' => 150000, 'admin_charges' => 50000]);
+
+        $trend = collect($this->actingAs($admin)->getJson(route('reports.management.data'))
+            ->assertOk()->json('trend'))->keyBy('month');
+
+        // Fees (2,00,000) land once, in the first tranche's month — never double-counted.
+        $this->assertSame(800000, $trend[$firstMonth->format('M Y')]['disbursed']['amount_raw']); // 6,00,000 + fees
+        $this->assertSame(250000, $trend[$thisMonth->format('M Y')]['disbursed']['amount_raw']);  // net only
     }
 
     public function test_trend_buckets_current_month(): void

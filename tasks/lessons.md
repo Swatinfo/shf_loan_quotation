@@ -4,6 +4,25 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Payout feature — Parts C–E (payout user, engine, Excel reconciliation) (2026-10-05)
+
+- **C — Loan payout user**: `loan_details.payout_user_id` (single beneficiary), set at conversion (dropdown = all users except bank/office), editable on the loan via `change_payout_user` perm. Slab switches on the user's role (connector → connector rate, else standard).
+- **D — Payout engine** (`PayoutService`): INCREMENTAL + per-entry. Each finalize covers only `disbursement_entries` with `loan_payout_id IS NULL` (base = Σ their amounts), matches the product slab by that increment, applies standard/connector rate, caps by `max_payout_amount`, writes a `loan_payouts` row + stamps those entries paid. Cycle derived from product `payout_cycle_start_day`/`end_day` (cross-month aware, e.g. 16→15). Manual finalize computes percent on the disbursed increment; PF-based % on actual PF comes from the Excel reconciliation (bank supplies pf_amount).
+- **E — Bank reconciliation**: self-contained **`XlsxImportService`** (ZipArchive + SimpleXML; shared/inline strings; Excel date serials via `excelDate()` = 1899-12-30 + serial). Match = `loan_acc_no + amount + date`, with `customer_name + amount + date` fallback for placeholder accounts (all-zero account numbers). Reconcile shows Matched / DB-only / Excel-only + payout-to-pay. Template export reuses `XlsxExportService`.
+- **Permission-test harness quirk** (documented in LoanPayoutUserTest): a non-super `admin` user got 403 via the HTTP CheckPermission middleware even though `hasPermission` resolves true in-process + the grant exists on the live DB. Not a prod bug — tests use a super_admin actor for the endpoint and assert the role grant directly.
+- All of A–E tested (21 new tests); full suite green bar the 2 pre-existing (FcmServiceTest, LegalSkipBankAndOdvTest). Migrations applied to the local imported DB. NOT committed yet.
+
+---
+
+## Payout feature — Part A (Indian format) + Part B (connector role) (2026-10-05)
+
+- **Indian number format**: added global helpers `inr()`/`inrc()` in `app/helpers.php` (autoloaded via composer `files`) wrapping `NumberToWordsService::formatIndianNumber/formatCurrency`. Replaced every MONEY `number_format(` in the loan blades (incl. the OTC panel), `loan-settings/_panes`, and 4 controllers with `inr()`. Left percentages/counts as `number_format`. `number_format()` is international grouping (5,800,000); `inr()` is Indian (58,00,000). Test: `tests/Unit/IndianNumberHelperTest.php`.
+- **Connector role (8th role)**: migration `2026_10_05_160000_add_connector_role` seeds the role + grants 9 perms (create/edit_quotation, generate_pdf, view_own_quotations, download_pdf, **download_pdf_plain** but NOT download_pdf_branded, change_own_password, view_dashboard, manage_notifications). **No blade changes** — the quotation `show.blade` already gates Convert / Branded / Plain buttons on `convert_to_loan`/`download_pdf_branded`/`download_pdf_plain` (the branded/plain split was built by `2026_04_13_112307_add_branding_pdf_permissions`). So the right permission set is all that's needed for connectors to see only the plain download and no convert.
+- **Permission-test gotcha (again)**: the catalog permissions (config/permissions.php) are seeded by `PermissionSeeder` (a SEEDER), which does NOT run under RefreshDatabase. So a migration that grants catalog perms by slug finds nothing in tests (it works in prod where the catalog exists). In tests, seed the catalog (`$this->seed(PermissionSeeder::class)`) + apply the role grants in setUp + `PermissionService::clearAllCaches()`. Mirrors the 2026-08-31 lesson.
+- Parts A+B implemented, NOT committed yet (on main; feature branch deleted). Connector migration applied to the local imported DB. Parts C–E (payout_user_id, payout engine per-entry/incremental, Excel reconciliation) pending in tasks/todo.md.
+
+---
+
 ## Open query blocks all stage actions (stage-wise) + no more raw exception pages (2026-10-05)
 
 - **Bug**: `LoanStageService::updateStageStatus` throws `RuntimeException("…unresolved queries")` when completing a stage with a pending/responded query, but the UI left action buttons enabled and several endpoints didn't guard. Worst case: `LoanValuationController::store` is a full-page POST → the user got a **raw exception page**. AJAX endpoints returned a 500 HTML body → the JS `.fail` showed a generic "Failed" (real message lost).
@@ -449,3 +468,83 @@ Also hardened creation:
 - **PAN uniqueness on MySQL** (`2026_07_07_202304_*`) replaced the plain unique (which caught soft-deleted rows → duplicate-key 500 for returning customers) with a STORED generated column `pan_active` (NULL when soft-deleted) + unique index. MySQL only; SQLite/Postgres already have the partial index.
 
 Tests: `LoanNumberGenerationTest`, `UserDeletionGuardTest`. NOTE: the three new migrations (`grant_view_reports_to_all_roles`, `fix_pan_unique...`, `null_on_delete...`) are NOT yet run on prod — env is APPLICATION IN PRODUCTION so `migrate` was declined; run via `--force`/deploy pipeline.
+
+## Newtheme has NO Bootstrap CSS and NO global datepicker auto-init
+- The newtheme layout (`resources/views/newtheme/layouts/app.blade.php`) loads ONLY `assets/shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css` (+ datepicker/sweetalert vendor CSS). **Bootstrap CSS is not loaded.** So `col-*`, `col-md-*`, `g-2`, `row` (grid), `text-end`, `text-center`, `align-items-end` DO NOTHING on newtheme pages — a form using them renders as a plain full-width stack. (This bit the first cut of the payout report/reconcile pages.)
+- Likewise `shf-input` / `shf-form-label` / `btn-accent*` live only in SPECIFIC page CSS (`pages/quotation-create.css`, `settings.css`, `loan-settings.css` …) — they are NOT global. Using them on a page that doesn't load that page CSS → unstyled.
+- **Use the design-system primitives that ARE in the shared assets**: filter grid `display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr))`; field wrapper `.field` + `.lbl` + `.input` / `.select`; buttons `.btn` / `.btn.primary` / `.btn.ghost`; page chrome `.page-header`/`.head-row`/`.crumbs`/`.head-actions`, `.card`/`.card-hd`/`.card-bd`, `.tbl`. Design-system CSS vars are `--ink`, `--ink-3`, `--line`, `--accent`, `--green`, `--blue`, `--red` (NOT the legacy shf vars `--text-muted`/`--border`/`--white`).
+- **There is no global `.shf-datepicker` auto-init.** Each page wires its own: `$('<selector>').datepicker({ format:'yyyy-mm-dd', autoclose:true, todayHighlight:true, clearBtn:true })` in a `@push('page-scripts')` block. Backend date filters parsed via `Carbon::parse` + Laravel `date` rule → use `yyyy-mm-dd` format so values round-trip (dd/mm/yyyy with slashes is rejected by the `date` rule).
+- New per-page styles go in a `public/newtheme/pages/<page>.css` loaded via `@push('page-styles')` `<link ... ?v={{ config('app.shf_version') }}>` — matches every other newtheme page. (Payout pages → `pages/payouts.css`.) Adding a new public CSS file is a public-asset change → bump `SHF_VERSION` (.env) + `SHF_SW_VERSION` (public/sw.js).
+
+## Disbursement charges: PF/Admin add to gross, Insurance excluded (2026-10-06)
+- Each `disbursement_entries` tranche carries `pf_amount` + `admin_charges` + `insurance_amount` (NOT separate cheque/NEFT rows). Header `disbursement_details` holds the sums.
+- **Gross = Σ amount + Σ pf + Σ admin** (insurance excluded). Gross is what `amount_disbursed` / `loan.disbursed_amount` mirror and what `syncDisbursementState` compares to `disbursementTarget()`. `cumulative` (net) is only for started/zero detection. Legacy rows = 0 charges → gross == net, so completed loans never re-classify (decision 2 risk neutralized).
+- **Payout base** (`DisbursementEntry::payoutBase()` / `PayoutService`): `is_pf_based ? Σ pf_amount : Σ amount` on unpaid tranches. Admin + insurance never feed payout. Reconciliation (`PayoutController::entryPayout`) prefers the bank file's pf, falls back to the stored tranche pf.
+- UI: per-tranche charges live in a `.ld-entry-charges` sub-row (amount-field pattern); live totals show Net + PF + Admin = Gross · Insurance (excluded). Summary strip = Sanctioned / Gross / Remaining + a Net/PF/Admin/Insurance row.
+
+## Loan-settings can host a config-backed tab (Payout Config, 2026-10-06)
+- Most `/loan-settings` tabs write structured tables, but a tab CAN be backed by `ConfigService` (app_config.main) instead — Payout Config stores `payoutConfig` via `ConfigService::updateSection`. Pass it from `LoanSettingsController::index` with `app(ConfigService::class)->get('payoutConfig', [])` (merges defaults).
+- A new tab = add to `$tabs` in `loan-settings/index.blade.php` + a `<div class="settings-tab-pane shf-collapse-hidden" id="tab-<key>">` pane in `_panes.blade.php`. The `_scripts.blade.php` tab JS keys off `#tab-<key>` and `[data-tab="<key>"]` — no extra wiring needed.
+- Derived/read-only fields: compute them SERVER-SIDE on save (don't trust the client value) and mirror live in JS for UX. Here `calc = value/100`; the client calc input is `readonly` and never submitted.
+- Loan-settings panes use the legacy shf grid/classes (`row g-3`, `col-md-*`, `shf-input`, `shf-form-label`, `btn-accent`, `table table-hover`) from `newtheme/css/shf.css` — NOT Bootstrap/newtheme primitives. Match siblings. Datepicker is per-pane: `$('.payout-date').datepicker({format:'yyyy-mm-dd',...})`.
+
+## Payout net formula (2026-10-06)
+- `PayoutService` consumes `payoutConfig.*.calc` (pf_gst, user_tds, user_insurance): `gst = Σpf × pf_gst`, `insurance_payout = Σinsurance × user_insurance`, `gross = commission + insurance_payout − gst`, `tds = max(0,gross) × user_tds`, **`net = max(0, gross − tds)`**. `payout_amount` stays the gross COMMISSION (base×slab); `net_payout_amount` is the headline. Report/reconcile/ledger totals all use NET.
+- `admin_gst` is configured but NOT in the net formula (reserved). `effective_from` is metadata — no historical rate table; finalize uses current `calc` and snapshots the rate onto the loan_payouts row.
+- `net_payout_amount`/`tds_amount` are unsigned → floor TDS to positive gross and net at 0, else a small PF-based commission with large PF GST would insert a negative (MySQL strict rejects).
+- PayoutService now takes ConfigService via constructor DI — `app(PayoutService::class)` still resolves it; no call-site changes needed.
+
+## Product payout config lives on the Payout Config tab (2026-10-06)
+- `storeProduct` saves identity only (bank/name/code). Per-product payout (is_pf_based, max cap, cycle days, standard+connector slabs) is saved by `savePayoutProduct` (`loan-settings.payout-product.save`) with a body `product_id` (no route-model binding, mirrors the `id` pattern).
+- The slab repeater markup/JS was reused verbatim by keeping the SAME element IDs (`#productSlabList`, `#productSlabAdd`, `#productMaxPayoutInput`, `#productCycleStartInput/End`, `#productPfInput`, `.slab-*`, `productSlabErrorEl()`), just moved into the new `#payoutProductForm`. Only the submit-validation binding (#productForm → #payoutProductForm) and the edit handler (`.shf-edit-product` identity-only + new `.shf-edit-payout-product`) changed. `resetProductForm` split into identity + `resetPayoutProductForm`.
+- New products created on the Products tab rely on DB defaults (is_pf_based false, max null, cycle 1/31) until edited on Payout Config.
+
+## Effective-dated payout config — temporal versions (2026-10-06)
+- `payout_rate_versions` + `product_payout_versions` hold version history; `product_payout_slabs.version_id` ties slabs to a product version. `products.current_payout_version_id` points at today's active version and `Product::payoutSlabs` resolves through it (localKey=current_payout_version_id → avoids a MySQL-unfriendly correlated-subquery-with-LIMIT).
+- `PayoutConfigService::ratesAsOf($date)` / `productVersionAsOf($product,$date)` = greatest `effective_from <= $date` (fallback earliest). Write helpers `saveRateVersions` / `saveProductVersion` upsert by (key|product, effective_from) and refresh the denormalized mirrors (`payoutConfig`, `products.*`, `current_payout_version_id`).
+- `PayoutService::computeGroups()` buckets a loan's unpaid tranches by (productVersion id + resolved rate tuple) from each tranche's disbursement_date; one `loan_payouts` row per bucket. `finalizePayout` now returns a Collection (one row per period) — callers use `->first()`/`->sum('net_payout_amount')`. Common case (same period) = 1 row, unchanged.
+- Tests that build products/slabs directly must also create a `ProductPayoutVersion` (floor date 2000-01-01) + set `current_payout_version_id`, else the resolver finds no version. Rate versions are seeded by the migration backfill from payoutConfig defaults, so `ratesAsOf` works under RefreshDatabase.
+- effective_from is NO LONGER cosmetic — a blank one resolves to today's version date; it drives which rate/slab a finalize uses.
+
+## User dropdowns — role label + exclude super_admin/admin (2026-10-06)
+- `User::scopeSelectable()` (active + `whereDoesntHave('roles', whereIn ['super_admin','admin'])`) is THE source filter for every user dropdown. Pair with `->with('roles')` so `workflow_role_label` renders without N+1.
+- Display label = `{{ $u->name }}@if($u->workflow_role_label) ({{ $u->workflow_role_label }})@endif` (workflow_role_label already drops super_admin/admin; falls back to role_label if empty). JS dropdowns carry a `role` field in their JSON payload (show.blade __LS maps, eligible-users API, dashboard userOptions) and append it to the option text.
+- Exclusion applies to FILTER dropdowns too (loans/quotations/DVR/activity-log/reports) per the requirement — you can no longer filter records by an admin's activity.
+- Stage transfer selects group users by role via `<optgroup>` (role already visible) — left as-is, just re-sourced through selectable().
+- create-task-modal builds its user list INLINE in a Blade `@php` block (not a controller) — easy to miss; switched to `User::selectable()->with('roles')`.
+- Gotcha: when the migration backfill seeds a version at 2026-04-01, posting a config with an EARLIER effective_from won't become "current" — the mirror reflects the latest version ≤ today (fixed PayoutConfigSettingTest accordingly).
+
+## Connector read-only loan visibility (2026-10-06)
+- A connector sees loans born from THEIR quotations via `quotation.user_id` (NOT created_by — user_id is the quotation owner the app uses everywhere, incl. conversion's connector-payout default). Added to `LoanDetail::scopeVisibleTo` AND both `authorizeView` methods (LoanController + LoanStageController are hand-rolled, stricter than the scope — must patch both).
+- `CheckPermission` is now variadic: `permission:view_loans,view_connector_loans` = holds EITHER. Used only on loan READ routes. Granting connectors `view_loans` would have wrongly unlocked `loan-settings.index` (gated by view_loans) — the dedicated `view_connector_loans` + OR avoids that.
+- Read-only is enforced by the existing permission gates on every mutating route (connectors hold none) — no new blocking needed; the UI actions are already gated by assignment/permission so they don't render. Added a "Connector view — read-only" banner for clarity.
+- `remarks.index` + `transferHistory` had NO visibility guard (any route-passing user could read any loan's). Added a connector-only guard (`! hasPermission('view_loans') && ! visibleTo` → 403) so existing view_loans roles are unaffected.
+
+## Disbursement Data correction tool (2026-10-06)
+- To "update everywhere" from an import, route each loan through `DisbursementService::processDisbursement($loan, ['entries'=>$fullPayload,'notes'=>...])` — it rebuilds the `entries` JSON, syncs the `disbursement_entries` mirror (by `row_id`), recomputes amount_disbursed/gross + loan.disbursed_amount, and re-resolves status/stages. Build the payload from ALL active entries (not just edited ones) so none get soft-deleted; preserve pf/admin/insurance + cheque meta.
+- super_admin-only = gate route by a permission granted to NO role (super_admin bypasses) PLUS a hard `hasRole('super_admin')` check in the controller (so it can't be delegated via a permission grant).
+- Route prefix `/loans-tools/...` (not `/loans/...`) so it doesn't collide with the `/loans/{loan}` model-bound route.
+- Preview→confirm without re-upload: `preview` stashes the file (`Storage::store('tmp-...')`) and returns its basename as a token; `import` reads by token then deletes it.
+- xlsx import keys rows by the EXACT header strings (`XlsxImportService::readAssoc`), so export headers double as import keys — keep them stable.
+
+## Disbursement Data tool — delete + force re-resolve + diff preview (2026-10-06)
+- Delete a tranche by EXCLUDING it from the processDisbursement payload (syncEntryRows soft-deletes live rows missing from the payload). Block when `loan_payout_id` is set (would orphan a payout).
+- `DisbursementService::syncDisbursementState($loan, $allowReopen=false)`: default keeps the monotonic terminal guard (completed never downgrades) — unchanged for all normal flows. The super-admin correction import passes `allowReopen: true` (threaded via `processDisbursement(..., allowReopen: true)`) to fully re-resolve from corrected totals, incl. downgrading completed→partial and reopening disbursement/OTC stages (`reopenStage`/`resetStageToPending`). Completion notification only fires on a genuine (non-reconfirm) transition.
+- Before/after preview: the service emits `preview_entries[].fields[] = {label, old, new, changed}` + `loan_diff` + a predicted status; the Blade marks changed cells red. The import itself re-reads the stashed file by token — the preview structure is display-only.
+
+## Two long-standing test failures resolved (2026-10-06)
+- **FcmServiceTest (web push vs native):** `ShfNotification::booted()::created` always sent the Web Push. Fixed to skip it when `$user->deviceTokens()->exists()` (a Flutter device gets FCM below, so Web Push would double-notify). FCM dispatch unchanged.
+- **LegalSkipBankAndOdvTest (branch scope):** `waive_legal_verification` is default-granted to BM/BDH/advisor (migration 2026_08_31), and `canSkipLegalBank` short-circuited on waive BEFORE the BM/BDH branch check → an out-of-branch BM could skip. Reordered so super_admin/admin = global, owner/advisor = own loan, **BM/BDH = branch-bound even when they hold waive**, and only OTHER waive-holders get the global bypass. Satisfies both this test AND LegalOdvPermissionTest (non-owner advisor with waive can still skip). No permission/migration change — matches the docs "BM/BDH of the branch".
+
+## Static asset cache-busting (CSS/JS) — bump SHF_VERSION
+`public/newtheme/**/*.css` and `*.js` are loaded with `?v={{ config('app.shf_version') }}`
+(env `SHF_VERSION`). After editing any of those files, **bump `SHF_VERSION` in `.env`
+(then `php artisan config:clear`)** or the browser (and users) keep serving the cached old
+asset — the change silently won't appear. Inline `@push('page-scripts')` blocks in blades are
+NOT affected (served with the HTML); only separate `.css`/`.js` files are. (2026-10-07)
+
+## Disbursement one-time charges: gross everywhere + first-tranche attribution + OTC lock (2026-10-09)
+- **Two totals:** `DisbursementDetail::entryTotal()` = NET transfers; `grossTotal()` = net + PF + admin (insurance EXCLUDED). Completion is gross-based (`syncDisbursementState` `$gross = cumulative + pf + admin`). Per-loan displays must show `grossTotal()`, not `entryTotal()`.
+- **Reporting aggregates are GROSS too (user decision):** funnel / trend / `loanReportTotals` / pipeline `windowedTrancheAmount`. Undated one-time PF+admin ride the loan's **FIRST tranche** (earliest `disbursement_date`, tie-break `id`). SQL sites use `ReportController::grossTrancheExpr()` (`de.amount + CASE WHEN de.id = (first-tranche subquery) THEN dd.pf_amount+dd.admin_charges ELSE 0 END`) with a `leftJoin('disbursement_details as dd','dd.loan_id','=','de.loan_id')`; the pipeline collection adds the add-on to the first entry only. This keeps every period/month/bucket counting the fee exactly once and preserves the pipeline⇄report reconciliation at gross. OTC `settled_amount` stays NET (settlement applies to tranche money only).
+- **Charges attach to the first disbursement + lock:** `DisbursementDetail::chargesLocked()` = any entry OTC-settled (`whereIn('otc_status', OTC_SETTLED)` — cleared cheque or auto-skipped NEFT). `processDisbursement()` RETAINS stored pf/admin/insurance when `!$allowReopen && existing->chargesLocked()` (ignores posted values) — the authoritative guard, also covers disabled inputs not POSTing. Blade renders the 3 charge inputs `readonly` + a lock banner when `$chargesLocked`. Correction tool (`allowReopen: true`) bypasses the lock.
+- Pipeline service: added `'disbursement:id,loan_id,pf_amount,admin_charges'` to the eager `with()` to avoid N+1 when reading the charge add-on.
