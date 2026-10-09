@@ -230,6 +230,18 @@ class User extends Authenticatable
             ->whereDoesntHave('roles', fn ($q) => $q->whereIn('slug', ['super_admin', 'admin']));
     }
 
+    /**
+     * Active users eligible to appear in the impersonation picker: everyone
+     * except super_admin (mirrors `canBeImpersonated()`). Admins ARE included
+     * here — unlike `selectable()` — so they remain impersonation-searchable
+     * without being offered in other selection dropdowns.
+     */
+    public function scopeImpersonatable($query)
+    {
+        return $query->where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->where('slug', 'super_admin'));
+    }
+
     /** Roles that can never be a loan payout user. */
     public const PAYOUT_INELIGIBLE_ROLES = ['super_admin', 'admin', 'bank_employee', 'office_employee'];
 

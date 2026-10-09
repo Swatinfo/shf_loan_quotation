@@ -82,4 +82,21 @@ class ImpersonationAuditTest extends TestCase
         $props = $log->properties?->toArray() ?? [];
         $this->assertArrayNotHasKey('impersonator_id', $props);
     }
+
+    public function test_impersonation_picker_includes_admins_but_not_super_admins(): void
+    {
+        $superAdmin = $this->makeUser('super_admin', 'Super');
+        $otherAdmin = $this->makeUser('admin', 'Admin Two');
+        $advisor = $this->makeUser('loan_advisor', 'Advisor');
+
+        $ids = collect($this->actingAs($superAdmin)
+            ->getJson(route('impersonate.users'))
+            ->assertOk()
+            ->json())
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($otherAdmin->id), 'admins should be impersonation-searchable');
+        $this->assertTrue($ids->contains($advisor->id));
+        $this->assertFalse($ids->contains($superAdmin->id), 'super_admins must never be listed');
+    }
 }

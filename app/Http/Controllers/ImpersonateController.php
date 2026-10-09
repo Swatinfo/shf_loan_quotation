@@ -17,7 +17,7 @@ class ImpersonateController extends Controller
 
         $search = $request->get('search', '');
 
-        $users = User::selectable()
+        $users = User::impersonatable()
             ->where('id', '!=', auth()->id())
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {

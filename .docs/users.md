@@ -85,6 +85,7 @@ There's no hard scope filter on the users list — anyone with `view_users` sees
 
 - `User::canImpersonate()` → super_admin OR `app.allow_impersonate_all=true` (env: `ALLOW_IMPERSONATE_ALL`)
 - `User::canBeImpersonated()` → not super_admin
+- `User::scopeImpersonatable()` → active users excluding super_admin (admins **included**) — backs the picker so it mirrors `canBeImpersonated()`; distinct from `scopeSelectable()`, which also excludes admins and is used by other dropdowns
 
 ### Endpoints
 
