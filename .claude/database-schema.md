@@ -485,18 +485,36 @@ Normalized mirror of `disbursement_details.entries` — one row per tranche, syn
 | product_id | FK products.id | nullable, nullOnDelete |
 | product_name | string | snapshot |
 | loan_account_number | varchar(50) | nullable |
-| amount | unsignedBigInt | |
+| amount | unsignedBigInt | net amount transferred for this tranche |
+| pf_amount | unsignedBigInt | default 0 — processing fee on this tranche; **adds to gross**; payout base when product `is_pf_based` (2026-10-06) |
+| admin_charges | unsignedBigInt | default 0 — admin charges on this tranche; **adds to gross** (2026-10-06) |
+| insurance_amount | unsignedBigInt | default 0 — recorded only; **excluded from gross** and from payout (2026-10-06) |
 | cheque_name / cheque_number / cheque_date | string | nullable — cheque tranches only |
+| transfer_date | date | nullable — **NEFT/RTGS transfer date** (fund_transfer tranches; parallel to cheque_date), defaults to the entry's `disbursement_date` when blank; null for cheques (2026-10-07) |
 | is_active | boolean | default 1 — 0 while loan cancelled/rejected/on_hold |
 | otc_status | varchar(20) | **per-entry OTC handover** — default `pending`; `cleared` / `skipped` = settled (2026-10-05). Applies to cheque AND fund_transfer tranches. INDEX |
-| otc_handover_date | date | nullable — set when `otc_status=cleared` |
+| otc_handover_date | date | nullable — the **settlement date**: set when `otc_status=cleared` (cheque) and to `transfer_date`/`disbursement_date` for NEFT (skipped). **Payout + reconcile key on this column** (2026-10-07); reports show a "Settled" figure from it alongside gross Disbursed (by `disbursement_date`), the gap = money awaiting OTC clearance; pending cheques (null) are the unsettled gap |
 | otc_cleared_by | FK users.id | nullable, nullOnDelete — who recorded the handover |
 | otc_cleared_at | timestamp | nullable — when the handover was recorded |
 | otc_remarks | text | nullable |
 | updated_by / deleted_by | FK users.id | nullable, auto via HasAuditColumns |
 | soft_deletes, timestamps | | |
 
-> **Per-entry OTC + loan completion (2026-10-05).** A loan completes only once it is fully disbursed (cumulative ≥ sanctioned target OR `disbursement_details.completion_intent='full'`) AND every active tranche is settled (`otc_status` cleared/skipped). Resolved by `DisbursementService::syncDisbursementState`. The old loan-level `disbursement_details.otc_*` columns are unused (per-entry is authoritative).
+> **Per-entry OTC + loan completion (2026-10-05).** A loan completes only once it is fully disbursed (gross ≥ sanctioned target OR `disbursement_details.completion_intent='full'`) AND every active tranche is settled (`otc_status` cleared/skipped). Resolved by `DisbursementService::syncDisbursementState`. The old loan-level `disbursement_details.otc_*` columns are unused (per-entry is authoritative).
+
+> **Settlement-date basis (2026-10-07, migration `2026_10_07_143752`).** `otc_handover_date` is the canonical **settlement date** and the date basis for the payout engine (`PayoutRunService`) and bank reconciliation. Reports key "Disbursed" on `disbursement_date` (gross, money out) and show a **Settled** figure from `otc_handover_date` beside it (loan report + management funnel); the dashboard breakdown splits disbursement-stage loans into Awaiting OTC Clearance / Partially Completed / OTC Cleared. NEFT → `otc_handover_date = transfer_date` (via `otcAttrs`); cheque → the cleared handover date; pending cheque → null (excluded until cleared). A one-time backfill set `transfer_date = disbursement_date` (fund_transfer, null) and `otc_handover_date = COALESCE(transfer_date, disbursement_date)` (all `skipped`, null) so historical rows aren't dropped. The **dashboard pipeline tiles** (`LoanPipelineBreakdownService`) and the **Pipeline report** intentionally stay on `disbursement_date`/`created_at` (they track in-flight/pending money, not settled money); the **Payout Report** stays on `finalized_at`.
+
+> **Effective-dated payout config (2026-10-06, migrations `2026_10_06_134433/134434`).** `payout_rate_versions` (`rate_key` ∈ admin_gst|pf_gst|user_tds|user_insurance, `value`, `calc`, `effective_from`, `created_by`; unique rate_key+effective_from) versions the 4 global rates. `product_payout_versions` (`product_id`, `effective_from`, `is_pf_based`, `max_payout_amount`, `payout_cycle_start_day`/`end_day`, `created_by`; unique product_id+effective_from) versions each product's payout config and OWNS its slabs — `product_payout_slabs.version_id` FK. `products.current_payout_version_id` points at today's active version (the `Product::payoutSlabs` relation resolves the current slab set through it); `products.*` + `app_config.payoutConfig` stay as denormalized "today" mirrors. The version in force for date D = greatest `effective_from ≤ D`; a finalize resolves per tranche's disbursement date (`PayoutConfigService`), splitting a straddling increment into one `loan_payouts` row per period. Backfill seeded one version per rate/product from the current values.
+
+> **Disbursement charges (2026-10-06, migration `2026_10_06_104758`).** Each tranche carries `pf_amount`, `admin_charges`, `insurance_amount` (also summed onto `disbursement_details.pf_amount`/`admin_charges`/`insurance_amount`). **Gross disbursed = Σ amount + Σ pf_amount + Σ admin_charges** (insurance excluded); this gross is what `amount_disbursed` / `loan.disbursed_amount` mirror and what the fully-disbursed check compares to the sanctioned target. `DisbursementDetail::grossTotal()/pfTotal()/adminTotal()/insuranceTotal()`. Legacy rows carry 0 → gross == net, so completed loans are unaffected. Payout base = `is_pf_based ? Σ pf_amount : Σ amount` (unpaid tranches), via `DisbursementEntry::payoutBase()`.
+
+> **Aggregate payout runs (2026-10-07, migrations `2026_10_07_100000/100100`).** Payouts are now computed **product-wide over a date range** (not per-loan) by `PayoutRunService`. Four tables:
+> - **`payout_runs`** — `from_date`, `to_date`, `status` (draft|finalized), `notes`, rate snapshots `insurance_rate`/`tds_rate`/`gst_rate` (decimal 8,4), totals `total_gross`/`total_tds`/`total_net` (unsignedBigInt), `finalized_by`/`finalized_at`, `created_by`, timestamps.
+> - **`payout_run_products`** — one per (product in a run): `run_id`, `product_id`, `product_name` (snapshot, includes bank), `bank_id`, `is_pf_based`, `aggregate_base`, `product_payout_version_id`, `slab_id`, `slab_low`/`slab_high`, `tier_rate_type` (percent|amount), `tier_rate`, `connector_tier_rate`, `max_payout` (bigInt, `-1`=uncapped).
+> - **`payout_run_lines`** — one per (user×product): `run_id`, `payout_run_product_id`, `payout_user_id`, `role_context`, `base_amount`, `rate_applied`, `commission`, `pf_base`, `pf_payout`, `insurance_base`, `insurance_rate`, `insurance_payout`, `line_total`.
+> - **`payout_run_users`** — per-user rollup: `run_id`, `payout_user_id`, `role_context`, `total_commission`, `total_pf_payout`, `total_insurance_payout`, `total_payout`, `tds_rate`, `tds_amount`, `net_payout`.
+>
+> Coverage/idempotency columns (plain nullable, SQLite-safe, no FK): `disbursement_entries.payout_run_id` (+ INDEX) & `paid_amount_counted`; `disbursement_details.pf_payout_run_id` & `insurance_payout_run_id`. The engine scopes to `payout_run_id IS NULL` tranches; `finalizeRun()` stamps them. Models: `PayoutRun`/`PayoutRunProduct`/`PayoutRunLine`/`PayoutRunUser`. The legacy `loan_payouts` ledger is now read-only history (Payout Report); the per-loan finalize path + its UI buttons were removed.
 
 ---
 
@@ -691,7 +709,7 @@ Columns below are either native `json` columns or `text`/`string` columns that h
 | stage_assignments.notes | text (cast to array in model) | free-form per-stage form values (phase fields, decisions) |
 | loan_details.workflow_config | json | snapshot `{ stage_key: { role, default_user_id, phases: {idx: {role, default_user_id}} } }` |
 | loan_progress.workflow_snapshot | text (cast to array in model) | `{ stage_key: { status, assigned_to } }` |
-| disbursement_details.entries | json | `[{ disbursement_date, method, product_id, product_name, loan_account_number, amount, cheque_name?, cheque_number?, cheque_date? }, ...]` — one item per tranche |
+| disbursement_details.entries | json | `[{ disbursement_date, method, product_id, product_name, loan_account_number, amount, pf_amount, admin_charges, insurance_amount, cheque_name?, cheque_number?, cheque_date? }, ...]` — one item per tranche (pf/admin/insurance added 2026-10-06) |
 | disbursement_details.cheques | json | legacy (pre multi-entry): `[{ cheque_name, cheque_number, cheque_date, cheque_amount }, ...]` — no longer written |
 | quotations.selected_tenures | json | `[5, 10, 15, 20]` |
 | app_config.config_json | longText | full defaults tree (see `config/app-defaults.php`) |

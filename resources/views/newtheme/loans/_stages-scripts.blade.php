@@ -1131,8 +1131,8 @@
                     .done(function(r) {
                         if (r.users && r.users.length) {
                             r.users.forEach(function(u) {
-                                $select.append('<option value="' + u.id + '">' + u.name +
-                                    '</option>');
+                                var label = u.name + (u.role ? ' (' + u.role + ')' : '');
+                                $select.append($('<option>').val(u.id).text(label));
                             });
                             if (r.default_user_id) {
                                 $select.val(r.default_user_id);
@@ -1374,8 +1374,13 @@
                 path.style.strokeDashoffset = perimeter - filled;
             })();
 
-            // Auto-scroll to first actionable stage — don't wait for full animation
+            // Auto-scroll to first actionable stage — don't wait for full animation.
+            // Fallback to the current stage card (e.g. otc_clearance, which is editable
+            // while the loan is partial_disbursed and therefore not "actionable").
             var $target = $('[data-actionable="true"]').first();
+            if (!$target.length) {
+                $target = $('#stage-{{ $loan->current_stage }}').first();
+            }
             if ($target.length) {
                 setTimeout(function() {
                     var offset = $target.offset().top - 80;

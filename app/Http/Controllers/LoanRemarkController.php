@@ -15,6 +15,13 @@ class LoanRemarkController extends Controller
 
     public function index(Request $request, LoanDetail $loan): JsonResponse
     {
+        // Connector-only readers (view_connector_loans, no view_loans) may only
+        // read remarks of loans visible to them (their own quotations' loans).
+        $user = $request->user();
+        if (! $user->hasPermission('view_loans') && ! LoanDetail::visibleTo($user)->whereKey($loan->id)->exists()) {
+            abort(403);
+        }
+
         $stageKey = $request->get('stage_key');
         $remarks = $this->remarkService->getRemarks($loan->id, $stageKey);
 

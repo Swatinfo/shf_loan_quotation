@@ -1,4 +1,4 @@
-@extends('newtheme.layouts.app', ['pageKey' => 'loan-settings'])
+@extends('newtheme.layouts.app', ['pageKey' => 'settings'])
 
 @section('title', 'Loan Settings · SHF World')
 
@@ -28,6 +28,7 @@
         'master-stages' => ['label' => 'Stage Master', 'num' => '04'],
         'products' => ['label' => 'Products & Stages', 'num' => '05'],
         'role-permissions' => ['label' => 'Role Permissions', 'num' => '06'],
+        'payout-config' => ['label' => 'Payout Config', 'num' => '07'],
     ];
     $activeTab = request('tab', 'locations');
 @endphp

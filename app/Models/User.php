@@ -219,6 +219,36 @@ class User extends Authenticatable
 
     // ── Scopes ──
 
+    /**
+     * Users eligible to appear in any user dropdown: active, and never carrying
+     * the super_admin or admin role. Call `->with('roles')` alongside so the
+     * role label renders without an N+1.
+     */
+    public function scopeSelectable($query)
+    {
+        return $query->where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('slug', ['super_admin', 'admin']));
+    }
+
+    /** Roles that can never be a loan payout user. */
+    public const PAYOUT_INELIGIBLE_ROLES = ['super_admin', 'admin', 'bank_employee', 'office_employee'];
+
+    /**
+     * Active users eligible to be a loan payout user: holding NONE of
+     * super_admin / admin / bank_employee / office_employee.
+     */
+    public function scopePayoutEligible($query)
+    {
+        return $query->where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('slug', self::PAYOUT_INELIGIBLE_ROLES));
+    }
+
+    /** Whether this user may be assigned as a loan payout user. */
+    public function isPayoutEligible(): bool
+    {
+        return $this->roles->pluck('slug')->intersect(self::PAYOUT_INELIGIBLE_ROLES)->isEmpty();
+    }
+
     public function scopeAdvisorEligible($query)
     {
         return $query->whereHas('roles', fn ($q) => $q->whereIn('slug', static::advisorEligibleRoles()))

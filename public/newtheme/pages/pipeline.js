@@ -130,7 +130,7 @@
         var base = ['Loan #', 'Customer', 'Bank / Product', 'Branch', 'Advisor', 'Amount', 'Age'];
         if (status === 'active') { return base.concat(['Current Stage(s)']); }
         if (status === 'on_hold') { return base.concat(['Current Stage(s)', 'Hold Reason', 'On Hold Since']); }
-        if (status === 'completed') { return base.concat(['Sanctioned', 'Disbursed', 'TAT']); }
+        if (status === 'completed') { return base.concat(['Sanctioned', 'Disbursed', 'Settled (OTC)', 'TAT']); }
         if (status === 'rejected') { return base.concat(['Rejected At Stage', 'Reason', 'By', 'Date']); }
         if (status === 'cancelled') { return base.concat(['Reason', 'Date']); }
         return base.concat(['Status', 'Current Stage(s)']);
@@ -157,6 +157,7 @@
             return base.concat([
                 '<td class="num">' + escapeHtml(r.sanctioned_amount || '—') + '</td>',
                 '<td class="num">' + escapeHtml(r.disbursed_amount || '—') + '</td>',
+                '<td class="num">' + escapeHtml(r.settled_amount || '—') + '</td>',
                 '<td class="num">' + (r.tat_days != null ? r.tat_days + 'd' : '—') + '</td>']);
         }
         if (status === 'rejected') {

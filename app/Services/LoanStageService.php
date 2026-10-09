@@ -1250,8 +1250,17 @@ class LoanStageService
     public function transferStage(LoanDetail $loan, string $stageKey, int $toUserId, ?string $reason = null): StageAssignment
     {
         $assignment = $loan->stageAssignments()->where('stage_key', $stageKey)->firstOrFail();
+
+        // Block any handoff/transfer while an open query is pending on this stage —
+        // the current assignee must resolve the query before moving it to another
+        // user (mirrors the completion guard in updateStageStatus()).
+        if ($assignment->hasPendingQueries()) {
+            throw new \RuntimeException(
+                "Cannot transfer stage '{$stageKey}' — there are unresolved queries. Resolve the open query first."
+            );
+        }
+
         $fromUserId = auth()->id();
-        $previousAssignee = $assignment->assigned_to;
 
         $assignment->update(['assigned_to' => $toUserId]);
 
@@ -1265,15 +1274,8 @@ class LoanStageService
             'transfer_type' => 'manual',
         ]);
 
-        // Open queries awaiting the outgoing assignee follow the handoff; queries
-        // routed to someone else (typically the advisor) keep their recipient.
-        if ($previousAssignee) {
-            StageQuery::where('loan_id', $loan->id)
-                ->where('stage_key', $stageKey)
-                ->whereIn('status', ['pending', 'responded'])
-                ->where('assigned_to_user_id', $previousAssignee)
-                ->update(['assigned_to_user_id' => $toUserId]);
-        }
+        // (A stage can only be transferred once its queries are resolved — the guard
+        // above ensures no open query can follow a handoff.)
 
         ActivityLog::log('transfer_stage', $assignment, [
             'loan_number' => $loan->loan_number,

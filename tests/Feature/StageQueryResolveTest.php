@@ -165,18 +165,19 @@ class StageQueryResolveTest extends TestCase
         $this->assertDatabaseHas('stage_queries', ['id' => $query->id, 'status' => 'resolved']);
     }
 
-    public function test_current_assignee_can_resolve_after_escalation(): void
+    public function test_current_assignee_can_resolve(): void
     {
-        // Loan-104 scenario: office_employee raises, stage escalates to BDH,
-        // raiser never returns — the BDH holding the stage can now close it.
+        // The user currently holding the stage can close an open query on it
+        // (e.g. a BDH holding sanction_decision), alongside the raiser and admins.
+        // (The stage is held by the BDH directly — transferring a stage with an
+        // open query is blocked, see test_transfer_blocked_while_query_open.)
         $raiser = $this->makeUser('office_employee');
         $bdh = $this->makeUser('bdh');
         $loan = $this->makeLoan();
         $assignment = $this->makeAssignment($loan, $raiser->id);
         $query = $this->raiseQuery($assignment, $raiser);
 
-        $this->actingAs($raiser);
-        $this->stageService->transferStage($loan, 'sanction_decision', $bdh->id, 'Escalated to bdh');
+        $assignment->update(['assigned_to' => $bdh->id]);
 
         $response = $this->actingAs($bdh)->postJson(route('loans.queries.resolve', $query));
 
@@ -280,8 +281,10 @@ class StageQueryResolveTest extends TestCase
         $this->assertSame('completed', $assignment->fresh()->status);
     }
 
-    public function test_transfer_hands_open_queries_owned_by_outgoing_assignee_to_new_assignee(): void
+    public function test_transfer_blocked_while_query_open(): void
     {
+        // A stage cannot be transferred/handed off to another user while it has an
+        // open query — the current assignee must resolve the query first.
         $advisor = $this->makeUser('loan_advisor');
         $officeEmployee = $this->makeUser('office_employee');
         $bankEmployee = $this->makeUser('bank_employee');
@@ -289,18 +292,22 @@ class StageQueryResolveTest extends TestCase
         $loan = $this->makeLoan($advisor);
         $assignment = $this->makeAssignment($loan, $officeEmployee->id);
 
-        // Routed to the office_employee (current assignee) per routing rules.
-        $ownedByAssignee = $this->queryService->raiseQuery($assignment, 'For the assignee', $bankEmployee->id);
-        // Routed to the advisor — must NOT be touched by the transfer.
-        $ownedByAdvisor = $this->queryService->raiseQuery($assignment, 'For the advisor', $officeEmployee->id);
-
-        $this->assertSame($officeEmployee->id, $ownedByAssignee->assigned_to_user_id);
-        $this->assertSame($advisor->id, $ownedByAdvisor->assigned_to_user_id);
+        $query = $this->queryService->raiseQuery($assignment, 'Blocks the transfer', $bankEmployee->id);
 
         $this->actingAs($officeEmployee);
-        $this->stageService->transferStage($loan, 'sanction_decision', $bdh->id, 'Escalated');
+        try {
+            $this->stageService->transferStage($loan, 'sanction_decision', $bdh->id, 'Escalated');
+            $this->fail('Expected transferStage to be blocked by the open query.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('unresolved queries', $e->getMessage());
+        }
 
-        $this->assertSame($bdh->id, $ownedByAssignee->fresh()->assigned_to_user_id);
-        $this->assertSame($advisor->id, $ownedByAdvisor->fresh()->assigned_to_user_id);
+        // Stage still held by the original assignee — no handoff happened.
+        $this->assertSame($officeEmployee->id, $assignment->fresh()->assigned_to);
+
+        // After resolving the query, the transfer succeeds.
+        $this->queryService->resolveQuery($query, $officeEmployee->id);
+        $this->stageService->transferStage($loan, 'sanction_decision', $bdh->id, 'Escalated');
+        $this->assertSame($bdh->id, $assignment->fresh()->assigned_to);
     }
 }

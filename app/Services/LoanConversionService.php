@@ -77,6 +77,7 @@ class LoanConversionService
                 'due_date' => now()->addDays(7)->toDateString(),
                 'created_by' => auth()->id(),
                 'assigned_advisor' => $extra['assigned_advisor'] ?? auth()->id(),
+                'payout_user_id' => $extra['payout_user_id'] ?? null,
                 'notes' => $extra['notes'] ?? $quotation->additional_notes,
             ]);
 

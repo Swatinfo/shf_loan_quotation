@@ -1,6 +1,6 @@
 # Roles
 
-7 roles. Stored in `roles` table, assigned via `role_user` pivot (users can have multiple roles), granted permissions via `role_permission` pivot.
+8 roles. Stored in `roles` table, assigned via `role_user` pivot (users can have multiple roles), granted permissions via `role_permission` pivot.
 
 ## Role catalogue
 
@@ -13,8 +13,11 @@
 | `loan_advisor` | Loan Advisor | લોન સલાહકાર | **true** | false |
 | `bank_employee` | Bank Employee | બેંક કર્મચારી | false | false |
 | `office_employee` | Office Employee | ઓફિસ કર્મચારી | false | false |
+| `connector` | Connector | કનેક્ટર | false | **true** |
 
 Gujarati labels come from `Role::gujaratiLabels()`.
+
+**`connector`** (2026-10-05) — an external introducer. Perms: `create_quotation`, `edit_quotation`, `generate_pdf`, `view_own_quotations`, `download_pdf`, `download_pdf_plain` (**plain/unbranded only — no `download_pdf_branded`**), `change_own_password`, `view_dashboard`, `manage_notifications`. **No `convert_to_loan` / loan access.** The quotation UI gates its Convert / Branded / Plain buttons on these slugs, so a connector sees only the plain download and no convert. super_admin/admin/branch_manager/bdh convert a connector's quotation to a loan; the loan's payout can be directed to the connector (see payout feature). Seeded by `2026_10_05_160000_add_connector_role`. **Read-only loan tracking (2026-10-06):** a connector also holds `view_connector_loans` — they can VIEW (not act on) the loans created from their own quotations (list, loan detail, all stages + progress, timeline), scoped by `scopeVisibleTo` on `quotation.user_id`. All mutating loan routes stay blocked (connectors hold no action permissions).
 
 ## Flags
 

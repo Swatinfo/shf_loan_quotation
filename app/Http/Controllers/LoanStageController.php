@@ -33,8 +33,7 @@ class LoanStageController extends Controller
         $mainStages = $stageAssignments->filter(fn ($sa) => ! $sa->is_parallel_stage && $sa->parent_stage_key === null);
         $subStages = $stageAssignments->filter(fn ($sa) => $sa->is_parallel_stage || $sa->parent_stage_key !== null);
         $progress = $loan->progress;
-        $allActiveUsers = User::whereHas('roles', fn ($q) => $q->whereNotIn('slug', ['super_admin', 'admin']))
-            ->where('is_active', true)
+        $allActiveUsers = User::selectable()
             ->with(['employerBanks', 'locations', 'branches', 'roles'])
             ->orderBy('name')->get();
         $stageRoleEligibility = LoanStageService::getAllStageRoleEligibility();
@@ -263,6 +262,12 @@ class LoanStageController extends Controller
 
     public function transferHistory(LoanDetail $loan)
     {
+        // Connector-only readers may only see transfers of their own loans.
+        $user = auth()->user();
+        if (! $user->hasPermission('view_loans') && ! LoanDetail::visibleTo($user)->whereKey($loan->id)->exists()) {
+            abort(403);
+        }
+
         $transfers = $loan->stageTransfers()
             ->with(['fromUser', 'toUser', 'stageAssignment.stage'])
             ->latest('created_at')
@@ -340,6 +345,11 @@ class LoanStageController extends Controller
             'transfer_to' => 'nullable|exists:users,id',
         ]);
 
+        // An open query blocks any handoff/completion on this stage.
+        if ($blocked = $this->queryBlock($loan, ['sanction'])) {
+            return $blocked;
+        }
+
         $assignment = $loan->stageAssignments()->where('stage_key', 'sanction')->firstOrFail();
 
         if ($validated['action'] === 'send_for_sanction') {
@@ -387,6 +397,11 @@ class LoanStageController extends Controller
             'suggested_legal_advisor' => 'nullable|string|max:255',
             'transfer_to' => 'nullable|exists:users,id',
         ]);
+
+        // An open query blocks any handoff/completion on this stage.
+        if ($blocked = $this->queryBlock($loan, ['legal_verification'])) {
+            return $blocked;
+        }
 
         $assignment = $loan->stageAssignments()->where('stage_key', 'legal_verification')->firstOrFail();
 
@@ -469,6 +484,11 @@ class LoanStageController extends Controller
             'transfer_to' => 'nullable|exists:users,id',
         ]);
 
+        // An open query blocks any handoff on this stage.
+        if ($blocked = $this->queryBlock($loan, ['technical_valuation'])) {
+            return $blocked;
+        }
+
         $assignment = $loan->stageAssignments()->where('stage_key', 'technical_valuation')->firstOrFail();
 
         $assignment->mergeNotesData([
@@ -495,6 +515,11 @@ class LoanStageController extends Controller
             'action' => 'required|in:send_for_esign,esign_generated,esign_customer_done,esign_complete',
             'transfer_to' => 'nullable|exists:users,id',
         ]);
+
+        // An open query blocks any handoff/completion on this stage.
+        if ($blocked = $this->queryBlock($loan, ['esign'])) {
+            return $blocked;
+        }
 
         $assignment = $loan->stageAssignments()->where('stage_key', 'esign')->firstOrFail();
 
@@ -587,6 +612,11 @@ class LoanStageController extends Controller
             'transfer_to' => 'nullable|exists:users,id',
         ]);
 
+        // An open query blocks any handoff on this stage.
+        if ($blocked = $this->queryBlock($loan, ['docket'])) {
+            return $blocked;
+        }
+
         $assignment = $loan->stageAssignments()->where('stage_key', 'docket')->firstOrFail();
 
         $assignment->mergeNotesData([
@@ -613,6 +643,12 @@ class LoanStageController extends Controller
             'action' => 'required|in:send_to_bank,return_to_owner,complete',
             'transfer_to' => 'nullable|exists:users,id',
         ]);
+
+        // An open query blocks any handoff/completion on this stage (checked before
+        // field validation so the query is the primary gate).
+        if ($blocked = $this->queryBlock($loan, ['rate_pf'])) {
+            return $blocked;
+        }
 
         $assignment = $loan->stageAssignments()->where('stage_key', 'rate_pf')->firstOrFail();
         $notesData = $assignment->getNotesData();
@@ -707,8 +743,8 @@ class LoanStageController extends Controller
 
     /**
      * If any of the given stages has an unresolved query (pending/responded),
-     * return a 422 JSON response to block the action; otherwise null. Stage
-     * completion is blocked until the query is resolved.
+     * return a 422 JSON response to block the action; otherwise null. Both
+     * completing AND transferring a stage are blocked until the query is resolved.
      */
     private function queryBlock(LoanDetail $loan, array $stageKeys): ?JsonResponse
     {
@@ -716,7 +752,7 @@ class LoanStageController extends Controller
             $assignment = $loan->stageAssignments()->where('stage_key', $key)->first();
             if ($assignment && $assignment->hasPendingQueries()) {
                 return response()->json([
-                    'error' => 'An open query is blocking this stage. Resolve it before completing.',
+                    'error' => 'An open query is blocking this stage. Resolve it before continuing.',
                 ], 422);
             }
         }
@@ -762,7 +798,7 @@ class LoanStageController extends Controller
             if ($emiAmount > $sanctionedAmount) {
                 return response()->json([
                     'error' => 'EMI amount cannot exceed sanctioned amount',
-                    'field_errors' => ['emi_amount' => 'EMI amount (₹ '.number_format($emiAmount).') exceeds sanctioned amount (₹ '.number_format($sanctionedAmount).')'],
+                    'field_errors' => ['emi_amount' => 'EMI amount (₹ '.inr($emiAmount).') exceeds sanctioned amount (₹ '.inr($sanctionedAmount).')'],
                 ], 422);
             }
         }
@@ -939,19 +975,25 @@ class LoanStageController extends Controller
         if (! $user) {
             return false;
         }
-        if ($user->hasRole('super_admin')) {
+        // super_admin / admin: global authority.
+        if ($user->hasRole('super_admin') || $user->hasRole('admin')) {
             return true;
         }
-        // Permission-based waive: holders can complete-without-bank at any phase,
-        // regardless of assignee (in addition to the base owner/BM/BDH authority).
-        if ($user->hasPermission('waive_legal_verification')) {
-            return true;
-        }
+        // Loan owner / assigned advisor: their own loan.
         if ($loan->created_by === $user->id || $loan->assigned_advisor === $user->id) {
             return true;
         }
-        if ($user->hasAnyRole(['branch_manager', 'bdh']) && $loan->branch_id) {
-            return $user->branches()->where('branches.id', $loan->branch_id)->exists();
+        // Branch managers / BDH are branch-bound — EVEN when they hold the waive
+        // permission (their authority is "of the branch", per permissions.md). This
+        // check takes precedence over the generic waive bypass below.
+        if ($user->hasAnyRole(['branch_manager', 'bdh'])) {
+            return (bool) $loan->branch_id
+                && $user->branches()->where('branches.id', $loan->branch_id)->exists();
+        }
+        // Any other waive-holder (e.g. a non-owner advisor, office staff) can
+        // complete-without-bank regardless of assignee / phase.
+        if ($user->hasPermission('waive_legal_verification')) {
+            return true;
         }
 
         return false;
@@ -1078,6 +1120,13 @@ class LoanStageController extends Controller
                 return response()->json(['error' => 'Remarks are required for escalation'], 422);
             }
 
+            // Escalation hands the stage to another user — blocked while a query is open.
+            if ($assignment->hasPendingQueries()) {
+                $pendingCount = $assignment->queries()->whereIn('status', ['pending', 'responded'])->count();
+
+                return response()->json(['error' => "Cannot escalate — {$pendingCount} unresolved query/queries on this stage. Resolve all queries first."], 422);
+            }
+
             // Level/role guards (admin bypasses).
             if (! $isAdmin) {
                 if ($action === 'escalate_to_bm' && $level !== 'base') {
@@ -1155,7 +1204,7 @@ class LoanStageController extends Controller
     {
         $role = $request->query('role');
 
-        $query = User::where('is_active', true)->where('id', '!=', auth()->id())->select('id', 'name', 'email');
+        $query = User::selectable()->where('id', '!=', auth()->id())->with('roles')->select('id', 'name', 'email');
 
         if ($role) {
             $query->whereHas('roles', fn ($q) => $q->where('slug', $role));
@@ -1201,7 +1250,14 @@ class LoanStageController extends Controller
             $defaultUserId = null;
         }
 
-        return response()->json(['users' => $users, 'default_user_id' => $defaultUserId]);
+        $payload = $users->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'role' => $u->workflow_role_label ?: $u->role_label,
+        ]);
+
+        return response()->json(['users' => $payload, 'default_user_id' => $defaultUserId]);
     }
 
     /**
@@ -1304,6 +1360,11 @@ class LoanStageController extends Controller
             if ($user->branches()->where('branches.id', $loan->branch_id)->exists()) {
                 return;
             }
+        }
+        // Connectors may view (read-only) the loans born from their own quotations.
+        if ($user->hasRole('connector') && $loan->quotation_id
+            && $loan->quotation()->where('user_id', $user->id)->exists()) {
+            return;
         }
         abort(403);
     }

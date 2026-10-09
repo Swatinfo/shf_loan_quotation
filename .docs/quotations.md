@@ -124,6 +124,8 @@ Controller: `LoanConversionController`.
   - `bank_index` required int ≥0 (index into the quotation's banks)
   - `product_id`, `customer_phone`, `date_of_birth` (d/m/Y), `pan_number` (regex `[A-Z]{5}[0-9]{4}[A-Z]` uppercased), `assigned_advisor` — required
   - `customer_email` nullable email, `notes` nullable
+  - `payout_user_id` nullable — must be payout-eligible (not super_admin/admin/bank_employee/office_employee)
+- **Form defaults** (`showConvertForm`): both **Assigned Advisor** and **Payout User** default to the **current user** when they are eligible (advisor-eligible / payout-eligible respectively). Exception: if the quotation was created by a **connector**, Payout User defaults to that connector (the lead source) instead.
 - Calls `LoanConversionService::convertFromQuotation(Quotation, int $bankIndex, array $extra)`
 
 See `loans.md` and `workflow-developer.md` for the conversion side-effects.

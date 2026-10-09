@@ -15,6 +15,7 @@ use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
 use App\Services\LoanStageService;
+use App\Services\PayoutConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,39 +83,14 @@ class WorkflowConfigController extends Controller
 
     public function storeProduct(Request $request)
     {
+        // Core product identity only — payout config (slabs, cycle, PF, cap) is
+        // managed on the Payout Config tab (savePayoutProduct).
         $validated = $request->validate([
             'id' => 'nullable|exists:products,id',
             'bank_id' => 'required|exists:banks,id',
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:20',
-            'is_pf_based' => 'nullable|boolean',
-            'max_payout_amount' => 'nullable|numeric|decimal:0,2|min:0|max:100000000000',
-            'slabs' => 'nullable|array',
-            'slabs.*.low_amount' => 'required|integer|min:0',
-            'slabs.*.high_amount' => 'required|integer|gt:slabs.*.low_amount',
-            'slabs.*.payout_type' => 'required|in:amount,percent',
-            'slabs.*.payout_value' => 'required|numeric|min:0',
-        ], [
-            'slabs.*.high_amount.gt' => 'Each slab\'s high range must be greater than its low range.',
         ]);
-
-        $slabs = array_values($validated['slabs'] ?? []);
-
-        foreach ($slabs as $slab) {
-            if ($slab['payout_type'] === ProductPayoutSlab::TYPE_PERCENT && $slab['payout_value'] > 100) {
-                return redirect()->back()->withInput()
-                    ->with('error', 'Percentage payout cannot exceed 100%.');
-            }
-        }
-
-        // Ranges must not overlap (inclusive bounds).
-        usort($slabs, fn (array $a, array $b) => $a['low_amount'] <=> $b['low_amount']);
-        foreach ($slabs as $i => $slab) {
-            if ($i > 0 && $slab['low_amount'] <= $slabs[$i - 1]['high_amount']) {
-                return redirect()->back()->withInput()
-                    ->with('error', 'Payout slab ranges overlap (₹ '.number_format($slab['low_amount']).' falls inside the previous slab).');
-            }
-        }
 
         // Check unique (bank_id + name)
         $exists = Product::where('bank_id', $validated['bank_id'])
@@ -127,30 +103,90 @@ class WorkflowConfigController extends Controller
                 ->with('error', 'This product already exists for the selected bank.');
         }
 
-        DB::transaction(function () use ($validated, $slabs, $request) {
-            $data = [
-                'bank_id' => $validated['bank_id'],
-                'name' => $validated['name'],
-                'code' => $validated['code'] ?? null,
-                'is_pf_based' => $request->boolean('is_pf_based'),
-                'max_payout_amount' => $validated['max_payout_amount'] ?? null,
-            ];
+        $data = [
+            'bank_id' => $validated['bank_id'],
+            'name' => $validated['name'],
+            'code' => $validated['code'] ?? null,
+        ];
 
-            if ($validated['id'] ?? null) {
-                $product = Product::findOrFail($validated['id']);
-                $product->update($data);
-            } else {
-                $product = Product::create($data);
-            }
-
-            // The form is the full slab state — replace, don't merge.
-            $product->payoutSlabs()->delete();
-            foreach ($slabs as $slab) {
-                $product->payoutSlabs()->create($slab);
-            }
-        });
+        if ($validated['id'] ?? null) {
+            Product::findOrFail($validated['id'])->update($data);
+        } else {
+            Product::create($data);
+        }
 
         return redirect(route('loan-settings.index').'#products')->with('success', 'Product saved');
+    }
+
+    /**
+     * Save a product's payout config (PF flag, cap, cycle days, standard +
+     * connector slabs). Moved off the product form onto the Payout Config tab —
+     * identity is edited there, payout here. The posted slabs are the full state
+     * (replace, not merge).
+     */
+    public function savePayoutProduct(Request $request, PayoutConfigService $payoutConfig)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'effective_from' => 'nullable|date',
+            'is_pf_based' => 'nullable|boolean',
+            'max_payout_amount' => 'nullable|numeric|decimal:0,2|min:0|max:100000000000',
+            'payout_cycle_start_day' => 'nullable|integer|min:1|max:31',
+            'payout_cycle_end_day' => 'nullable|integer|min:1|max:31',
+            'slabs' => 'nullable|array',
+            'slabs.*.low_amount' => 'required|integer|min:0',
+            'slabs.*.high_amount' => 'required|integer|gt:slabs.*.low_amount',
+            'slabs.*.payout_type' => 'required|in:amount,percent',
+            'slabs.*.payout_value' => 'required|numeric|min:0',
+            'slabs.*.connector_payout_type' => 'nullable|in:amount,percent',
+            'slabs.*.connector_payout_value' => 'nullable|numeric|min:0',
+        ], [
+            'slabs.*.high_amount.gt' => 'Each slab\'s high range must be greater than its low range.',
+        ]);
+
+        $slabs = array_values($validated['slabs'] ?? []);
+
+        foreach ($slabs as $i => $slab) {
+            if ($slab['payout_type'] === ProductPayoutSlab::TYPE_PERCENT && $slab['payout_value'] > 100) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Percentage payout cannot exceed 100%.');
+            }
+            // Normalize connector payout (defaults: percent / 0).
+            $slabs[$i]['connector_payout_type'] = $slab['connector_payout_type'] ?? ProductPayoutSlab::TYPE_PERCENT;
+            $slabs[$i]['connector_payout_value'] = (float) ($slab['connector_payout_value'] ?? 0);
+            if ($slabs[$i]['connector_payout_type'] === ProductPayoutSlab::TYPE_PERCENT && $slabs[$i]['connector_payout_value'] > 100) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Connector percentage payout cannot exceed 100%.');
+            }
+        }
+
+        // Ranges must not overlap (inclusive bounds).
+        usort($slabs, fn (array $a, array $b) => $a['low_amount'] <=> $b['low_amount']);
+        foreach ($slabs as $i => $slab) {
+            if ($i > 0 && $slab['low_amount'] <= $slabs[$i - 1]['high_amount']) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Payout slab ranges overlap (₹ '.inr($slab['low_amount']).' falls inside the previous slab).');
+            }
+        }
+
+        $product = Product::findOrFail($validated['product_id']);
+
+        DB::transaction(function () use ($product, $validated, $slabs, $request, $payoutConfig) {
+            $payoutConfig->saveProductVersion(
+                $product,
+                [
+                    'is_pf_based' => $request->boolean('is_pf_based'),
+                    'max_payout_amount' => $validated['max_payout_amount'] ?? null,
+                    'payout_cycle_start_day' => $validated['payout_cycle_start_day'] ?? 1,
+                    'payout_cycle_end_day' => $validated['payout_cycle_end_day'] ?? 31,
+                ],
+                $slabs,
+                $validated['effective_from'] ?? null,
+                $request->user()?->id,
+            );
+        });
+
+        return redirect(route('loan-settings.index').'#payout-config')->with('success', 'Product payout saved');
     }
 
     public function saveProductLocations(Request $request, Product $product)
@@ -167,7 +203,7 @@ class WorkflowConfigController extends Controller
         $stages = Stage::where('is_enabled', true)->orderBy('sequence_order')->get();
         $productStages = $product->productStages()->with('branchUsers')->get()->keyBy('stage_id');
         $branches = Branch::active()->orderBy('name')->get();
-        $allActiveUsers = User::where('is_active', true)
+        $allActiveUsers = User::selectable()
             ->whereHas('roles')
             ->with(['employerBanks', 'locations', 'roles'])
             ->orderBy('name')->get();
@@ -394,6 +430,38 @@ class WorkflowConfigController extends Controller
         }
 
         return redirect(route('loan-settings.index').'#branches')->with('success', 'Branch saved');
+    }
+
+    /**
+     * Save the global payout rates as effective-dated versions. The `calc`
+     * decimal (value/100) is derived server-side — the UI field is read-only —
+     * and the version in force on a given date drives payout math for tranches
+     * disbursed on/after that date. Saving an existing date edits that version.
+     */
+    public function savePayoutConfig(Request $request, PayoutConfigService $payoutConfig)
+    {
+        $keys = ['admin_gst', 'pf_gst', 'user_tds', 'user_insurance'];
+
+        $rules = ['payout' => 'required|array'];
+        foreach ($keys as $k) {
+            $rules["payout.{$k}.value"] = 'required|numeric|min:0|max:100';
+            $rules["payout.{$k}.effective_from"] = 'nullable|date';
+        }
+        $validated = $request->validate($rules);
+
+        $rates = [];
+        foreach ($keys as $k) {
+            $rates[$k] = [
+                'value' => (float) $validated['payout'][$k]['value'],
+                'effective_from' => $validated['payout'][$k]['effective_from'] ?? null,
+            ];
+        }
+
+        $payoutConfig->saveRateVersions($rates, $request->user()?->id);
+
+        ActivityLog::log('update_payout_config', null, ['keys' => $keys]);
+
+        return redirect(route('loan-settings.index').'#payout-config')->with('success', 'Payout config saved');
     }
 
     public function destroyProduct(Product $product): JsonResponse

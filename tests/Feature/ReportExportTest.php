@@ -101,6 +101,7 @@ class ReportExportTest extends TestCase
         DB::table('disbursement_entries')->insert([
             'loan_id' => $loan->id, 'disbursement_detail_id' => $detailId,
             'disbursement_date' => $date, 'method' => 'fund_transfer', 'amount' => $amount,
+            'transfer_date' => $date, 'otc_status' => 'skipped', 'otc_handover_date' => $date,
             'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }

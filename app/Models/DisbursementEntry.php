@@ -32,19 +32,36 @@ class DisbursementEntry extends Model
     protected $fillable = [
         'loan_id', 'disbursement_detail_id', 'disbursement_date', 'method',
         'product_id', 'product_name', 'loan_account_number', 'amount',
-        'cheque_name', 'cheque_number', 'cheque_date', 'is_active',
+        'cheque_name', 'cheque_number', 'cheque_date', 'transfer_date', 'is_active',
         'otc_status', 'otc_handover_date', 'otc_cleared_by', 'otc_cleared_at', 'otc_remarks',
+        'loan_payout_id', 'payout_finalized_at',
+        'payout_run_id', 'paid_amount_counted',
     ];
 
     protected function casts(): array
     {
         return [
             'disbursement_date' => 'date',
+            'transfer_date' => 'date',
             'amount' => 'integer',
             'is_active' => 'boolean',
             'otc_handover_date' => 'date',
             'otc_cleared_at' => 'datetime',
+            'payout_finalized_at' => 'datetime',
+            'payout_run_id' => 'integer',
+            'paid_amount_counted' => 'integer',
         ];
+    }
+
+    /** Whether this tranche has already been counted in a finalized payout. */
+    public function isPayoutFinalized(): bool
+    {
+        return $this->loan_payout_id !== null;
+    }
+
+    public function loanPayout(): BelongsTo
+    {
+        return $this->belongsTo(LoanPayout::class, 'loan_payout_id');
     }
 
     /**
@@ -52,6 +69,12 @@ class DisbursementEntry extends Model
      */
     public function isOtcSettled(): bool
     {
+        // Only cheques need a physical over-the-counter handover; a fund transfer
+        // (NEFT/RTGS) is always settled and never blocks otc_clearance / completion.
+        if ($this->method !== self::METHOD_CHEQUE) {
+            return true;
+        }
+
         return in_array($this->otc_status, self::OTC_SETTLED, true);
     }
 

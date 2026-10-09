@@ -15,6 +15,8 @@
     var elTotalCount = document.getElementById('lrTotalCount');
     var elTotalSanctioned = document.getElementById('lrTotalSanctioned');
     var elTotalDisbursed = document.getElementById('lrTotalDisbursed');
+    var elTotalSettled = document.getElementById('lrTotalSettled');
+    var elTotalPendingOtc = document.getElementById('lrTotalPendingOtc');
 
     function escapeHtml(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -114,6 +116,7 @@
             '<th class="num">Loan Amount</th>' +
             '<th class="num">Sanctioned</th>' +
             '<th class="num">Disbursed</th>' +
+            '<th class="num">Settled (OTC)</th>' +
             '<th>Sanctioned On</th>' +
             '<th>Disbursed On</th>' +
             '<th>Status</th>' +
@@ -132,6 +135,7 @@
                 '<td class="num">' + escapeHtml(r.loan_amount || '—') + '</td>' +
                 '<td class="num">' + escapeHtml(r.sanctioned_amount || '—') + '</td>' +
                 '<td class="num">' + escapeHtml(r.disbursed_amount || '—') + '</td>' +
+                '<td class="num">' + escapeHtml(r.settled_amount || '—') + '</td>' +
                 '<td>' + escapeHtml(r.sanctioned_on || '—') + '</td>' +
                 '<td>' + escapeHtml(r.disbursed_on || '—') + '</td>' +
                 '<td><span class="lr-status ' + escapeHtml(r.status || '') + '">' + escapeHtml((r.status || '—').replace('_', ' ')) + '</span></td>' +
@@ -145,6 +149,8 @@
         if (elTotalCount) { elTotalCount.textContent = totals.count != null ? String(totals.count) : '—'; }
         if (elTotalSanctioned) { elTotalSanctioned.textContent = totals.sanctioned || '—'; }
         if (elTotalDisbursed) { elTotalDisbursed.textContent = totals.disbursed || '—'; }
+        if (elTotalSettled) { elTotalSettled.textContent = totals.settled || '—'; }
+        if (elTotalPendingOtc) { elTotalPendingOtc.textContent = totals.pending_otc || '—'; }
     }
 
     function refresh() {

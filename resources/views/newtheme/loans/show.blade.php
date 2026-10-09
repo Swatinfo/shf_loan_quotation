@@ -60,6 +60,10 @@
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
                     @if ($loan->product?->name) / {{ $loan->product->name }}@endif
                     <span class="badge {{ $statusTone }}" style="margin-left:8px;vertical-align:middle;">{{ $loan->status_label }}</span>
+                    @if ($loan->isPartiallyCompleted())
+                        <span class="badge badge-success" style="margin-left:6px;vertical-align:middle;"
+                            title="Partially disbursed — all current OTC settled, awaiting the next disbursement">Partially Completed</span>
+                    @endif
                 </div>
             </div>
             <div class="head-actions">
@@ -98,6 +102,12 @@
                         {{ $loan->dme_user_id ? 'Change DME' : 'Set DME' }}
                     </button>
                 @endif
+                @if ($canChangePayoutUser)
+                    <button type="button" class="btn" id="lsChangePayoutBtn">
+                        <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m-7-3h10m0 0l-3-3m3 3l-3 3"/></svg>
+                        {{ $loan->payout_user_id ? 'Change Payout User' : 'Set Payout User' }}
+                    </button>
+                @endif
                 @if ($sanctionDone && $canEditDocketDate && $loan->status !== 'completed')
                     <button type="button" class="btn"
                         data-docket-change-btn
@@ -116,6 +126,14 @@
     </header>
 
     <main class="content">
+        @if (auth()->user()->hasRole('connector'))
+            <div class="card" style="border-left:3px solid var(--accent,#f15a29);margin-bottom:12px;">
+                <div class="card-bd" style="display:flex;align-items:center;gap:8px;color:var(--ink-2,#555);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span><strong>Connector view</strong> — read-only. You can track this loan's stages and progress; you cannot make changes.</span>
+                </div>
+            </div>
+        @endif
         {{-- ===== Ownership + Total Time banner ===== --}}
         <div class="card ls-banner">
             <div class="card-bd ls-banner-body">
@@ -204,6 +222,8 @@
                     @if ($appNumberDone)
                         <div><span>DME</span><span id="lsDmeName">{{ $loan->dme?->name ?? '— (not set)' }}</span></div>
                     @endif
+                    <div><span>Payout User</span><span
+                            id="lsPayoutName">{{ $loan->payoutUser?->name ?? '— (not set)' }}</span></div>
                     @if ($loan->due_date)
                         <div><span>Due Date</span><span>{{ $loan->due_date->format('d M Y') }}</span></div>
                     @endif
@@ -416,6 +436,22 @@
                 <div id="lsRemarksList"><span class="ls-muted">Loading…</span></div>
             </div>
         </div>
+
+        {{-- ===== Payout ===== --}}
+        <div class="card" style="margin-top:14px;">
+            <div class="card-bd">
+                <h3 style="font-family:'Jost',sans-serif;font-size:1.05rem;margin:0 0 10px;">Payout</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:18px 32px;font-size:0.9rem;">
+                    <div><span class="ls-muted">Payout User</span><br><strong>{{ $loan->payoutUser?->name ?? '— (not set)' }}</strong></div>
+                </div>
+                <p class="ls-muted" style="margin:12px 0 0;font-size:0.85rem;">
+                    Payouts are calculated across all loans of a product for a period.
+                    @if ($canFinalizePayout)
+                        See <a href="{{ route('payouts.runs') }}">Payout Runs</a>.
+                    @endif
+                </p>
+            </div>
+        </div>
     </main>
 @endsection
 
@@ -428,8 +464,13 @@
             remarksStoreUrl: @json(route('loans.remarks.store', $loan)),
             @if ($appNumberDone && $canChangeDme)
                 dmeUpdateUrl: @json(route('loans.dme.update', $loan)),
-                dmeUsers: @json($dmeUsers->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values()),
+                dmeUsers: @json($dmeUsers->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'role' => $u->workflow_role_label ?: $u->role_label])->values()),
                 currentDme: @json($loan->dme_user_id),
+            @endif
+            @if ($canChangePayoutUser)
+                payoutUpdateUrl: @json(route('loans.payout-user.update', $loan)),
+                payoutUsers: @json($payoutUsers->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'role' => $u->workflow_role_label ?: $u->role_label])->values()),
+                currentPayout: @json($loan->payout_user_id),
             @endif
         };
     </script>
@@ -444,7 +485,8 @@
                 btn.addEventListener('click', function () {
                     var opts = (cfg.dmeUsers || []).map(function (u) {
                         var sel = String(u.id) === String(cfg.currentDme) ? ' selected' : '';
-                        return '<option value="' + u.id + '"' + sel + '>' + $('<div>').text(u.name).html() + '</option>';
+                        var label = u.name + (u.role ? ' (' + u.role + ')' : '');
+                        return '<option value="' + u.id + '"' + sel + '>' + $('<div>').text(label).html() + '</option>';
                     }).join('');
                     Swal.fire({
                         title: 'Set DME',
@@ -472,6 +514,50 @@
                                         .then(function () { location.reload(); });
                                 } else {
                                     Swal.fire('Error', resp.j.error || resp.j.message || 'Failed to update DME.', 'error');
+                                }
+                            }).catch(function () { Swal.fire('Error', 'Request failed.', 'error'); })
+                            .finally(function () { if (window.SHF && SHF.loader) { SHF.loader.end(); } });
+                    });
+                });
+            })();
+        </script>
+    @endif
+
+    @if ($canChangePayoutUser)
+        <script>
+            (function () {
+                var cfg = window.__LS || {};
+                var btn = document.getElementById('lsChangePayoutBtn');
+                if (!btn || !cfg.payoutUpdateUrl) { return; }
+                var token = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+                btn.addEventListener('click', function () {
+                    var opts = (cfg.payoutUsers || []).map(function (u) {
+                        var sel = String(u.id) === String(cfg.currentPayout) ? ' selected' : '';
+                        var label = u.name + (u.role ? ' (' + u.role + ')' : '');
+                        return '<option value="' + u.id + '"' + sel + '>' + $('<div>').text(label).html() + '</option>';
+                    }).join('');
+                    Swal.fire({
+                        title: 'Loan Payout User',
+                        html: '<select id="swalPayout" class="swal2-select" style="width:90%;">' +
+                            '<option value="">-- No payout user --</option>' + opts + '</select>',
+                        showCancelButton: true,
+                        confirmButtonText: 'Save',
+                        confirmButtonColor: '#f15a29',
+                        preConfirm: function () { return document.getElementById('swalPayout').value; }
+                    }).then(function (res) {
+                        if (!res.isConfirmed) { return; }
+                        if (window.SHF && SHF.loader) { SHF.loader.begin(); }
+                        fetch(cfg.payoutUpdateUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                            body: JSON.stringify({ payout_user_id: res.value || null })
+                        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                            .then(function (resp) {
+                                if (resp.ok && resp.j.success) {
+                                    Swal.fire({ icon: 'success', title: 'Payout user updated', timer: 1200, showConfirmButton: false })
+                                        .then(function () { location.reload(); });
+                                } else {
+                                    Swal.fire('Error', resp.j.error || resp.j.message || 'Failed to update payout user.', 'error');
                                 }
                             }).catch(function () { Swal.fire('Error', 'Request failed.', 'error'); })
                             .finally(function () { if (window.SHF && SHF.loader) { SHF.loader.end(); } });

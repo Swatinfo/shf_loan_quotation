@@ -724,48 +724,9 @@
                                             </div>
                                         </div>
 
-                                        {{-- Payout configuration (future payout-to-loan-creator; storage only) --}}
-                                        <div class="row g-3 mt-1 align-items-end">
-                                            <div class="col-md-4">
-                                                <label class="shf-form-label d-block mb-1">Is PF Based? / પીએફ
-                                                    આધારિત?</label>
-                                                <label class="d-inline-flex align-items-center gap-2 shf-text-sm">
-                                                    <input type="checkbox" name="is_pf_based" value="1"
-                                                        id="productPfInput" class="shf-checkbox">
-                                                    <span>Yes — payout based on PF</span>
-                                                </label>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="shf-form-label d-block mb-1">Max Payout Amount (₹,
-                                                    optional)</label>
-                                                <input type="number" name="max_payout_amount"
-                                                    id="productMaxPayoutInput" class="shf-input" min="0"
-                                                    step="0.01" placeholder="e.g. 50000.50">
-                                            </div>
-                                        </div>
-
-                                        <div class="mt-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <label class="shf-form-label mb-0">Payout Slabs / પેઆઉટ સ્લેબ</label>
-                                                <button type="button" id="productSlabAdd"
-                                                    class="btn-accent-outline btn-accent-sm">
-                                                    <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M12 4v16m8-8H4" />
-                                                    </svg>
-                                                    Add Slab
-                                                </button>
-                                            </div>
-                                            <div class="shf-text-xs text-muted mb-2">
-                                                Ranges apply to the disbursed amount. Payout per slab is a fixed ₹
-                                                amount
-                                                or a percentage. Ranges must not overlap.
-                                            </div>
-                                            <div id="productSlabList"></div>
-                                            {{-- NOT class="shf-validation-error" — SHF.validateForm removes those nodes on every submit --}}
-                                            <div id="productSlabError" class="shf-text-error shf-text-sm mt-1"
-                                                style="display:none;"></div>
+                                        <div class="shf-text-xs text-muted mt-2">
+                                            Payout slabs, PF flag, cap and cycle for this product are configured on the
+                                            <strong>Payout Config</strong> tab.
                                         </div>
 
                                         <div class="d-flex align-items-center gap-2 mt-3">
@@ -823,24 +784,6 @@
                                                     <span class="shf-badge shf-badge-gray shf-text-2xs">All
                                                         locations</span>
                                                 @endif
-                                                @if ($product->is_pf_based)
-                                                    <span class="shf-badge shf-badge-orange shf-text-2xs">PF
-                                                        Based</span>
-                                                @endif
-                                                @if ($product->max_payout_amount)
-                                                    <span class="shf-badge shf-badge-blue shf-text-2xs">Payout cap ₹
-                                                        {{ number_format((float) $product->max_payout_amount, 2) }}</span>
-                                                @endif
-                                                @if ($product->payoutSlabs->isNotEmpty())
-                                                    <span
-                                                        class="shf-badge shf-badge-purple shf-text-2xs">{{ $product->payoutSlabs->count() }}
-                                                        payout
-                                                        {{ $product->payoutSlabs->count() === 1 ? 'slab' : 'slabs' }}
-                                                        ·
-                                                        {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->first()->low_amount) }}
-                                                        –
-                                                        {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->last()->high_amount) }}</span>
-                                                @endif
                                             </div>
                                             <div class="d-flex gap-1 flex-shrink-0">
                                                 <a href="{{ route('loan-settings.product-stages', $product) }}"
@@ -864,28 +807,12 @@
                                                             stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                     </svg> Locations</button>
                                                 @if (auth()->user()->hasPermission('manage_workflow_config'))
-                                                    @php
-                                                        /* Built in @php first — @json() chokes on closures inside its argument (see lessons.md). */
-                                                        $productSlabsPayload = $product->payoutSlabs
-                                                            ->map(
-                                                                fn($s) => [
-                                                                    'low_amount' => $s->low_amount,
-                                                                    'high_amount' => $s->high_amount,
-                                                                    'payout_type' => $s->payout_type,
-                                                                    'payout_value' => $s->payout_value,
-                                                                ],
-                                                            )
-                                                            ->values();
-                                                    @endphp
                                                     <button type="button"
                                                         class="btn-accent-sm shf-edit-product shf-text-xs"
                                                         data-id="{{ $product->id }}"
                                                         data-bank-id="{{ $product->bank_id }}"
                                                         data-name="{{ $product->name }}"
-                                                        data-code="{{ $product->code }}"
-                                                        data-pf-based="{{ $product->is_pf_based ? 1 : 0 }}"
-                                                        data-max-payout="{{ $product->max_payout_amount }}"
-                                                        data-slabs='@json($productSlabsPayload)'>
+                                                        data-code="{{ $product->code }}">
                                                         <svg class="shf-icon-2xs" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -1131,6 +1058,357 @@
                                     </table>
                                 </div>
                             @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ============================ Payout Config ============================ --}}
+                @php
+                    $payoutRates = [
+                        'admin_gst' => 'Admin GST',
+                        'pf_gst' => 'PF GST',
+                        'user_tds' => 'User TDS',
+                        'user_insurance' => 'User Insurance',
+                    ];
+                    $canEditPayout = auth()->user()->hasPermission('manage_workflow_config');
+                @endphp
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-payout-config">
+                    <div class="shf-section">
+                        <div class="shf-section-header">
+                            <div class="shf-section-number">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                                </svg>
+                            </div>
+                            <span class="shf-section-title">Payout Config</span>
+                        </div>
+                        <div class="shf-section-body">
+                            <p class="small mb-4 shf-text-gray">
+                                Enter each rate as a percentage. The <strong>Calc (×)</strong> multiplier is computed
+                                automatically as value ÷ 100 and is read-only. Set an <strong>Effective From</strong>
+                                date per rate — the calc inherits it from the rate.
+                            </p>
+
+                            <form method="POST" action="{{ route('loan-settings.payout-config.save') }}" id="payoutConfigForm">
+                                @csrf
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Rate</th>
+                                                <th style="width:150px;">Value (%)</th>
+                                                <th style="width:140px;">Calc (×)</th>
+                                                <th style="width:180px;">Effective From</th>
+                                                <th style="width:120px;">History</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($payoutRates as $key => $label)
+                                                @php
+                                                    $row = $payoutConfig[$key] ?? ['value' => 0, 'calc' => 0, 'effective_from' => null];
+                                                    $history = $payoutRateHistory[$key] ?? collect();
+                                                @endphp
+                                                <tr>
+                                                    <td><span class="fw-medium">{{ $label }}</span></td>
+                                                    <td>
+                                                        <input type="number" step="0.01" min="0" max="100"
+                                                            name="payout[{{ $key }}][value]"
+                                                            class="shf-input payout-value" data-key="{{ $key }}"
+                                                            value="{{ old('payout.'.$key.'.value', $row['value']) }}"
+                                                            @disabled(!$canEditPayout)>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" readonly tabindex="-1"
+                                                            class="shf-input shf-input-readonly payout-calc"
+                                                            id="payoutCalc_{{ $key }}"
+                                                            value="{{ old('payout.'.$key.'.value') !== null ? number_format((float) old('payout.'.$key.'.value') / 100, 4) : number_format((float) $row['calc'], 4) }}">
+                                                    </td>
+                                                    <td>
+                                                        <input type="text"
+                                                            name="payout[{{ $key }}][effective_from]"
+                                                            class="shf-input payout-date" placeholder="yyyy-mm-dd"
+                                                            autocomplete="off"
+                                                            value="{{ old('payout.'.$key.'.effective_from', $row['effective_from']) }}"
+                                                            @disabled(!$canEditPayout)>
+                                                    </td>
+                                                    <td>
+                                                        @if ($history->count())
+                                                            <details class="shf-text-xs">
+                                                                <summary class="shf-clickable">{{ $history->count() }} version{{ $history->count() === 1 ? '' : 's' }}</summary>
+                                                                <div class="mt-1">
+                                                                    @foreach ($history as $h)
+                                                                        <div class="shf-text-2xs text-muted">
+                                                                            {{ optional($h->effective_from)->format('d/m/Y') }} →
+                                                                            {{ rtrim(rtrim(number_format($h->value, 2), '0'), '.') }}%
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </details>
+                                                        @else
+                                                            <span class="shf-text-2xs text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="shf-text-xs text-muted mt-2">
+                                    Changing a rate with a new <strong>Effective From</strong> keeps the old value as a
+                                    version — a payout uses the rate in force on each tranche's disbursement date.
+                                </div>
+
+                                @if ($canEditPayout)
+                                    <div class="d-flex justify-content-end mt-4">
+                                        <button type="submit" class="btn-accent">
+                                            <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Save Payout Config
+                                        </button>
+                                    </div>
+                                @endif
+                            </form>
+                        </div>
+                    </div>
+
+                    {{-- ===== Product Payout (moved from Products & Stages) ===== --}}
+                    <div class="shf-section" style="margin-top:16px;">
+                        <div class="shf-section-header">
+                            <div class="shf-section-number">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <span class="shf-section-title">Product Payout Slabs</span>
+                        </div>
+                        <div class="shf-section-body">
+                            <p class="small mb-3 shf-text-gray">
+                                Per-product payout: PF flag, max cap, bank payout cycle (day 1–31) and slab rates
+                                (internal + connector). Ranges apply to the disbursed amount, or to the PF amount for
+                                PF-based products.
+                            </p>
+
+                            @if (auth()->user()->hasPermission('manage_workflow_config'))
+                                <div class="shf-add-form-wrapper mb-3">
+                                    <button class="shf-add-form-toggle collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#payoutProductFormCollapse"
+                                        aria-expanded="false" id="payoutProductFormToggle">
+                                        <span id="payoutProductFormTitle">Pick a product below to edit its payout</span>
+                                        <svg class="shf-chevron shf-icon-md" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    <div class="collapse" id="payoutProductFormCollapse">
+                                        <div class="shf-add-form-body">
+                                            <form method="POST"
+                                                action="{{ route('loan-settings.payout-product.save') }}"
+                                                id="payoutProductForm">
+                                                @csrf
+                                                <input type="hidden" name="product_id" id="payoutProductId">
+                                                <div class="row g-3 mb-1 align-items-end">
+                                                    <div class="col-md-8">
+                                                        <span class="shf-form-label d-block mb-1">Product</span>
+                                                        <strong id="payoutProductName" class="shf-text-accent">— use an
+                                                            Edit button below —</strong>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="shf-form-label d-block mb-1">Effective From</label>
+                                                        <input type="text" name="effective_from"
+                                                            id="payoutProductEffectiveInput"
+                                                            class="shf-input payout-date" placeholder="yyyy-mm-dd"
+                                                            autocomplete="off">
+                                                        <div class="shf-text-2xs text-muted mt-1">Blank = today. A new
+                                                            date keeps the old slabs as a version.</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 align-items-end">
+                                                    <div class="col-md-4">
+                                                        <label class="shf-form-label d-block mb-1">Is PF Based? / પીએફ
+                                                            આધારિત?</label>
+                                                        <label
+                                                            class="d-inline-flex align-items-center gap-2 shf-text-sm">
+                                                            <input type="checkbox" name="is_pf_based" value="1"
+                                                                id="productPfInput" class="shf-checkbox">
+                                                            <span>Yes — payout based on PF</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="shf-form-label d-block mb-1">Max Payout Amount (₹,
+                                                            optional)</label>
+                                                        <input type="number" name="max_payout_amount"
+                                                            id="productMaxPayoutInput" class="shf-input" min="0"
+                                                            step="0.01" placeholder="e.g. 50000.50">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="shf-form-label d-block mb-1">Payout Cycle (day
+                                                            1–31)</label>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <input type="number" name="payout_cycle_start_day"
+                                                                id="productCycleStartInput" class="shf-input" min="1"
+                                                                max="31" placeholder="Start (1)">
+                                                            <span class="text-muted">to</span>
+                                                            <input type="number" name="payout_cycle_end_day"
+                                                                id="productCycleEndInput" class="shf-input" min="1"
+                                                                max="31" placeholder="End (31)">
+                                                        </div>
+                                                        <div class="shf-text-xs text-muted mt-1">Bank payout cycle (e.g.
+                                                            16 to 16). Defaults 1–31 (whole month).</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mt-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <label class="shf-form-label mb-0">Payout Slabs / પેઆઉટ
+                                                            સ્લેબ</label>
+                                                        <button type="button" id="productSlabAdd"
+                                                            class="btn-accent-outline btn-accent-sm">
+                                                            <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2" d="M12 4v16m8-8H4" />
+                                                            </svg>
+                                                            Add Slab
+                                                        </button>
+                                                    </div>
+                                                    <div class="shf-text-xs text-muted mb-2">
+                                                        Ranges apply to the disbursed amount. Payout per slab is a fixed
+                                                        ₹ amount or a percentage. Ranges must not overlap.
+                                                    </div>
+                                                    <div id="productSlabList"></div>
+                                                    <div id="productSlabError" class="shf-text-error shf-text-sm mt-1"
+                                                        style="display:none;"></div>
+                                                </div>
+
+                                                <div class="d-flex align-items-center gap-2 mt-3">
+                                                    <button type="submit" class="btn-accent"><svg class="shf-icon-sm"
+                                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M5 13l4 4L19 7" />
+                                                        </svg> Save Product Payout</button>
+                                                    <button type="button" class="btn-accent-outline shf-form-cancel"
+                                                        data-collapse="#payoutProductFormCollapse"
+                                                        data-reset="payoutProductForm"><svg class="shf-icon-sm"
+                                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg> Cancel</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @foreach ($banks as $bank)
+                                @if ($bank->products->isNotEmpty())
+                                    <div class="shf-stage-card">
+                                        <div class="shf-stage-header">
+                                            <div class="shf-stage-header-title">
+                                                <strong>{{ $bank->name }}</strong>
+                                                <span
+                                                    class="shf-badge shf-badge-gray shf-text-2xs">{{ $bank->products->count() }}
+                                                    products</span>
+                                            </div>
+                                        </div>
+                                        <div class="shf-stage-body" style="padding:0;">
+                                            @foreach ($bank->products as $product)
+                                                @php
+                                                    // The payout version currently in force (for display + edit prefill).
+                                                    $currentPv = $product->payoutVersions->firstWhere('id', $product->current_payout_version_id);
+                                                @endphp
+                                                <div
+                                                    class="px-3 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 {{ !$loop->last ? 'border-bottom' : '' }}">
+                                                    <div class="d-flex align-items-center flex-wrap gap-1">
+                                                        <strong>{{ $product->name }}</strong>
+                                                        @if ($product->is_pf_based)
+                                                            <span class="shf-badge shf-badge-orange shf-text-2xs">PF
+                                                                Based</span>
+                                                        @endif
+                                                        @if ($product->max_payout_amount)
+                                                            <span class="shf-badge shf-badge-blue shf-text-2xs">Cap ₹
+                                                                {{ inr($product->max_payout_amount) }}</span>
+                                                        @endif
+                                                        <span class="shf-badge shf-badge-gray shf-text-2xs">Cycle
+                                                            {{ $product->payout_cycle_start_day }}–{{ $product->payout_cycle_end_day }}</span>
+                                                        @if ($currentPv)
+                                                            <span class="shf-badge shf-badge-green shf-text-2xs">Effective
+                                                                {{ optional($currentPv->effective_from)->format('d/m/Y') }}</span>
+                                                        @endif
+                                                        @if ($product->payoutSlabs->isNotEmpty())
+                                                            <span
+                                                                class="shf-badge shf-badge-purple shf-text-2xs">{{ $product->payoutSlabs->count() }}
+                                                                {{ $product->payoutSlabs->count() === 1 ? 'slab' : 'slabs' }}
+                                                                ·
+                                                                {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->first()->low_amount) }}
+                                                                –
+                                                                {{ \App\Services\NumberToWordsService::formatCurrency($product->payoutSlabs->last()->high_amount) }}</span>
+                                                        @else
+                                                            <span class="shf-badge shf-badge-gray shf-text-2xs">No
+                                                                slabs</span>
+                                                        @endif
+                                                        @if ($product->payoutVersions->count() > 1)
+                                                            <details class="shf-text-2xs">
+                                                                <summary class="shf-clickable shf-text-accent">{{ $product->payoutVersions->count() }}
+                                                                    versions</summary>
+                                                                <div class="mt-1">
+                                                                    @foreach ($product->payoutVersions as $pv)
+                                                                        <div class="text-muted">
+                                                                            {{ optional($pv->effective_from)->format('d/m/Y') }}
+                                                                            — {{ $pv->payoutSlabs->count() }} slab{{ $pv->payoutSlabs->count() === 1 ? '' : 's' }}{{ $pv->is_pf_based ? ', PF' : '' }}{{ $pv->max_payout_amount ? ', cap ₹ '.inr($pv->max_payout_amount) : '' }}
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </details>
+                                                        @endif
+                                                    </div>
+                                                    @if (auth()->user()->hasPermission('manage_workflow_config'))
+                                                        @php
+                                                            /* Built in @php first — @json() chokes on closures inside its argument (see lessons.md). */
+                                                            $payoutSlabsPayload = $product->payoutSlabs
+                                                                ->map(
+                                                                    fn($s) => [
+                                                                        'low_amount' => $s->low_amount,
+                                                                        'high_amount' => $s->high_amount,
+                                                                        'payout_type' => $s->payout_type,
+                                                                        'payout_value' => $s->payout_value,
+                                                                        'connector_payout_type' => $s->connector_payout_type,
+                                                                        'connector_payout_value' => $s->connector_payout_value,
+                                                                    ],
+                                                                )
+                                                                ->values();
+                                                        @endphp
+                                                        <button type="button"
+                                                            class="btn-accent-sm shf-edit-payout-product shf-text-xs"
+                                                            data-id="{{ $product->id }}"
+                                                            data-name="{{ $bank->name }} — {{ $product->name }}"
+                                                            data-pf-based="{{ $product->is_pf_based ? 1 : 0 }}"
+                                                            data-max-payout="{{ $product->max_payout_amount }}"
+                                                            data-cycle-start="{{ $product->payout_cycle_start_day }}"
+                                                            data-cycle-end="{{ $product->payout_cycle_end_day }}"
+                                                            data-effective="{{ optional($currentPv?->effective_from)->format('Y-m-d') }}"
+                                                            data-slabs='@json($payoutSlabsPayload)'>
+                                                            <svg class="shf-icon-2xs" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                            Edit Payout
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            @endforeach
                         </div>
                     </div>
                 </div>

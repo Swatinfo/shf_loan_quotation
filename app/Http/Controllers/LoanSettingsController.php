@@ -7,12 +7,14 @@ use App\Models\Bank;
 use App\Models\BankStageConfig;
 use App\Models\Branch;
 use App\Models\Location;
+use App\Models\PayoutRateVersion;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductStage;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
+use App\Services\ConfigService;
 use App\Services\LoanStageService;
 use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
@@ -22,12 +24,12 @@ class LoanSettingsController extends Controller
 {
     public function index()
     {
-        $banks = Bank::with(['products.productStages.branchUsers', 'products.locations', 'products.payoutSlabs', 'employees', 'locations.parent'])->orderBy('name')->get();
+        $banks = Bank::with(['products.productStages.branchUsers', 'products.locations', 'products.payoutSlabs', 'products.payoutVersions.payoutSlabs', 'employees', 'locations.parent'])->orderBy('name')->get();
         $branches = Branch::with('location.parent')->orderBy('name')->get();
         $stages = Stage::orderBy('sequence_order')->get(); // All stages for Stage Master tab
         $enabledStages = Stage::where('is_enabled', true)->orderBy('sequence_order')->get(); // For product config
         $activeBranches = Branch::active()->orderBy('name')->get();
-        $allActiveUsers = User::where('is_active', true)
+        $allActiveUsers = User::selectable()
             ->whereHas('roles')
             ->with(['employerBanks', 'roles'])
             ->orderBy('name')->get();
@@ -45,9 +47,14 @@ class LoanSettingsController extends Controller
             return $c->bank_id.'_'.$c->stage_id;
         })->map->first();
 
+        // Payout config (percentage rates) — current mirror + effective-dated history.
+        $payoutConfig = app(ConfigService::class)->get('payoutConfig', []);
+        $payoutRateHistory = PayoutRateVersion::orderByDesc('effective_from')->orderByDesc('id')
+            ->get()->groupBy('rate_key');
+
         $template = 'newtheme.loan-settings.index';
 
-        return view($template, compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles', 'bankStageConfigs'));
+        return view($template, compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles', 'bankStageConfigs', 'payoutConfig', 'payoutRateHistory'));
     }
 
     /**

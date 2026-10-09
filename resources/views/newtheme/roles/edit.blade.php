@@ -1,4 +1,4 @@
-@extends('newtheme.layouts.app', ['pageKey' => 'roles'])
+@extends('newtheme.layouts.app', ['pageKey' => 'settings'])
 
 @section('title', 'Edit ' . $role->name . ' · Role · SHF World')
 

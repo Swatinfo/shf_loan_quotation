@@ -17,9 +17,8 @@ class ImpersonateController extends Controller
 
         $search = $request->get('search', '');
 
-        $users = User::where('id', '!=', auth()->id())
-            ->whereDoesntHave('roles', fn ($q) => $q->where('slug', 'super_admin'))
-            ->where('is_active', true)
+        $users = User::selectable()
+            ->where('id', '!=', auth()->id())
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")

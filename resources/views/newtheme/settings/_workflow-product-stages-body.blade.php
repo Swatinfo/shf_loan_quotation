@@ -402,7 +402,7 @@
                                                                                 name="stages[{{ $si }}][phase_location_overrides][{{ $saIdx }}][{{ $saOverrideIdx }}][users][]"
                                                                                 value="{{ $sau->id }}" class="shf-checkbox shf-icon-xs"
                                                                                 {{ $isChecked ? 'checked' : '' }}>
-                                                                            {{ $sau->name }}
+                                                                            {{ $sau->name }}@if ($sau->workflow_role_label) ({{ $sau->workflow_role_label }})@endif
                                                                             <input type="radio"
                                                                                 name="stages[{{ $si }}][phase_location_overrides][{{ $saIdx }}][{{ $saOverrideIdx }}][default]"
                                                                                 value="{{ $sau->id }}" style="width:10px;height:10px;accent-color:#f15a29;"

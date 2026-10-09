@@ -111,7 +111,7 @@
                                 <label class="shf-form-label">Land Valuation</label>
                                 <div class="input-group"><span class="input-group-text">₹</span>
                                     <input type="text" id="landValuation" class="shf-input w-100"
-                                        value="{{ $v?->land_valuation ? number_format($v->land_valuation) : '' }}"
+                                        value="{{ $v?->land_valuation ? inr($v->land_valuation) : '' }}"
                                         readonly class="shf-input-readonly">
                                 </div>
                                 <div class="shf-text-xs text-muted mt-1" id="landValWords"></div>
@@ -144,7 +144,7 @@
                                 <label class="shf-form-label">Construction Valuation</label>
                                 <div class="input-group"><span class="input-group-text">₹</span>
                                     <input type="text" id="constructionValuation" class="shf-input w-100"
-                                        value="{{ $v?->construction_valuation ? number_format($v->construction_valuation) : '' }}"
+                                        value="{{ $v?->construction_valuation ? inr($v->construction_valuation) : '' }}"
                                         readonly class="shf-input-readonly">
                                 </div>
                                 <div class="shf-text-xs text-muted mt-1" id="constValWords"></div>
@@ -161,7 +161,7 @@
                                 <label class="shf-form-label fw-bold">Total Valuation Amount</label>
                                 <div class="input-group input-group-lg"><span class="input-group-text">₹</span>
                                     <input type="text" id="finalValuation" class="shf-input w-100 fw-bold"
-                                        value="{{ $v?->final_valuation ? number_format($v->final_valuation) : '' }}"
+                                        value="{{ $v?->final_valuation ? inr($v->final_valuation) : '' }}"
                                         readonly style="background:#f0fdf4;font-size:1.1rem;">
                                 </div>
                                 <div class="shf-text-xs text-muted mt-1" id="finalValWords"></div>

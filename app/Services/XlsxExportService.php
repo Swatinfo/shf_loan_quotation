@@ -43,6 +43,13 @@ class XlsxExportService
 
     private const S_BOLD_NUMBER = 5;
 
+    /** Section-start row variants: top border + light fill, to mark where a new group begins. */
+    private const S_SECTION = 6;
+
+    private const S_SECTION_NUMBER = 7;
+
+    private const S_SECTION_DATE = 8;
+
     /**
      * Build the workbook in a temp file and return it as a download.
      * The response deletes the temp file after sending.
@@ -51,6 +58,8 @@ class XlsxExportService
      * @param  iterable<int, array<int, mixed>>  $rows  Cell values; null/'' => empty cell
      * @param  array<int, string>  $columnTypes  Column index => TYPE_* (default string)
      * @param  array<int, array<int, mixed>>  $footerRows  Bold totals rows appended last
+     * @param  array<int, int>  $sectionStartRows  0-based data-row ordinals that start a new
+     *                                             visual group (top border + light fill)
      */
     public function download(
         string $filename,
@@ -59,6 +68,7 @@ class XlsxExportService
         array $columnTypes = [],
         array $footerRows = [],
         string $sheetName = 'Report',
+        array $sectionStartRows = [],
     ): BinaryFileResponse {
         $path = tempnam(sys_get_temp_dir(), 'xlsx');
 
@@ -69,7 +79,7 @@ class XlsxExportService
         $zip->addFromString('xl/workbook.xml', $this->workbookXml($sheetName));
         $zip->addFromString('xl/_rels/workbook.xml.rels', $this->workbookRelsXml());
         $zip->addFromString('xl/styles.xml', $this->stylesXml());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $this->sheetXml($headers, $rows, $columnTypes, $footerRows));
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->sheetXml($headers, $rows, $columnTypes, $footerRows, $sectionStartRows));
         $zip->close();
 
         return response()->download($path, $filename, ['Content-Type' => self::XLSX_MIME])
@@ -81,9 +91,11 @@ class XlsxExportService
      * @param  iterable<int, array<int, mixed>>  $rows
      * @param  array<int, string>  $columnTypes
      * @param  array<int, array<int, mixed>>  $footerRows
+     * @param  array<int, int>  $sectionStartRows  0-based data-row ordinals that start a group
      */
-    private function sheetXml(array $headers, iterable $rows, array $columnTypes, array $footerRows): string
+    private function sheetXml(array $headers, iterable $rows, array $columnTypes, array $footerRows, array $sectionStartRows = []): string
     {
+        $sectionSet = array_flip($sectionStartRows);
         $cols = '';
         foreach (array_keys($headers) as $i) {
             $type = $columnTypes[$i] ?? self::TYPE_STRING;
@@ -98,9 +110,11 @@ class XlsxExportService
         $rowNum = 1;
         $xml .= $this->rowXml($rowNum, $headers, [], bold: true);
 
+        $ordinal = 0;
         foreach ($rows as $row) {
             $rowNum++;
-            $xml .= $this->rowXml($rowNum, $row, $columnTypes);
+            $xml .= $this->rowXml($rowNum, $row, $columnTypes, section: isset($sectionSet[$ordinal]));
+            $ordinal++;
         }
         foreach ($footerRows as $row) {
             $rowNum++;
@@ -114,33 +128,45 @@ class XlsxExportService
      * @param  array<int, mixed>  $cells
      * @param  array<int, string>  $columnTypes
      */
-    private function rowXml(int $rowNum, array $cells, array $columnTypes, bool $bold = false): string
+    private function rowXml(int $rowNum, array $cells, array $columnTypes, bool $bold = false, bool $section = false): string
     {
         $xml = '<row r="'.$rowNum.'">';
         foreach (array_values($cells) as $i => $value) {
+            $ref = $this->colRef($i).$rowNum;
             if ($value === null || $value === '') {
+                // On a section-start row, still emit the empty cell (styled) so the
+                // top border + fill run unbroken across the full width of the row.
+                if ($section) {
+                    $xml .= '<c r="'.$ref.'" s="'.self::S_SECTION.'"/>';
+                }
+
                 continue;
             }
-            $ref = $this->colRef($i).$rowNum;
-            $xml .= $this->cellXml($ref, $value, $columnTypes[$i] ?? self::TYPE_STRING, $bold);
+            $xml .= $this->cellXml($ref, $value, $columnTypes[$i] ?? self::TYPE_STRING, $bold, $section);
         }
 
         return $xml.'</row>';
     }
 
-    private function cellXml(string $ref, mixed $value, string $type, bool $bold): string
+    private function cellXml(string $ref, mixed $value, string $type, bool $bold, bool $section = false): string
     {
         if (in_array($type, [self::TYPE_NUMBER, self::TYPE_DECIMAL], true) && is_numeric($value)) {
-            $style = $type === self::TYPE_NUMBER ? ($bold ? self::S_BOLD_NUMBER : self::S_NUMBER) : self::S_DEFAULT;
+            if ($type === self::TYPE_NUMBER) {
+                $style = $section ? self::S_SECTION_NUMBER : ($bold ? self::S_BOLD_NUMBER : self::S_NUMBER);
+            } else {
+                $style = $section ? self::S_SECTION : self::S_DEFAULT;
+            }
 
             return '<c r="'.$ref.'" s="'.$style.'"><v>'.(0 + $value).'</v></c>';
         }
 
         if ($type === self::TYPE_DATE && ($serial = $this->dateSerial($value)) !== null) {
-            return '<c r="'.$ref.'" s="'.self::S_DATE.'"><v>'.$serial.'</v></c>';
+            return '<c r="'.$ref.'" s="'.($section ? self::S_SECTION_DATE : self::S_DATE).'"><v>'.$serial.'</v></c>';
         }
 
-        $style = $bold ? self::S_BOLD : ($type === self::TYPE_WRAP ? self::S_WRAP : self::S_DEFAULT);
+        $style = $section
+            ? self::S_SECTION
+            : ($bold ? self::S_BOLD : ($type === self::TYPE_WRAP ? self::S_WRAP : self::S_DEFAULT));
 
         return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t xml:space="preserve">'
             .$this->esc((string) $value).'</t></is></c>';
@@ -243,16 +269,26 @@ class XlsxExportService
             .'<font><sz val="11"/><name val="Calibri"/></font>'
             .'<font><b/><sz val="11"/><name val="Calibri"/></font>'
             .'</fonts>'
-            .'<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
-            .'<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            .'<fills count="3">'
+            .'<fill><patternFill patternType="none"/></fill>'
+            .'<fill><patternFill patternType="gray125"/></fill>'
+            .'<fill><patternFill patternType="solid"><fgColor rgb="FFFCE3D6"/><bgColor indexed="64"/></patternFill></fill>'
+            .'</fills>'
+            .'<borders count="2">'
+            .'<border><left/><right/><top/><bottom/><diagonal/></border>'
+            .'<border><left/><right/><top style="medium"><color rgb="FFF15A29"/></top><bottom/><diagonal/></border>'
+            .'</borders>'
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-            .'<cellXfs count="6">'
+            .'<cellXfs count="9">'
             .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
             .'<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>'
             .'<xf numFmtId="3" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>'
+            .'<xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1"/>'
+            .'<xf numFmtId="3" fontId="0" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'
+            .'<xf numFmtId="164" fontId="0" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'
             .'</cellXfs>'
             .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             .'</styleSheet>';

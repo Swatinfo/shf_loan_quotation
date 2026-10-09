@@ -118,10 +118,13 @@ class StageBreakdownTest extends TestCase
         ]);
     }
 
-    private function entry(LoanDetail $loan, int $amount, ?string $date = null): void
+    private function entry(LoanDetail $loan, int $amount, ?string $date = null, string $method = 'cheque', string $otc = 'pending'): void
     {
         $date = $date ?? now()->toDateString();
         // One disbursement_details row per loan (unique loan_id); many tranche entries.
+        // Default = cheque with OTC pending → classifies into the "Cheque / Transfer
+        // Entry" bucket. A cleared cheque (or a fund transfer) is OTC-settled and
+        // classifies into "Partially Completed" (entry_settled) instead.
         $detail = DisbursementDetail::firstOrCreate(
             ['loan_id' => $loan->id],
             ['disbursement_type' => 'fund_transfer', 'disbursement_date' => $date, 'amount_disbursed' => 0],
@@ -131,6 +134,8 @@ class StageBreakdownTest extends TestCase
             'disbursement_detail_id' => $detail->id,
             'amount' => $amount,
             'disbursement_date' => $date,
+            'method' => $method,
+            'otc_status' => $otc,
             'is_active' => true,
         ]);
     }
@@ -206,6 +211,30 @@ class StageBreakdownTest extends TestCase
         $this->assertSame(['count' => 1, 'amount' => 2000000], $this->tile($b, 'disbursement', 'logged_in'));
         $this->assertSame(['count' => 1, 'amount' => 750000], $this->tile($b, 'disbursement', 'entry'));
         $this->assertSame(['count' => 1, 'amount' => 500000], $this->tile($b, 'disbursement', 'otc'));
+    }
+
+    public function test_awaiting_otc_tile_shows_only_the_pending_amount(): void
+    {
+        $owner = $this->makeUser();
+        $loan = $this->makeLoan($owner, ['sanctioned_amount' => 9999999]);
+        $this->assign($loan, 'docket', 'completed');
+        $detail = DisbursementDetail::firstOrCreate(
+            ['loan_id' => $loan->id],
+            ['disbursement_type' => 'cheque', 'disbursement_date' => now()->toDateString(), 'amount_disbursed' => 0],
+        );
+        // Settled NEFT 40L + pending cheque 60L → loan is "Awaiting OTC".
+        DisbursementEntry::create(['loan_id' => $loan->id, 'disbursement_detail_id' => $detail->id, 'amount' => 4000000,
+            'disbursement_date' => now()->toDateString(), 'method' => 'fund_transfer', 'otc_status' => 'skipped', 'otc_handover_date' => now()->toDateString(), 'is_active' => true]);
+        DisbursementEntry::create(['loan_id' => $loan->id, 'disbursement_detail_id' => $detail->id, 'amount' => 6000000,
+            'disbursement_date' => now()->toDateString(), 'method' => 'cheque', 'otc_status' => 'pending', 'otc_handover_date' => null, 'is_active' => true]);
+
+        $b = $this->service->build($owner);
+
+        // Awaiting OTC shows ONLY the still-pending money; the settled NEFT folds into
+        // Partially Completed; Total Disbursed = all disbursed money (reconciles).
+        $this->assertSame(6000000, $this->tile($b, 'disbursement', 'entry')['amount']);
+        $this->assertSame(4000000, $this->tile($b, 'disbursement', 'entry_settled')['amount']);
+        $this->assertSame(10000000, $this->tile($b, 'disbursement', 'total')['amount']);
     }
 
     public function test_sanction_section_covers_loan_level_and_stage_states(): void
@@ -293,6 +322,24 @@ class StageBreakdownTest extends TestCase
         $section = collect($b['blocks'][0]['sections'])->firstWhere('key', 'disbursement');
         $this->assertSame(2, $section['subtotalCount']);
         $this->assertSame(1000000, $section['subtotalAmount']);
+    }
+
+    public function test_partially_completed_tile_splits_settled_from_pending(): void
+    {
+        $owner = $this->makeUser();
+        // Partial, cheque OTC still pending → "Cheque / Transfer Entry".
+        $pending = $this->makeLoan($owner, ['sanctioned_amount' => 9999999, 'current_stage' => 'disbursement', 'status' => 'partial_disbursed']);
+        $this->assign($pending, 'docket', 'completed');
+        $this->entry($pending, 300000, null, 'cheque', 'pending');
+        // Partial, cheque OTC cleared → "Partially Completed" (entry_settled).
+        $settled = $this->makeLoan($owner, ['sanctioned_amount' => 9999999, 'current_stage' => 'disbursement', 'status' => 'partial_disbursed']);
+        $this->assign($settled, 'docket', 'completed');
+        $this->entry($settled, 400000, null, 'cheque', 'cleared');
+
+        $b = $this->service->build($owner);
+        $this->assertSame(['count' => 1, 'amount' => 300000], $this->tile($b, 'disbursement', 'entry'));
+        $this->assertSame(['count' => 1, 'amount' => 400000], $this->tile($b, 'disbursement', 'entry_settled'));
+        $this->assertSame(['count' => 2, 'amount' => 700000], $this->tile($b, 'disbursement', 'total'));
     }
 
     public function test_spill_amount_falls_back_to_loan_amount_without_sanctioned(): void

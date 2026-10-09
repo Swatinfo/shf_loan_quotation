@@ -12,7 +12,7 @@
     $primaries = collect([
         ['key' => 'dashboard',  'label' => 'Dashboard',  'url' => route('dashboard'),                                            'active' => request()->routeIs('dashboard'),       'show' => true],
         ['key' => 'quotations', 'label' => 'Quotations', 'url' => $canQuotations ? route('quotations.index') : '#',              'active' => request()->routeIs('quotations.*'),    'show' => $canQuotations],
-        ['key' => 'loans',      'label' => 'Loans',      'url' => $u->hasPermission('view_loans') ? route('loans.index') : '#', 'active' => request()->routeIs('loans.*'),         'show' => $u->hasPermission('view_loans')],
+        ['key' => 'loans',      'label' => 'Loans',      'url' => ($u->hasPermission('view_loans') || $u->hasPermission('view_connector_loans')) ? route('loans.index') : '#', 'active' => request()->routeIs('loans.*'),         'show' => $u->hasPermission('view_loans') || $u->hasPermission('view_connector_loans')],
         ['key' => 'dvr',        'label' => 'DVR',        'url' => $u->hasPermission('view_dvr')   ? route('dvr.index')   : '#', 'active' => request()->routeIs('dvr.*'),           'show' => $u->hasPermission('view_dvr')],
         ['key' => 'tasks',      'label' => 'Tasks',      'url' => route('general-tasks.index'),                                  'active' => request()->routeIs('general-tasks.*'), 'show' => true],
     ])->filter(fn ($p) => $p['show'])->values();
@@ -76,6 +76,8 @@
         @if ($u->hasPermission('view_reports'))
             <a class="shf-more-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
             <a class="shf-more-item" href="{{ route('reports.loans') }}">Loan Report</a>
+            <a class="shf-more-item" href="{{ route('payouts.report') }}">Payout Report</a>
+            <a class="shf-more-item" href="{{ route('payouts.reconcile') }}">Payout Reconciliation</a>
             @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh']))
                 <a class="shf-more-item" href="{{ route('reports.management') }}">Management Summary</a>
             @endif

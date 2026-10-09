@@ -165,6 +165,24 @@
                         </div>
 
                         <div class="col-12">
+                            <label class="shf-form-label">Loan Payout User</label>
+                            <select name="payout_user_id" class="shf-input w-100">
+                                <option value="">-- No payout user --</option>
+                                @foreach ($payoutUsers as $pu)
+                                    <option value="{{ $pu->id }}"
+                                        {{ old('payout_user_id', $defaultPayoutUserId) == $pu->id ? 'selected' : '' }}>
+                                        {{ $pu->name }}@if ($pu->workflow_role_label) ({{ $pu->workflow_role_label }})@endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="text-muted small mt-1">Beneficiary of the disbursement payout (connectors
+                                earn the connector slab). Defaults to the connector who created the quotation.</div>
+                            @error('payout_user_id')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12">
                             <label class="shf-form-label">Notes</label>
                             <textarea name="notes" class="shf-input w-100" rows="3"
                                       placeholder="Additional notes...">{{ old('notes', $quotation->additional_notes) }}</textarea>

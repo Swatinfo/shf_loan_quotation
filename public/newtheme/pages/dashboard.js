@@ -696,7 +696,7 @@
                             '<option value="' +
                             u.id +
                             '">' +
-                            escapeHtml(u.name) +
+                            escapeHtml(u.name + (u.role ? " (" + u.role + ")" : "")) +
                             "</option>",
                     )
                     .join("");

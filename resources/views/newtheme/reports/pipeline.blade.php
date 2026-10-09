@@ -116,7 +116,7 @@
                             <select id="filterUser" class="input pl-input">
                                 <option value="">All Users</option>
                                 @foreach ($users as $reportUser)
-                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
+                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}@if ($reportUser->workflow_role_label) ({{ $reportUser->workflow_role_label }})@endif</option>
                                 @endforeach
                             </select>
                         </div>

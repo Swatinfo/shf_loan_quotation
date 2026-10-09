@@ -197,11 +197,11 @@ Called by `saveNotes` in `LoanStageController` and by `LoanDocumentController@up
 
 `transferStage($loan, $stageKey, int $toUserId, ?string $reason)`:
 
+0. **Guard: throws `RuntimeException` if the stage has an open query** (`hasPendingQueries()` — pending/responded). A stage cannot be transferred/handed off until its query is resolved; the assignee must resolve first. This is the single chokepoint for the generic transfer, every multi-phase `send_*` action, and escalation (controllers return a clean 422).
 1. Update `stage_assignments.assigned_to`
 2. Insert `stage_transfers` (manual type)
-3. Reassign all active queries (pending/responded) to the new stage_assignment context
-4. Log activity
-5. Touch `loan.updated_at`
+3. Log activity
+4. Touch `loan.updated_at`
 
 Requires both `manage_loan_stages` + `transfer_loan_stages`.
 
@@ -233,7 +233,7 @@ Only `resolved` queries stop blocking. UI shows active queries count on the stag
 
 The `sanction_decision` Approve action pre-checks unresolved queries and the completed-transition guard and returns 422 `{error}` before mutating anything — previously the service exception left the loan half-approved (`is_sanctioned` set, stage in_progress) and surfaced as a blank 500 in the Swal.
 
-Escalation note: stage transfers/escalations move `StageAssignment.assigned_to` but never a query's `raised_by` — the assignee-can-resolve rule exists so an escalated-away query can still be closed by whoever now holds the stage. On transfer, open queries whose recipient (`assigned_to_user_id`) was the outgoing assignee are re-pointed to the new assignee.
+Escalation note: a stage with an open query **cannot be escalated/transferred** (`transferStage()` + the escalate branch both block on `hasPendingQueries()`) — resolve the query first. The assignee-can-resolve rule still lets whoever currently holds the stage close an open query on it.
 
 ## Controller action endpoints (multi-phase)
 
@@ -323,7 +323,7 @@ Queries add separate notifications on raise + respond.
 
 ## Gotchas
 
-- Always assign stages via `assignStage()` or `transferStage()`, not direct updates — they write the `stage_transfers` ledger and reassign queries.
+- Always assign stages via `assignStage()` or `transferStage()`, not direct updates — they write the `stage_transfers` ledger. Note `transferStage()` refuses to run while the stage has an open query.
 - `initializeStages` seeds `priority = 'normal'` for all. There's no UI to bump priority; add one if that matters.
 - `workflow_config` snapshot is frozen. If business rules change role assignments mid-flight, you'd need to rebuild the snapshot (not implemented yet).
 - Skip is permission-gated (`skip_loan_stages`); the default assignment is **disabled for all roles** (migration `2026_04_13_124552`). Re-enable deliberately.

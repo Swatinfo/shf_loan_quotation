@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DailyVisitReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceTokenController;
+use App\Http\Controllers\DisbursementDataController;
 use App\Http\Controllers\GeneralTaskController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\LoanController;
@@ -17,6 +18,8 @@ use App\Http\Controllers\LoanSettingsController;
 use App\Http\Controllers\LoanStageController;
 use App\Http\Controllers\LoanValuationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PayoutController;
+use App\Http\Controllers\PayoutRunController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -108,7 +111,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Loan Management
-    Route::middleware('permission:view_loans')->group(function () {
+    // Connectors get read-only access (view_connector_loans) to loans born from
+    // their own quotations; visibility is scoped by LoanDetail::scopeVisibleTo.
+    Route::middleware('permission:view_loans,view_connector_loans')->group(function () {
         Route::get('/loans', [LoanController::class, 'index'])->name('loans.index');
         Route::get('/loans/data', [LoanController::class, 'loanData'])->name('loans.data');
     });
@@ -116,12 +121,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/loans/create', [LoanController::class, 'create'])->name('loans.create');
         Route::post('/loans', [LoanController::class, 'store'])->name('loans.store');
     });
-    Route::middleware('permission:view_loans')->group(function () {
+    Route::middleware('permission:view_loans,view_connector_loans')->group(function () {
         Route::get('/loans/{loan}', [LoanController::class, 'show'])->name('loans.show');
         Route::get('/loans/{loan}/timeline', [LoanController::class, 'timeline'])->name('loans.timeline');
+    });
+    Route::middleware('permission:view_loans')->group(function () {
         // DME change is gated by role (super_admin/admin/bdh) inside the controller,
         // not a named permission, so it lives here rather than under edit_loan.
         Route::post('/loans/{loan}/dme', [LoanController::class, 'updateDme'])->name('loans.dme.update');
+        // Loan payout user — gated by the change_payout_user permission.
+        Route::post('/loans/{loan}/payout-user', [LoanController::class, 'updatePayoutUser'])
+            ->middleware('permission:change_payout_user')->name('loans.payout-user.update');
         // Docket-date override — gated by the edit_docket_date permission. Available
         // only once the sanction stage is complete (enforced in the controller).
         Route::post('/loans/{loan}/docket-date', [LoanController::class, 'updateDocketDate'])
@@ -134,6 +144,15 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::middleware('permission:delete_loan')->group(function () {
         Route::delete('/loans/{loan}', [LoanController::class, 'destroy'])->name('loans.destroy');
+    });
+
+    // Disbursement + OTC data correction (super_admin only — import_disbursement_data
+    // is granted to no role, and the controller hard-checks the super_admin role).
+    Route::middleware('permission:import_disbursement_data')->group(function () {
+        Route::get('/loans-tools/disbursement-data', [DisbursementDataController::class, 'index'])->name('loans.disbursement-data');
+        Route::get('/loans-tools/disbursement-data/export', [DisbursementDataController::class, 'exportXlsx'])->name('loans.disbursement-data.export');
+        Route::post('/loans-tools/disbursement-data/preview', [DisbursementDataController::class, 'preview'])->name('loans.disbursement-data.preview');
+        Route::post('/loans-tools/disbursement-data/import', [DisbursementDataController::class, 'import'])->name('loans.disbursement-data.import');
     });
 
     // Loan Settings
@@ -155,10 +174,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/loan-settings/locations', [LoanSettingsController::class, 'storeLocation'])->name('loan-settings.locations.store');
         Route::delete('/loan-settings/locations/{location}', [LoanSettingsController::class, 'destroyLocation'])->name('loan-settings.locations.destroy');
         Route::post('/loan-settings/task-role-permissions', [LoanSettingsController::class, 'saveTaskRolePermissions'])->name('loan-settings.task-role-permissions.save');
+        Route::post('/loan-settings/payout-config', [WorkflowConfigController::class, 'savePayoutConfig'])->name('loan-settings.payout-config.save');
+        Route::post('/loan-settings/payout-config/product', [WorkflowConfigController::class, 'savePayoutProduct'])->name('loan-settings.payout-product.save');
     });
 
     // Stage workflow
-    Route::middleware('permission:view_loans')->group(function () {
+    Route::middleware('permission:view_loans,view_connector_loans')->group(function () {
         Route::get('/loans/{loan}/stages', [LoanStageController::class, 'index'])->name('loans.stages');
         Route::get('/loans/{loan}/transfers', [LoanStageController::class, 'transferHistory'])->name('loans.transfers');
     });
@@ -209,7 +230,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Remarks
-    Route::middleware('permission:view_loans')->group(function () {
+    Route::middleware('permission:view_loans,view_connector_loans')->group(function () {
         Route::get('/loans/{loan}/remarks', [LoanRemarkController::class, 'index'])->name('loans.remarks.index');
     });
     Route::middleware('permission:add_remarks')->group(function () {
@@ -237,6 +258,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/loans/export', [ReportController::class, 'loanReportExport'])->name('reports.loans.export');
     Route::get('/reports/management', [ReportController::class, 'management'])->name('reports.management');
     Route::get('/reports/management/data', [ReportController::class, 'managementData'])->name('reports.management.data');
+
+    // Payout report + bank-statement reconciliation (gated by view_reports).
+    Route::middleware('permission:view_reports')->group(function () {
+        // Aggregate payout runs (date-range, product-wide volume tier).
+        Route::get('/payouts/runs', [PayoutRunController::class, 'index'])->name('payouts.runs');
+        Route::post('/payouts/runs/finalize', [PayoutRunController::class, 'finalize'])
+            ->middleware('permission:finalize_payout')->name('payouts.runs.finalize');
+        Route::get('/payouts/runs/{run}', [PayoutRunController::class, 'show'])->name('payouts.runs.show');
+
+        Route::get('/payouts/report', [PayoutController::class, 'report'])->name('payouts.report');
+        Route::get('/payouts/reconcile', [PayoutController::class, 'reconcileForm'])->name('payouts.reconcile');
+        Route::get('/payouts/reconcile/template', [PayoutController::class, 'reconcileTemplate'])->name('payouts.reconcile.template');
+        Route::post('/payouts/reconcile', [PayoutController::class, 'reconcile'])->name('payouts.reconcile.run');
+    });
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

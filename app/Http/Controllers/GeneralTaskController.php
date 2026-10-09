@@ -26,7 +26,7 @@ class GeneralTaskController extends Controller
         $user = Auth::user();
         $canViewAll = $user->hasPermission('view_all_tasks');
         $isBdh = $user->hasRole('bdh');
-        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $users = User::selectable()->with('roles')->orderBy('name')->get();
 
         $template = 'newtheme.general-tasks.index';
 
@@ -242,7 +242,7 @@ class GeneralTaskController extends Controller
         }
 
         $task->load(['creator', 'assignee', 'loan', 'comments.user']);
-        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $users = User::selectable()->with('roles')->orderBy('name')->get();
 
         // Data for edit modal
         $loanLabel = '';

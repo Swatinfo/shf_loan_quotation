@@ -37,6 +37,7 @@ return [
             ['slug' => 'convert_to_loan', 'name' => 'Convert to Loan', 'description' => 'Convert quotation to loan task'],
             ['slug' => 'view_loans', 'name' => 'View Loans', 'description' => 'View loan task list'],
             ['slug' => 'view_all_loans', 'name' => 'View All Loans', 'description' => 'View all loans across users/branches'],
+            ['slug' => 'view_connector_loans', 'name' => 'View Connector Loans', 'description' => 'Read-only view of loans created from the connector\'s own quotations (list, loan detail, stages, timeline)'],
             ['slug' => 'create_loan', 'name' => 'Create Loan', 'description' => 'Create loan tasks directly'],
             ['slug' => 'edit_loan', 'name' => 'Edit Loan', 'description' => 'Edit loan details'],
             ['slug' => 'delete_loan', 'name' => 'Delete Loan', 'description' => 'Delete loan tasks'],
@@ -69,6 +70,7 @@ return [
             ['slug' => 'impersonate_users', 'name' => 'Impersonate Users', 'description' => 'Log in as another user (super_admin and admin always have this)'],
             ['slug' => 'view_activity_log', 'name' => 'View Activity Log', 'description' => 'View system activity log'],
             ['slug' => 'view_reports', 'name' => 'View Reports', 'description' => 'View the Loan Pipeline and Loan Report pages (scoped by role)'],
+            ['slug' => 'import_disbursement_data', 'name' => 'Import Disbursement Data', 'description' => 'Export/import the disbursement + OTC correction sheet (super_admin only — granted to no role by default)'],
         ],
     ],
 

@@ -8,16 +8,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermission
 {
-    public function handle(Request $request, Closure $next, string $permission): Response
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             abort(403, 'Unauthorized.');
         }
 
-        if (!$request->user()->hasPermission($permission)) {
-            abort(403, 'You do not have permission to perform this action.');
+        // Pass if the user holds ANY of the listed permissions (OR semantics).
+        foreach ($permissions as $permission) {
+            if ($request->user()->hasPermission($permission)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(403, 'You do not have permission to perform this action.');
     }
 }

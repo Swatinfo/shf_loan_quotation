@@ -127,7 +127,7 @@ class StageQueryGatingTest extends TestCase
         $this->actingAs($admin)
             ->postJson(route('loans.stages.rate-pf-action', $loan), ['action' => 'complete'])
             ->assertStatus(422)
-            ->assertJsonFragment(['error' => 'An open query is blocking this stage. Resolve it before completing.']);
+            ->assertJsonFragment(['error' => 'An open query is blocking this stage. Resolve it before continuing.']);
 
         $this->assertSame('in_progress', $a->fresh()->status);
     }
@@ -177,5 +177,56 @@ class StageQueryGatingTest extends TestCase
             ->assertOk();
 
         $this->assertSame('completed', $a->fresh()->status);
+    }
+
+    public function test_generic_transfer_blocked_by_open_query_returns_422(): void
+    {
+        // A stage cannot be transferred to another user while a query is open.
+        $admin = $this->admin();
+        $other = $this->admin();
+        $loan = $this->makeLoan($admin, 'rate_pf');
+        $a = $this->assign($loan, 'rate_pf', $admin);
+        $this->openQuery($a, $admin);
+
+        $this->actingAs($admin)
+            ->postJson(route('loans.stages.transfer', ['loan' => $loan, 'stageKey' => 'rate_pf']), ['user_id' => $other->id])
+            ->assertStatus(422)
+            ->assertJsonFragment(['error' => "Cannot transfer stage 'rate_pf' — there are unresolved queries. Resolve the open query first."]);
+
+        // No handoff happened.
+        $this->assertSame($admin->id, $a->fresh()->assigned_to);
+    }
+
+    public function test_legal_send_to_bank_transfer_blocked_by_open_query_returns_422(): void
+    {
+        // A multi-phase "send" (handoff) is also blocked while a query is open.
+        $admin = $this->admin();
+        $loan = $this->makeLoan($admin, 'parallel_processing');
+        $a = $this->assign($loan, 'legal_verification', $admin, 'in_progress', true);
+        $this->openQuery($a, $admin);
+
+        $this->actingAs($admin)
+            ->postJson(route('loans.stages.legal-action', $loan), ['action' => 'send_to_bank', 'suggested_legal_advisor' => 'Adv. Test'])
+            ->assertStatus(422)
+            ->assertJsonFragment(['error' => 'An open query is blocking this stage. Resolve it before continuing.']);
+
+        $this->assertSame($admin->id, $a->fresh()->assigned_to);
+    }
+
+    public function test_query_resolved_unblocks_transfer(): void
+    {
+        $admin = $this->admin();
+        $other = $this->admin();
+        $loan = $this->makeLoan($admin, 'rate_pf');
+        $a = $this->assign($loan, 'rate_pf', $admin);
+        $q = $this->openQuery($a, $admin);
+
+        $q->update(['status' => 'resolved']);
+
+        $this->actingAs($admin)
+            ->postJson(route('loans.stages.transfer', ['loan' => $loan, 'stageKey' => 'rate_pf']), ['user_id' => $other->id])
+            ->assertOk();
+
+        $this->assertSame($other->id, $a->fresh()->assigned_to);
     }
 }

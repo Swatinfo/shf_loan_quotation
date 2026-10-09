@@ -103,7 +103,7 @@
                             <select id="qxCreatedBy" class="select">
                                 <option value="">All Users</option>
                                 @foreach ($users as $u)
-                                    <option value="{{ $u->id }}">{{ $u->name }}</option>
+                                    <option value="{{ $u->id }}">{{ $u->name }}@if ($u->workflow_role_label) ({{ $u->workflow_role_label }})@endif</option>
                                 @endforeach
                             </select>
                         </div>

@@ -117,7 +117,7 @@
                             <select id="filterUser" class="input lr-input">
                                 <option value="">All Users</option>
                                 @foreach ($users as $reportUser)
-                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}</option>
+                                    <option value="{{ $reportUser->id }}">{{ $reportUser->name }}@if ($reportUser->workflow_role_label) ({{ $reportUser->workflow_role_label }})@endif</option>
                                 @endforeach
                             </select>
                         </div>
@@ -140,6 +140,14 @@
             <div class="lr-total-card">
                 <div class="lr-total-lbl">Total Disbursed</div>
                 <div class="lr-total-val" id="lrTotalDisbursed">—</div>
+            </div>
+            <div class="lr-total-card">
+                <div class="lr-total-lbl">Settled (OTC done)</div>
+                <div class="lr-total-val" id="lrTotalSettled">—</div>
+            </div>
+            <div class="lr-total-card">
+                <div class="lr-total-lbl">Pending OTC</div>
+                <div class="lr-total-val" id="lrTotalPendingOtc">—</div>
             </div>
         </div>
 

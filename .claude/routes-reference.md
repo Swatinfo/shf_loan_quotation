@@ -156,17 +156,19 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 | POST | `/loan-settings/locations` | `loan-settings.locations.store` | LoanSettingsController@storeLocation |
 | DELETE | `/loan-settings/locations/{location}` | `loan-settings.locations.destroy` | LoanSettingsController@destroyLocation |
 | POST | `/loan-settings/task-role-permissions` | `loan-settings.task-role-permissions.save` | LoanSettingsController@saveTaskRolePermissions |
+| POST | `/loan-settings/payout-config` | `loan-settings.payout-config.save` | WorkflowConfigController@savePayoutConfig (`manage_workflow_config`; ConfigService `payoutConfig`) |
+| POST | `/loan-settings/payout-config/product` | `loan-settings.payout-product.save` | WorkflowConfigController@savePayoutProduct (`manage_workflow_config`; per-product slabs/cycle/cap/PF — moved off storeProduct) |
 
 ## Loans (CRUD)
 
 | Method | URI | Name | Controller | Permission |
 |---|---|---|---|---|
-| GET | `/loans` | `loans.index` | LoanController@index | view_loans |
-| GET | `/loans/data` | `loans.data` | LoanController@loanData | view_loans |
+| GET | `/loans` | `loans.index` | LoanController@index | view_loans **OR view_connector_loans** |
+| GET | `/loans/data` | `loans.data` | LoanController@loanData | view_loans **OR view_connector_loans** |
 | GET | `/loans/create` | `loans.create` | LoanController@create | create_loan |
 | POST | `/loans` | `loans.store` | LoanController@store | create_loan |
-| GET | `/loans/{loan}` | `loans.show` | LoanController@show | view_loans |
-| GET | `/loans/{loan}/timeline` | `loans.timeline` | LoanController@timeline | view_loans |
+| GET | `/loans/{loan}` | `loans.show` | LoanController@show | view_loans **OR view_connector_loans** |
+| GET | `/loans/{loan}/timeline` | `loans.timeline` | LoanController@timeline | view_loans **OR view_connector_loans** |
 | GET | `/customers/lookup?pan=` | `customers.lookup` | CustomerController@lookup | view_customers (global PAN lookup for convert/edit autofill) |
 | POST | `/loans/{loan}/dme` | `loans.dme.update` | LoanController@updateDme | view_loans (+ role super_admin/admin/bdh enforced in controller; requires app_number complete) |
 | POST | `/loans/{loan}/docket-date` | `loans.docket-date.update` | LoanController@updateDocketDate | view_loans + edit_docket_date (requires sanction complete; mandatory reason; logs old→new to activity_log) |
@@ -177,12 +179,12 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 
 ## Loan Stages
 
-Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`; `loans.stages.reset` uses `reset_loan_stages`.
+CheckPermission is variadic: `permission:a,b` passes if the user holds EITHER. The loan read routes use `view_loans,view_connector_loans` so connectors get read-only access (scoped by scopeVisibleTo to their own quotations' loans). Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`; `loans.stages.reset` uses `reset_loan_stages`.
 
 | Method | URI | Name | Controller |
 |---|---|---|---|
-| GET | `/loans/{loan}/stages` | `loans.stages` | LoanStageController@index (perm: view_loans) |
-| GET | `/loans/{loan}/transfers` | `loans.transfers` | LoanStageController@transferHistory (perm: view_loans) |
+| GET | `/loans/{loan}/stages` | `loans.stages` | LoanStageController@index (perm: view_loans **OR view_connector_loans**) |
+| GET | `/loans/{loan}/transfers` | `loans.transfers` | LoanStageController@transferHistory (perm: view_loans **OR view_connector_loans**; connector-only readers visibility-checked) |
 | POST | `/loans/{loan}/stages/reset` | `loans.stages.reset` | LoanStageController@resetStage (perm: reset_loan_stages; rewinds loan to a stage) |
 | POST | `/loans/{loan}/stages/{stageKey}/status` | `loans.stages.status` | LoanStageController@updateStatus |
 | POST | `/loans/{loan}/stages/{stageKey}/assign` | `loans.stages.assign` | LoanStageController@assign |
@@ -192,7 +194,7 @@ Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions:
 | POST | `/loans/{loan}/stages/{stageKey}/notes` | `loans.stages.notes` | LoanStageController@saveNotes |
 | POST | `/loans/{loan}/kfs/loan-amount` | `loans.kfs.amount.update` | LoanStageController@updateKfsLoanAmount (KFS owner/admin edits loan_amount; original preserved; `manage_loan_stages` + assignee check) |
 | POST | `/loans/{loan}/stages/{stageKey}/skip` | `loans.stages.skip` | LoanStageController@skip (perm: skip_loan_stages) |
-| GET | `/loans/{loan}/stages/{stageKey}/eligible-users` | `loans.stages.eligible-users` | LoanStageController@eligibleUsers |
+| GET | `/loans/{loan}/stages/{stageKey}/eligible-users` | `loans.stages.eligible-users` | LoanStageController@eligibleUsers (JSON `{users:[{id,name,email,role}], default_user_id}`; `selectable()` — no super_admin/admin) |
 | POST | `/loans/{loan}/stages/technical_valuation/action` | `loans.stages.technical-valuation-action` | LoanStageController@technicalValuationAction |
 | POST | `/loans/{loan}/stages/esign/action` | `loans.stages.esign-action` | LoanStageController@esignAction |
 | POST | `/loans/{loan}/stages/docket/action` | `loans.stages.docket-action` | LoanStageController@docketAction |
@@ -235,6 +237,16 @@ Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions:
 | POST | `/loans/{loan}/disbursement/complete` | `loans.disbursement.complete` | LoanDisbursementController@complete | manage_loan_stages |
 
 `store` saves tranche entries (partial totals allowed; stage auto-completes at the disbursement target). `complete` = manual "Mark as Fully Disbursed" for intentional under-disbursement.
+
+### Disbursement Data correction tool (super_admin only)
+| Method | URI | Name | Controller |
+|---|---|---|---|
+| GET | `/loans-tools/disbursement-data` | `loans.disbursement-data` | DisbursementDataController@index |
+| GET | `/loans-tools/disbursement-data/export` | `loans.disbursement-data.export` | @exportXlsx |
+| POST | `/loans-tools/disbursement-data/preview` | `loans.disbursement-data.preview` | @preview (dry-run; stashes the file, returns a token) |
+| POST | `/loans-tools/disbursement-data/import` | `loans.disbursement-data.import` | @import (applies by token) |
+
+Gated `permission:import_disbursement_data` (granted to no role) + a hard `super_admin` role check in the controller. Exports one row per active disbursed tranche; re-import rewrites the tranche + `disbursement_details.entries` JSON + amounts + bank/product + loan-level **Loan Advisor** / **Payout User** (resolved by name) via `DisbursementDataService` → `DisbursementService::processDisbursement` (re-resolves loan status/stages). A read-only **Payout Run** column flags tranches locked in a finalized run; delete is blocked for any payout-finalized tranche (`payout_run_id` or legacy `loan_payout_id`). `/loans-tools/*` prefix avoids the `/loans/{loan}` bind. See `.claude/services-reference.md`.
 
 ## Loan Remarks
 
@@ -371,6 +383,26 @@ re-apply the same gate + `reportScope`/`applyScope`, and always export **all**
 matching rows (no pagination). Amounts are raw numeric cells, dates are real
 date serials (`dd/mm/yyyy`); pipeline stage lines flatten into one wrapped
 "Current Stage(s)" cell; `tab=workload` exports the workload-by-user table.
+
+## Payouts
+
+All under the `permission:view_reports` group.
+
+| Method | URI | Name | Controller | Permission |
+|---|---|---|---|---|
+| GET | `/payouts/runs` | `payouts.runs` | PayoutRunController@index | view_reports |
+| POST | `/payouts/runs/finalize` | `payouts.runs.finalize` | PayoutRunController@finalize | finalize_payout |
+| GET | `/payouts/runs/{run}` | `payouts.runs.show` | PayoutRunController@show | view_reports |
+| GET | `/payouts/report` | `payouts.report` | PayoutController@report | view_reports |
+| GET | `/payouts/reconcile` | `payouts.reconcile` | PayoutController@reconcileForm | view_reports |
+| GET | `/payouts/reconcile/template` | `payouts.reconcile.template` | PayoutController@reconcileTemplate | view_reports |
+| POST | `/payouts/reconcile` | `payouts.reconcile.run` | PayoutController@reconcile | view_reports |
+
+**Payout Runs** is the payout system of record (aggregate, product-wide, date-range): pick a from/to → preview per-product tiers + per-user net → **Finalize Run** (snapshots rates/slabs onto the `payout_run_*` tables, stamps the covered tranches). See `PayoutRunService` in `.claude/services-reference.md`.
+
+**Reconcile** is **verify-only** (2026-10-07): upload the bank statement for a bank + date range and match it against our disbursed entries; it no longer finalizes — a "Run Payout for this period →" button opens `payouts.runs` pre-filled. **Report** is read-only history of the legacy `loan_payouts` ledger.
+
+**Removed 2026-10-07**: `loans.payout.finalize` (+ `LoanPayoutController`) and `payouts.reconcile.finalize` (+ `PayoutController::reconcileFinalize`) — the per-loan / reconcile finalize write paths. The loan show page now shows only the assigned Payout User + a link to Payout Runs.
 
 ## API endpoints
 

@@ -32,7 +32,7 @@
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
                     @if ($loan->product?->name) / {{ $loan->product->name }}@endif
                     @if ($v && $v->final_valuation)
-                        <span class="vm-chip">Final ₹ {{ number_format($v->final_valuation) }}</span>
+                        <span class="vm-chip">Final ₹ {{ inr($v->final_valuation) }}</span>
                     @endif
                 </div>
             </div>
@@ -177,7 +177,7 @@
                             <label class="lbl" for="landValuation">Land Valuation</label>
                             <div class="vm-amount">
                                 <span class="vm-rupee">₹</span>
-                                <input type="text" id="landValuation" class="input vm-amount-input vm-readonly" value="{{ $v?->land_valuation ? number_format($v->land_valuation) : '' }}" readonly>
+                                <input type="text" id="landValuation" class="input vm-amount-input vm-readonly" value="{{ $v?->land_valuation ? inr($v->land_valuation) : '' }}" readonly>
                             </div>
                             <div class="vm-words" id="landValWords"></div>
                         </div>
@@ -205,7 +205,7 @@
                             <label class="lbl" for="constructionValuation">Construction Valuation</label>
                             <div class="vm-amount">
                                 <span class="vm-rupee">₹</span>
-                                <input type="text" id="constructionValuation" class="input vm-amount-input vm-readonly" value="{{ $v?->construction_valuation ? number_format($v->construction_valuation) : '' }}" readonly>
+                                <input type="text" id="constructionValuation" class="input vm-amount-input vm-readonly" value="{{ $v?->construction_valuation ? inr($v->construction_valuation) : '' }}" readonly>
                             </div>
                             <div class="vm-words" id="constValWords"></div>
                         </div>
@@ -222,7 +222,7 @@
                             <label class="lbl" for="finalValuation">Total Valuation Amount</label>
                             <div class="vm-amount vm-amount-hero">
                                 <span class="vm-rupee">₹</span>
-                                <input type="text" id="finalValuation" class="input vm-amount-input vm-amount-hero-input" value="{{ $v?->final_valuation ? number_format($v->final_valuation) : '' }}" readonly>
+                                <input type="text" id="finalValuation" class="input vm-amount-input vm-amount-hero-input" value="{{ $v?->final_valuation ? inr($v->final_valuation) : '' }}" readonly>
                             </div>
                             <div class="vm-words" id="finalValWords"></div>
                         </div>

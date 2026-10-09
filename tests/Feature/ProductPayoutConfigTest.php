@@ -4,16 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Bank;
 use App\Models\Product;
-use App\Models\ProductPayoutSlab;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Product payout configuration: `is_pf_based` flag + optional `max_payout_amount`
- * cap on products, and payout slabs (low/high range + fixed-₹ or % payout) in the
- * dedicated `product_payout_slabs` table. Storage only — no payout calculation yet.
+ * Product payout config: connector slab columns + payout cycle days save and
+ * validate alongside the existing standard slab config.
  */
 class ProductPayoutConfigTest extends TestCase
 {
@@ -22,201 +21,82 @@ class ProductPayoutConfigTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::firstOrCreate(['slug' => 'super_admin'], ['name' => 'Super Admin']);
+        app(PermissionService::class)->clearAllCaches();
     }
 
-    private function admin(): User
+    private function superAdmin(): User
     {
-        $user = User::create([
-            'name' => 'Admin '.uniqid(),
-            'email' => uniqid().'@test',
-            'password' => bcrypt('x'),
-            'is_active' => true,
-        ]);
-        $user->roles()->sync(Role::where('slug', 'super_admin')->pluck('id'));
+        $u = User::create(['name' => 'SA', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $u->roles()->sync(Role::where('slug', 'super_admin')->pluck('id'));
 
-        return $user->fresh('roles');
+        return $u->fresh('roles');
     }
 
-    private function slab(int $low, int $high, string $type = 'amount', float $value = 5000): array
+    private function product(Bank $bank, string $name = 'Home Loan'): Product
     {
-        return [
-            'low_amount' => $low,
-            'high_amount' => $high,
-            'payout_type' => $type,
-            'payout_value' => $value,
-        ];
+        return Product::create(['bank_id' => $bank->id, 'name' => $name, 'is_active' => true]);
     }
 
-    public function test_store_product_with_payout_config_persists_slabs(): void
+    public function test_product_store_creates_identity_without_payout(): void
     {
+        $admin = $this->superAdmin();
         $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
 
-        $this->actingAs($this->admin())
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Home Loan',
-                'is_pf_based' => '1',
-                'max_payout_amount' => '50000.75',
-                'slabs' => [
-                    $this->slab(2500001, 5000000, 'percent', 0.5),
-                    $this->slab(0, 1000000, 'amount', 2000),
-                    $this->slab(1000001, 2500000, 'amount', 5000),
-                ],
-            ])
-            ->assertSessionHas('success');
+        // The product form no longer carries payout — identity only.
+        $this->actingAs($admin)->post(route('loan-settings.products.store'), [
+            'bank_id' => $bank->id,
+            'name' => 'Home Loan',
+            'code' => 'HL',
+        ])->assertRedirect();
 
-        $product = Product::where('name', 'Home Loan')->firstOrFail();
-        $this->assertTrue($product->is_pf_based);
-        // decimal:2 cast returns a string with exactly two decimal places.
-        $this->assertSame('50000.75', $product->max_payout_amount);
-
-        $slabs = $product->payoutSlabs;
-        $this->assertCount(3, $slabs);
-        // Relation orders by low_amount regardless of input order.
-        $this->assertSame([0, 1000001, 2500001], $slabs->pluck('low_amount')->all());
-        $this->assertSame('percent', $slabs->last()->payout_type);
-        $this->assertSame(0.5, $slabs->last()->payout_value);
+        $product = Product::where('name', 'Home Loan')->first();
+        $this->assertNotNull($product);
+        $this->assertFalse((bool) $product->is_pf_based);
+        $this->assertNull($product->max_payout_amount);
     }
 
-    public function test_edit_replaces_slabs_and_updates_flags(): void
+    public function test_saves_connector_slab_and_cycle_days(): void
     {
+        $admin = $this->superAdmin();
         $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-        $product = Product::create(['bank_id' => $bank->id, 'name' => 'LAP', 'is_pf_based' => true, 'max_payout_amount' => 90000]);
-        $product->payoutSlabs()->create($this->slab(0, 500000));
-        $product->payoutSlabs()->create($this->slab(500001, 900000));
+        $product = $this->product($bank);
 
-        $this->actingAs($this->admin())
-            ->post(route('loan-settings.products.store'), [
-                'id' => $product->id,
-                'bank_id' => $bank->id,
-                'name' => 'LAP Renamed',
-                'max_payout_amount' => '',
-                'slabs' => [$this->slab(0, 2000000, 'percent', 1.25)],
-            ])
-            ->assertSessionHas('success');
+        $this->actingAs($admin)->post(route('loan-settings.payout-product.save'), [
+            'product_id' => $product->id,
+            'is_pf_based' => 1,
+            'max_payout_amount' => 50000,
+            'payout_cycle_start_day' => 16,
+            'payout_cycle_end_day' => 15,
+            'slabs' => [
+                ['low_amount' => 0, 'high_amount' => 100000000, 'payout_type' => 'percent', 'payout_value' => 1.0,
+                    'connector_payout_type' => 'percent', 'connector_payout_value' => 2.5],
+            ],
+        ])->assertRedirect();
 
         $product->refresh();
-        $this->assertSame('LAP Renamed', $product->name);
-        $this->assertFalse($product->is_pf_based); // unchecked checkbox → false
-        $this->assertNull($product->max_payout_amount);
-        $this->assertCount(1, $product->payoutSlabs);
-        $this->assertSame(2000000, $product->payoutSlabs->first()->high_amount);
-        $this->assertSame(1, ProductPayoutSlab::count());
+        $this->assertTrue((bool) $product->is_pf_based);
+        $this->assertSame(16, $product->payout_cycle_start_day);
+        $this->assertSame(15, $product->payout_cycle_end_day);
+
+        $slab = $product->payoutSlabs()->first();
+        $this->assertSame('percent', $slab->connector_payout_type);
+        $this->assertSame(2.5, (float) $slab->connector_payout_value);
     }
 
-    public function test_max_payout_amount_rejects_more_than_two_decimals(): void
+    public function test_rejects_connector_percent_over_100(): void
     {
+        $admin = $this->superAdmin();
         $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
+        $product = $this->product($bank, 'Bad Loan');
 
-        $this->actingAs($this->admin())
-            ->from(route('loan-settings.index'))
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Precise Product',
-                'max_payout_amount' => '50000.759',
-            ])
-            ->assertSessionHasErrors('max_payout_amount');
+        $this->actingAs($admin)->from(route('loan-settings.index'))->post(route('loan-settings.payout-product.save'), [
+            'product_id' => $product->id,
+            'slabs' => [
+                ['low_amount' => 0, 'high_amount' => 100000000, 'payout_type' => 'percent', 'payout_value' => 1.0,
+                    'connector_payout_type' => 'percent', 'connector_payout_value' => 150],
+            ],
+        ])->assertSessionHas('error');
 
-        $this->assertDatabaseMissing('products', ['name' => 'Precise Product']);
-    }
-
-    public function test_overlapping_slab_ranges_are_rejected(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-
-        $this->actingAs($this->admin())
-            ->from(route('loan-settings.index'))
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Overlap Product',
-                'slabs' => [
-                    $this->slab(0, 1000000),
-                    $this->slab(900000, 2000000), // overlaps previous
-                ],
-            ])
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseMissing('products', ['name' => 'Overlap Product']);
-        $this->assertSame(0, ProductPayoutSlab::count());
-    }
-
-    public function test_high_range_must_exceed_low_range(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-
-        $this->actingAs($this->admin())
-            ->from(route('loan-settings.index'))
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Bad Range',
-                'slabs' => [$this->slab(500000, 500000)],
-            ])
-            ->assertSessionHasErrors('slabs.0.high_amount');
-
-        $this->assertDatabaseMissing('products', ['name' => 'Bad Range']);
-    }
-
-    public function test_percentage_payout_above_100_is_rejected(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-
-        $this->actingAs($this->admin())
-            ->from(route('loan-settings.index'))
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Pct Product',
-                'slabs' => [$this->slab(0, 1000000, 'percent', 150)],
-            ])
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseMissing('products', ['name' => 'Pct Product']);
-    }
-
-    public function test_product_without_payout_config_still_saves(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-
-        $this->actingAs($this->admin())
-            ->post(route('loan-settings.products.store'), [
-                'bank_id' => $bank->id,
-                'name' => 'Plain Product',
-            ])
-            ->assertSessionHas('success');
-
-        $product = Product::where('name', 'Plain Product')->firstOrFail();
-        $this->assertFalse($product->is_pf_based);
-        $this->assertNull($product->max_payout_amount);
-        $this->assertCount(0, $product->payoutSlabs);
-    }
-
-    public function test_product_listing_shows_min_and_max_slab_range(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-        $product = Product::create(['bank_id' => $bank->id, 'name' => 'Range Product']);
-        $product->payoutSlabs()->create($this->slab(100000, 1000000));
-        $product->payoutSlabs()->create($this->slab(1000001, 75000000));
-
-        $this->actingAs($this->admin())
-            ->get(route('loan-settings.index'))
-            ->assertOk()
-            // Lowest slab low_amount – highest slab high_amount, Indian format.
-            ->assertSee("₹\u{00A0}1,00,000")
-            ->assertSee("₹\u{00A0}7,50,00,000");
-    }
-
-    public function test_soft_deleting_product_keeps_slabs_for_restore(): void
-    {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-        $product = Product::create(['bank_id' => $bank->id, 'name' => 'Deletable']);
-        $product->payoutSlabs()->create($this->slab(0, 1000000));
-
-        $this->actingAs($this->admin())
-            ->deleteJson(route('loan-settings.products.destroy', $product))
-            ->assertOk();
-
-        $this->assertSoftDeleted('products', ['id' => $product->id]);
-        // Soft delete → FK cascade does not fire; slabs stay for a potential restore.
-        $this->assertSame(1, ProductPayoutSlab::where('product_id', $product->id)->count());
+        $this->assertSame(0, $product->payoutSlabs()->count());
     }
 }

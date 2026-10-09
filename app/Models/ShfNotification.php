@@ -45,7 +45,10 @@ class ShfNotification extends Model
             // In-tab live updates are handled by the bell-badge poll
             // (newtheme/layouts/app.blade.php), which also plays the chime when
             // the unread count rises — no WebSocket/broadcast dependency.
-            if ($user = $notification->user) {
+            // Skipped when the recipient has a registered native device (Flutter
+            // app): that device is notified via FCM below, so Web Push would
+            // double-notify.
+            if (($user = $notification->user) && ! $user->deviceTokens()->exists()) {
                 try {
                     $user->notify(new ShfPushNotification($notification));
                 } catch (\Throwable $e) {

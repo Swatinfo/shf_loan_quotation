@@ -87,6 +87,8 @@
                 '<div class="mg-step-meta">' +
                 (showPct && s.pct != null ? '<span class="mg-pill">' + s.pct + '% of previous</span>' : '') +
                 (s.avg_days != null ? '<span class="mg-pill days">avg ' + s.avg_days + 'd</span>' : '') +
+                (s.settled != null ? '<span class="mg-pill">settled ' + escapeHtml(s.settled) + '</span>' : '') +
+                (s.pending_otc != null ? '<span class="mg-pill days">OTC pending ' + escapeHtml(s.pending_otc) + '</span>' : '') +
                 '</div>' +
                 '</div>';
         }

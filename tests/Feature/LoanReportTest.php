@@ -8,6 +8,7 @@ use App\Models\LoanDetail;
 use App\Models\Role;
 use App\Models\StageAssignment;
 use App\Models\User;
+use App\Services\NumberToWordsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -96,6 +97,8 @@ class LoanReportTest extends TestCase
         DB::table('disbursement_entries')->insert([
             'loan_id' => $loan->id, 'disbursement_detail_id' => $detailId,
             'disbursement_date' => $date, 'method' => 'fund_transfer', 'amount' => $amount,
+            // Settlement-date basis: NEFT settles on its transfer date.
+            'transfer_date' => $date, 'otc_status' => 'skipped', 'otc_handover_date' => $date,
             'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -167,6 +170,30 @@ class LoanReportTest extends TestCase
 
         $this->assertNull(collect($resp->json('data'))->firstWhere('loan_number', $theirs->loan_number));
         $this->assertSame(0, $resp->json('totals.count'));
+    }
+
+    public function test_disbursed_totals_split_into_settled_and_pending_otc(): void
+    {
+        $admin = $this->makeUser('admin');
+        $loan = $this->makeLoan($admin);
+        $this->addDisbursementEntry($loan, '2026-03-05', 4000000); // settled NEFT (handover set)
+        // Pending cheque 60L — disbursed but OTC not yet cleared.
+        DB::table('disbursement_entries')->insert([
+            'loan_id' => $loan->id,
+            'disbursement_detail_id' => DB::table('disbursement_details')->where('loan_id', $loan->id)->value('id'),
+            'disbursement_date' => '2026-03-06', 'method' => 'cheque', 'amount' => 6000000,
+            'otc_status' => 'pending', 'otc_handover_date' => null,
+            'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $totals = $this->actingAs($admin)
+            ->getJson(route('reports.loans.data', ['status' => 'disbursed']))
+            ->assertOk()->json('totals');
+
+        $fmt = fn (int $n) => NumberToWordsService::formatCurrency($n);
+        $this->assertSame($fmt(10000000), $totals['disbursed']);   // all money out
+        $this->assertSame($fmt(4000000), $totals['settled']);      // OTC settled portion
+        $this->assertSame($fmt(6000000), $totals['pending_otc']);  // gap = awaiting OTC
     }
 
     public function test_status_filter_splits_sanctioned_and_disbursed(): void

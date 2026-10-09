@@ -249,4 +249,17 @@ return [
     ],
     'gstPercent' => 18,
     'ourServices' => "Home Loan, Mortgage Loan, Commercial Loan, Industrial Loan,\nLand Loan, Over Draft(OD)",
+
+    /*
+     * Payout config — percentage rates used in payout math. The operator enters
+     * `value` (a percent); `calc` is derived server-side as value/100 (the
+     * decimal multiplier) and shown read-only. `effective_from` (Y-m-d, nullable)
+     * is per rate; the calc inherits it from its value.
+     */
+    'payoutConfig' => [
+        'admin_gst' => ['value' => 18, 'calc' => 0.18, 'effective_from' => null],
+        'pf_gst' => ['value' => 18, 'calc' => 0.18, 'effective_from' => null],
+        'user_tds' => ['value' => 5, 'calc' => 0.05, 'effective_from' => null],
+        'user_insurance' => ['value' => 2, 'calc' => 0.02, 'effective_from' => null],
+    ],
 ];

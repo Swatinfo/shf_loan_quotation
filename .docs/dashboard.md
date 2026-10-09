@@ -26,6 +26,8 @@ as a KPI strip — just interactive.
 
 All tabs are permission-gated for visibility. Default selection is **data-driven** — pick the tab that has the most actionable items, not merely the first visible one.
 
+> **Connector dashboard (2026-10-06):** a connector-only user (`view_connector_loans`, no `view_loans`/workflow role) sees the **Loans** tab (their own quotations' loans, read-only) plus Personal Tasks + Quotations; **Stage Breakdown** and **My Tasks** are hidden for them (both resolve empty — the breakdown "own" scope and stage assignments don't include a connector). Gated in `DashboardController::newthemeTabsConfig` via `$canSeeLoans`/`$connectorOnly`.
+
 ### Tab bar visual style (KPI-chip look)
 
 The tab row (`.page-header .tabs`) is styled to mirror the retired KPI strip, so the two read as one
@@ -172,10 +174,11 @@ carries no count badge.
   `disbursement_entries`). Spill/Logged-in fall back to `loan_amount` when a loan has
   no `sanctioned_amount` yet (so the tile never shows ₹0 for a real docket-phase loan).
   OTC Clearance also absorbs **every completed loan** (`status = completed`, or
-  `otc_clearance` completed/skipped). A `partial_disbursed` loan (disbursement started,
-  not yet completed — incl. fully disbursed but OTC-pending) has tranches and is not
-  completed, so it lands in **Cheque/Transfer Entry** until it completes; the classifier
-  needed no change for per-entry OTC (status-agnostic load + entries-based buckets).
+  `otc_clearance` completed/skipped). A partially-disbursed loan (not yet completed) is
+  split by OTC: **Cheque / Transfer Entry** (≥1 cheque OTC still pending) vs **Partially
+  Completed** (`entry_settled` — every tranche's OTC settled: cheques cleared/skipped and
+  fund transfers auto-settled, awaiting the next disbursement). Cheque-vs-fund-transfer and
+  settled-vs-pending are read from the eager-loaded `method` + `otc_status`.
   Dashboard "active loan" counts/tiles/tabs/pipeline/bank-mix include `partial_disbursed`
   via `scopeActive` (IN_FLIGHT).
 - **Scope blocks by role**: `view_all_loans` → one **All** block; branch_manager/bdh →
@@ -188,8 +191,11 @@ carries no count badge.
   applied by an **Apply** button). Calendar periods (not rolling days), matching the
   Management report. The active range is shown in the card header.
 - The Disbursement section carries a derived **Total Disbursed** tile = Cheque/Transfer
-  Entry + OTC Clearance (disjoint, so no double count); it's excluded from the section
-  subtotal and reconciles with the Management report's "Disbursed."
+  Entry + Partially Completed + OTC Clearance (disjoint, so no double count); it's excluded
+  from the section subtotal and reconciles with the Management report's "Disbursed."
+- The loan carries `isPartiallyCompleted()` (status `partial_disbursed` + every active
+  tranche OTC-settled) — drives a **Partially Completed** badge on the loan show page and
+  the loans-list row; the dashboard **Partially Completed** tile deep-links to the same set.
 - **Bank / Product / Branch filters** (AND-combined with scope/user/date): Bank →
   Product cascade (Product disabled until a Bank is picked, then limited to that bank's
   products); Branch options are scoped (all for `view_all_loans`, the user's own branches

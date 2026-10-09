@@ -3,14 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\DailyVisitReport;
 use App\Models\LoanDetail;
+use App\Models\Quotation;
 use App\Models\User;
 use App\Services\ConfigService;
 use App\Validation\DvrValidationRules;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DailyVisitReportController extends Controller
 {
@@ -25,7 +30,7 @@ class DailyVisitReportController extends Controller
         $canViewAll = $user->hasPermission('view_all_dvr');
         $isBdh = $user->hasRole('bdh');
         $isBranchManager = $user->hasRole('branch_manager');
-        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $users = User::selectable()->with('roles')->orderBy('name')->get();
         $contactTypes = $config['dvrContactTypes'] ?? [];
         $purposes = $config['dvrPurposes'] ?? [];
         $canCreate = $user->hasPermission('create_dvr');
@@ -53,7 +58,7 @@ class DailyVisitReportController extends Controller
         if ($view === 'my_visits') {
             $query->where('user_id', $user->id);
         } elseif ($view === 'my_branch' && $user->hasAnyRole(['bdh', 'branch_manager'])) {
-            $branchUserIds = \Illuminate\Support\Facades\DB::table('user_branches')
+            $branchUserIds = DB::table('user_branches')
                 ->whereIn('branch_id', $user->branches()->pluck('branches.id'))
                 ->pluck('user_id')
                 ->unique()
@@ -96,10 +101,10 @@ class DailyVisitReportController extends Controller
 
         // Date range filter
         if ($request->filled('date_from')) {
-            $query->where('visit_date', '>=', \Carbon\Carbon::createFromFormat('d/m/Y', $request->date_from)->toDateString());
+            $query->where('visit_date', '>=', Carbon::createFromFormat('d/m/Y', $request->date_from)->toDateString());
         }
         if ($request->filled('date_to')) {
-            $query->where('visit_date', '<=', \Carbon\Carbon::createFromFormat('d/m/Y', $request->date_to)->toDateString());
+            $query->where('visit_date', '<=', Carbon::createFromFormat('d/m/Y', $request->date_to)->toDateString());
         }
 
         // User filter (for admin/BDH)
@@ -240,8 +245,8 @@ class DailyVisitReportController extends Controller
                 'contact_type_key' => $visit->contact_type,
                 'purpose' => $purposeLabel,
                 'purpose_key' => $visit->purpose,
-                'notes' => $visit->notes ? e(\Illuminate\Support\Str::limit($visit->notes, 60)) : '',
-                'outcome' => $visit->outcome ? e(\Illuminate\Support\Str::limit($visit->outcome, 60)) : '',
+                'notes' => $visit->notes ? e(Str::limit($visit->notes, 60)) : '',
+                'outcome' => $visit->outcome ? e(Str::limit($visit->outcome, 60)) : '',
                 'user_name' => e($visit->user?->name ?? '—'),
                 'loan_info' => $loanInfo,
                 'follow_up_html' => $followUpHtml,
@@ -271,7 +276,7 @@ class DailyVisitReportController extends Controller
 
         $user = Auth::user();
         $validated['user_id'] = $user->id;
-        $validated['visit_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
+        $validated['visit_date'] = Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
         $validated['branch_id'] = $user->default_branch_id;
 
         // Derive follow-up state from the date. No date entered = visit is
@@ -279,7 +284,7 @@ class DailyVisitReportController extends Controller
         // doesn't sit "pending" forever. A date entered = follow_up_needed = true
         // (still open) regardless of the checkbox.
         if (! empty($validated['follow_up_date'])) {
-            $validated['follow_up_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
+            $validated['follow_up_date'] = Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
             $validated['follow_up_needed'] = true;
             $validated['is_follow_up_done'] = false;
         } else {
@@ -334,7 +339,7 @@ class DailyVisitReportController extends Controller
         // Get visit chain for timeline
         $visitChain = $dvr->getVisitChain();
 
-        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $users = User::selectable()->with('roles')->orderBy('name')->get();
 
         $template = 'newtheme.dvr.show';
 
@@ -350,11 +355,11 @@ class DailyVisitReportController extends Controller
 
         $validated = $request->validate(DvrValidationRules::update());
 
-        $validated['visit_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
+        $validated['visit_date'] = Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
 
         // Derive follow-up state from the date (mirrors store()).
         if (! empty($validated['follow_up_date'])) {
-            $validated['follow_up_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
+            $validated['follow_up_date'] = Carbon::createFromFormat('d/m/Y', $validated['follow_up_date'])->toDateString();
             $validated['follow_up_needed'] = true;
             $validated['is_follow_up_done'] = false;
         } else {
@@ -454,7 +459,7 @@ class DailyVisitReportController extends Controller
         }
 
         $user = Auth::user();
-        $query = \App\Models\Quotation::where('customer_name', 'like', "%{$search}%");
+        $query = Quotation::where('customer_name', 'like', "%{$search}%");
 
         if (! $user->hasPermission('view_all_quotations')) {
             $query->where('user_id', $user->id);
@@ -500,7 +505,7 @@ class DailyVisitReportController extends Controller
         $results = $results->merge($dvrContacts);
 
         // 2. Search customers table
-        $customers = \App\Models\Customer::where(function ($q) use ($search) {
+        $customers = Customer::where(function ($q) use ($search) {
             $q->where('mobile', 'like', "%{$search}%")
                 ->orWhere('customer_name', 'like', "%{$search}%");
         })

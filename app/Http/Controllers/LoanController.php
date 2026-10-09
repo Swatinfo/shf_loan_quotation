@@ -71,7 +71,7 @@ class LoanController extends Controller
 
         // User filter list (current task owner) — only for admin/manager, mirroring the Owner Role filter.
         $users = $isAdminOrManager
-            ? User::where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ? User::selectable()->with('roles')->orderBy('name')->get()
             : collect();
 
         $template = 'newtheme.loans.index';
@@ -361,6 +361,9 @@ class LoanController extends Controller
                 'owner_info' => $ownerName !== '—' ? $ownerName.'<br><small class="text-muted">'.$timeWithOwner.'</small>' : '—',
                 'task_owner_info' => $loan->current_task_owners->pluck('name')->implode(', ') ?: '—',
                 'status_label' => '<span class="shf-badge shf-badge-'.$this->statusBadgeClass($loan->status).'">'.$loan->status_label.'</span>'
+                    .($loan->isPartiallyCompleted()
+                        ? '<br><span class="shf-badge shf-badge-green shf-text-2xs" title="Partially disbursed — all current OTC settled, awaiting the next disbursement">Partially Completed</span>'
+                        : '')
                     .(in_array($loan->status, ['on_hold', 'cancelled', 'rejected']) && ($loan->status_reason || $loan->rejection_reason)
                         ? '<br><small class="text-muted" title="'.e($loan->status_reason ?? $loan->rejection_reason).'">'.e(\Str::limit($loan->status_reason ?? $loan->rejection_reason, 40)).'</small>'
                         : ''),
@@ -393,7 +396,7 @@ class LoanController extends Controller
             : $user->branches()->where('is_active', true)->with('location.parent')->orderBy('name')->get();
 
         $products = Product::active()->with(['bank', 'locations'])->orderBy('name')->get();
-        $advisors = User::advisorEligible()->with(['branches', 'locations'])->orderBy('name')->get();
+        $advisors = User::advisorEligible()->with(['branches', 'locations', 'roles'])->orderBy('name')->get();
 
         // Build branch → location map and product → location map for JS filtering
         $branchLocationMap = $branches->mapWithKeys(fn ($b) => [
@@ -439,8 +442,18 @@ class LoanController extends Controller
     {
         $this->authorizeView($loan);
 
-        $loan->load(['quotation', 'branch', 'bank', 'product', 'creator', 'advisor', 'dme', 'customerKycDetails', 'location.parent']);
+        $loan->load(['quotation', 'branch', 'bank', 'product', 'creator', 'advisor', 'dme', 'payoutUser', 'customerKycDetails', 'location.parent']);
         $stages = app(LoanStageService::class)->getOrderedStages();
+
+        // Payout-user change UI: gated by the change_payout_user permission.
+        $canChangePayoutUser = auth()->user()->hasPermission('change_payout_user');
+        $payoutUsers = $canChangePayoutUser
+            ? User::payoutEligible()->with('roles')->orderBy('name')->get()
+            : collect();
+
+        // Payout is now calculated product-wide on the Payout Runs screen; the
+        // loan page only shows the assigned payout user and a link there.
+        $canFinalizePayout = auth()->user()->hasPermission('finalize_payout');
 
         // DME change UI: only once the Application Number sub-stage is complete.
         $appNumberDone = $loan->stageAssignments()
@@ -449,8 +462,7 @@ class LoanController extends Controller
             ->exists();
         $canChangeDme = auth()->user()->hasAnyRole(['super_admin', 'admin', 'bdh']);
         $dmeUsers = ($appNumberDone && $canChangeDme)
-            ? User::whereHas('roles', fn ($q) => $q->whereNotIn('slug', ['super_admin', 'admin']))
-                ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ? User::selectable()->with('roles')->orderBy('name')->get()
             : collect();
 
         // Docket-date override UI: only after the Sanction stage is complete
@@ -464,7 +476,7 @@ class LoanController extends Controller
 
         $template = 'newtheme.loans.show';
 
-        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers', 'sanctionDone', 'canEditDocketDate') + ['pageKey' => 'loans']);
+        return view($template, compact('loan', 'stages', 'appNumberDone', 'canChangeDme', 'dmeUsers', 'canChangePayoutUser', 'payoutUsers', 'canFinalizePayout', 'sanctionDone', 'canEditDocketDate') + ['pageKey' => 'loans']);
     }
 
     /**
@@ -508,6 +520,51 @@ class LoanController extends Controller
             'success' => true,
             'dme_name' => $target->name,
             'message' => 'DME updated.',
+        ]);
+    }
+
+    /**
+     * Set or change the loan's payout user (disbursement payout beneficiary).
+     * Gated by the change_payout_user permission (route middleware). The target
+     * must be payout-eligible (not super_admin / admin / bank_employee / office_employee).
+     */
+    public function updatePayoutUser(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $this->authorizeView($loan);
+
+        $validated = $request->validate([
+            'payout_user_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->where('is_active', true)),
+            ],
+        ]);
+
+        $payoutId = null;
+        $name = null;
+        if (! empty($validated['payout_user_id'])) {
+            $target = User::with('roles')->find($validated['payout_user_id']);
+            abort_if(
+                ! $target || ! $target->isPayoutEligible(),
+                422,
+                'Selected user cannot be a payout user (super admin, admin, bank employee and office employee are not eligible).'
+            );
+            $payoutId = $target->id;
+            $name = $target->name;
+        }
+
+        $previous = $loan->payout_user_id;
+        $loan->update(['payout_user_id' => $payoutId]);
+
+        ActivityLog::log('change_payout_user', $loan, [
+            'from' => $previous,
+            'to' => $payoutId,
+            'payout_user_name' => $name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'payout_user_name' => $name ?? '—',
+            'message' => 'Payout user updated.',
         ]);
     }
 
@@ -592,7 +649,7 @@ class LoanController extends Controller
         $banks = Bank::active()->orderBy('name')->get();
         $branches = Branch::active()->with('location.parent')->orderBy('name')->get();
         $products = Product::active()->with(['bank', 'locations'])->orderBy('name')->get();
-        $advisors = User::whereHas('roles', fn ($q) => $q->whereNotIn('slug', ['super_admin', 'admin']))->where('is_active', true)->with(['branches', 'locations'])->orderBy('name')->get();
+        $advisors = User::selectable()->with(['branches', 'locations', 'roles'])->orderBy('name')->get();
 
         $template = 'newtheme.loans.edit';
 
@@ -749,6 +806,11 @@ class LoanController extends Controller
             if ($user->branches()->where('branches.id', $loan->branch_id)->exists()) {
                 return;
             }
+        }
+        // Connectors may view (read-only) the loans born from their own quotations.
+        if ($user->hasRole('connector') && $loan->quotation_id
+            && $loan->quotation()->where('user_id', $user->id)->exists()) {
+            return;
         }
         abort(403);
     }

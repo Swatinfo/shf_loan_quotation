@@ -84,7 +84,7 @@ class LoanDetail extends Model
         'total_charges', 'application_number', 'assigned_bank_employee',
         'due_date', 'expected_docket_date', 'rejected_at', 'rejected_by', 'rejected_stage', 'rejection_reason',
         'status_reason', 'status_changed_at', 'status_changed_by',
-        'created_by', 'assigned_advisor', 'dme_user_id', 'notes', 'workflow_config',
+        'created_by', 'assigned_advisor', 'dme_user_id', 'payout_user_id', 'notes', 'workflow_config',
     ];
 
     protected function casts(): array
@@ -158,6 +158,11 @@ class LoanDetail extends Model
         return $this->belongsTo(User::class, 'dme_user_id');
     }
 
+    public function payoutUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payout_user_id');
+    }
+
     public function bankEmployee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_bank_employee');
@@ -211,6 +216,11 @@ class LoanDetail extends Model
     public function disbursementEntries(): HasMany
     {
         return $this->hasMany(DisbursementEntry::class, 'loan_id');
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(LoanPayout::class, 'loan_id');
     }
 
     /**
@@ -421,6 +431,25 @@ class LoanDetail extends Model
     public function getStatusColorAttribute(): string
     {
         return self::STATUS_LABELS[$this->status]['color'] ?? 'secondary';
+    }
+
+    /**
+     * "Partially Completed" — a derived sub-state of `partial_disbursed`: the loan
+     * is not fully disbursed (gross < sanctioned target) yet every active tranche's
+     * OTC is already settled (cheques cleared/skipped; fund transfers auto-settle),
+     * so nothing is pending until the next disbursement. Not a stored status.
+     */
+    public function isPartiallyCompleted(): bool
+    {
+        if ($this->status !== self::STATUS_PARTIAL_DISBURSED) {
+            return false;
+        }
+
+        $entries = $this->relationLoaded('disbursementEntries')
+            ? $this->disbursementEntries->where('is_active', true)
+            : $this->disbursementEntries()->where('is_active', true)->get();
+
+        return $entries->isNotEmpty() && $entries->every(fn ($e) => $e->isOtcSettled());
     }
 
     public function getCustomerTypeLabelAttribute(): string
@@ -718,6 +747,12 @@ class LoanDetail extends Model
             // Bank/office employees also see loans they've transferred from (stage_transfers history)
             if ($user->hasRole('bank_employee') || $user->hasRole('office_employee')) {
                 $q->orWhereHas('stageTransfers', fn ($sq) => $sq->where('transferred_from', $user->id)->orWhere('transferred_to', $user->id));
+            }
+
+            // Connectors see (read-only) the loans created from their own quotations
+            // (quotation ownership is tracked by user_id).
+            if ($user->hasRole('connector')) {
+                $q->orWhereHas('quotation', fn ($sq) => $sq->where('user_id', $user->id));
             }
         });
     }

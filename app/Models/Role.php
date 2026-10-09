@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PermissionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +22,7 @@ class Role extends Model
     protected static function booted(): void
     {
         $invalidate = function (): void {
-            app(\App\Services\PermissionService::class)->clearAllCaches();
+            app(PermissionService::class)->clearAllCaches();
             static::clearAdvisorCache();
         };
 
@@ -84,6 +85,7 @@ class Role extends Model
             'loan_advisor' => 'લોન સલાહકાર',
             'bank_employee' => 'બેંક કર્મચારી',
             'office_employee' => 'ઓફિસ કર્મચારી',
+            'connector' => 'કનેક્ટર',
         ];
     }
 }

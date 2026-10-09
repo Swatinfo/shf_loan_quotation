@@ -219,6 +219,15 @@
         </div>
     </header>
 
+    @if (auth()->user()->hasRole('connector'))
+        <div class="card" style="border-left:3px solid var(--accent,#f15a29);margin:0 0 12px;">
+            <div class="card-bd" style="display:flex;align-items:center;gap:8px;color:var(--ink-2,#555);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span><strong>Connector view</strong> — read-only. Stage status and actions are disabled for you.</span>
+            </div>
+        </div>
+    @endif
+
     @include('newtheme.loans._stages-body')
 @endsection
 

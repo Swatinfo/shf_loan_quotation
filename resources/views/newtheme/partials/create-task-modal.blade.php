@@ -8,9 +8,10 @@
     .shf-client-error inline messages, focus-first-invalid on submit.
 --}}
 @php
-    $activeUsers = \App\Models\User::where('is_active', true)
+    $activeUsers = \App\Models\User::selectable()
+        ->with('roles')
         ->orderBy('name')
-        ->get(['id', 'name']);
+        ->get();
     $currentUserId = auth()->id();
 @endphp
 
@@ -44,7 +45,7 @@
                     <select name="assigned_to" id="shfCreateTaskAssignee" class="input shf-input">
                         <option value="">— Self (me) —</option>
                         @foreach ($activeUsers as $u)
-                            <option value="{{ $u->id }}" {{ $u->id === $currentUserId ? 'selected' : '' }}>{{ $u->name }}</option>
+                            <option value="{{ $u->id }}" {{ $u->id === $currentUserId ? 'selected' : '' }}>{{ $u->name }}@if ($u->workflow_role_label) ({{ $u->workflow_role_label }})@endif</option>
                         @endforeach
                     </select>
                 </div>

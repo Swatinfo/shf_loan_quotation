@@ -89,6 +89,8 @@
                         $('#branchFormTitle').text('+ Add Branch');
                     } else if (formId === 'productForm') {
                         resetProductForm();
+                    } else if (formId === 'payoutProductForm') {
+                        resetPayoutProductForm();
                     }
 
                     // Close collapse
@@ -123,8 +125,16 @@
                     if (!SHF.validateForm($(this), {
                         name: { required: true, maxlength: 255, label: 'Product Name' },
                         bank_id: { required: true, label: 'Bank' }
-                    })) { e.preventDefault(); return; }
+                    })) { e.preventDefault(); }
+                });
 
+                // Product payout form (Payout Config tab) — slab checks live here now.
+                $('#payoutProductForm').on('submit', function(e) {
+                    if (!$('#payoutProductId').val()) {
+                        e.preventDefault();
+                        productSlabErrorEl().text('Pick a product (use an Edit Payout button) first.').show();
+                        return;
+                    }
                     // Payout slab checks: complete rows, high > low, % ≤ 100, no overlaps.
                     var slabsOk = true;
                     var $slabErr = productSlabErrorEl().hide();
@@ -146,6 +156,12 @@
                             slabsOk = false; $slabErr.text('Percentage payout cannot exceed 100%.');
                             return false;
                         }
+                        var connType = $(this).find('.slab-conn-type').val();
+                        var connVal = parseFloat($(this).find('.slab-conn-value').val());
+                        if (connType === 'percent' && !isNaN(connVal) && connVal > 100) {
+                            slabsOk = false; $slabErr.text('Connector percentage payout cannot exceed 100%.');
+                            return false;
+                        }
                         ranges.push([low, high]);
                     });
                     if (slabsOk) {
@@ -161,7 +177,7 @@
                 });
 
                 // ============================================================
-                //  PRODUCT PAYOUT SLABS — repeater + edit-product populate
+                //  PRODUCT PAYOUT SLABS — repeater + edit-payout populate
                 // ============================================================
                 var productSlabIndex = 0;
 
@@ -180,19 +196,26 @@
                 function productSlabRowHtml(idx, data) {
                     data = data || {};
                     function esc(v) { return $('<div>').text(v == null ? '' : String(v)).html(); }
-                    return '<div class="row g-2 mb-2 product-slab-row">' +
+                    function typeOpts(name, sel) {
+                        return '<select name="' + name + '" class="shf-input ' + (name.indexOf('connector') > -1 ? 'slab-conn-type' : 'slab-type') + '">' +
+                            '<option value="amount"' + (sel !== 'percent' ? ' selected' : '') + '>Fixed ₹</option>' +
+                            '<option value="percent"' + (sel === 'percent' ? ' selected' : '') + '>%</option>' +
+                            '</select>';
+                    }
+                    return '<div class="row g-2 mb-3 product-slab-row" style="border-bottom:1px dashed var(--border,#bcbec0);padding-bottom:10px;">' +
                         '<div class="col-md-3"><label class="shf-form-label d-block mb-1">Low Range (₹)</label>' +
                             '<input type="number" name="slabs[' + idx + '][low_amount]" class="shf-input slab-low" min="0" step="1" value="' + esc(data.low_amount) + '"></div>' +
                         '<div class="col-md-3"><label class="shf-form-label d-block mb-1">High Range (₹)</label>' +
                             '<input type="number" name="slabs[' + idx + '][high_amount]" class="shf-input slab-high" min="1" step="1" value="' + esc(data.high_amount) + '"></div>' +
-                        '<div class="col-md-2"><label class="shf-form-label d-block mb-1">Payout Type</label>' +
-                            '<select name="slabs[' + idx + '][payout_type]" class="shf-input slab-type">' +
-                                '<option value="amount"' + (data.payout_type !== 'percent' ? ' selected' : '') + '>Fixed ₹</option>' +
-                                '<option value="percent"' + (data.payout_type === 'percent' ? ' selected' : '') + '>%</option>' +
-                            '</select></div>' +
-                        '<div class="col-md-2"><label class="shf-form-label d-block mb-1">Payout</label>' +
+                        '<div class="col-md-3"><label class="shf-form-label d-block mb-1">Internal Type</label>' +
+                            typeOpts('slabs[' + idx + '][payout_type]', data.payout_type) + '</div>' +
+                        '<div class="col-md-3"><label class="shf-form-label d-block mb-1">Internal Payout</label>' +
                             '<input type="number" name="slabs[' + idx + '][payout_value]" class="shf-input slab-value" min="0" step="0.01" value="' + esc(data.payout_value) + '"></div>' +
-                        '<div class="col-md-2 d-flex align-items-end"><button type="button" class="btn-accent-sm shf-btn-danger product-slab-remove">' +
+                        '<div class="col-md-3"><label class="shf-form-label d-block mb-1">Connector Type</label>' +
+                            typeOpts('slabs[' + idx + '][connector_payout_type]', data.connector_payout_type) + '</div>' +
+                        '<div class="col-md-3"><label class="shf-form-label d-block mb-1">Connector Payout</label>' +
+                            '<input type="number" name="slabs[' + idx + '][connector_payout_value]" class="shf-input slab-conn-value" min="0" step="0.01" value="' + esc(data.connector_payout_value) + '"></div>' +
+                        '<div class="col-md-6 d-flex align-items-end"><button type="button" class="btn-accent-sm shf-btn-danger product-slab-remove">' +
                             '<svg class="shf-icon-2xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
                             ' Remove</button></div>' +
                     '</div>';
@@ -227,30 +250,23 @@
                     $hint.text(isFinite(n) && n > 0 ? SHF.bilingualAmountWords(n) : '');
                 });
 
+                // Product identity form (Products & Stages tab) — name/code/bank only.
                 window.resetProductForm = function() {
                     $('#productEditId').val('');
                     $('#productBankInput').val('');
                     $('#productNameInput').val('');
                     $('#productCodeInput').val('');
-                    $('#productMaxPayoutInput').val('').trigger('input');
-                    $('#productPfInput').prop('checked', false);
-                    $('#productSlabList').empty();
-                    productSlabIndex = 0;
-                    productSlabErrorEl().hide();
                     $('#productFormTitle').text('+ Add Product');
                     $('#productSubmitText').text('Add Product');
                 };
 
-                // Edit product — populate the Add form (same pattern as banks/branches)
+                // Edit product identity — populate the Add form (same pattern as banks/branches)
                 $(document).on('click', '.shf-edit-product', function() {
                     resetProductForm();
                     $('#productEditId').val($(this).data('id'));
                     $('#productBankInput').val($(this).data('bank-id'));
                     $('#productNameInput').val($(this).data('name'));
                     $('#productCodeInput').val($(this).data('code'));
-                    $('#productPfInput').prop('checked', String($(this).data('pf-based')) === '1');
-                    $('#productMaxPayoutInput').val($(this).data('max-payout')).trigger('input');
-                    ($(this).data('slabs') || []).forEach(function(s) { addProductSlabRow(s); });
                     $('#productFormTitle').text('Edit Product');
                     $('#productSubmitText').text('Update Product');
                     var $collapse = $('#productFormCollapse');
@@ -259,6 +275,41 @@
                     }
                     $collapse[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                     $('#productNameInput').focus();
+                });
+
+                // Product payout form (Payout Config tab) — PF/cap/cycle/slabs.
+                window.resetPayoutProductForm = function() {
+                    $('#payoutProductId').val('');
+                    $('#payoutProductName').text('— use an Edit button below —');
+                    $('#payoutProductEffectiveInput').val('');
+                    $('#productMaxPayoutInput').val('').trigger('input');
+                    $('#productCycleStartInput').val('');
+                    $('#productCycleEndInput').val('');
+                    $('#productPfInput').prop('checked', false);
+                    $('#productSlabList').empty();
+                    productSlabIndex = 0;
+                    productSlabErrorEl().hide();
+                };
+
+                // Edit product payout — populate the payout form + open its collapse.
+                $(document).on('click', '.shf-edit-payout-product', function() {
+                    resetPayoutProductForm();
+                    $('#payoutProductId').val($(this).data('id'));
+                    $('#payoutProductName').text($(this).data('name'));
+                    $('#productPfInput').prop('checked', String($(this).data('pf-based')) === '1');
+                    $('#productMaxPayoutInput').val($(this).data('max-payout')).trigger('input');
+                    $('#productCycleStartInput').val($(this).data('cycle-start'));
+                    $('#productCycleEndInput').val($(this).data('cycle-end'));
+                    // Prefill the current version's effective date so a save updates
+                    // that version (instead of silently creating a new today-dated one).
+                    $('#payoutProductEffectiveInput').val($(this).data('effective') || '');
+                    ($(this).data('slabs') || []).forEach(function(s) { addProductSlabRow(s); });
+                    $('#payoutProductFormTitle').text('Editing: ' + $(this).data('name'));
+                    var $collapse = $('#payoutProductFormCollapse');
+                    if (!$collapse.hasClass('show')) {
+                        new bootstrap.Collapse($collapse[0], { toggle: true });
+                    }
+                    $collapse[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 });
 
                 // Location form — type toggle
@@ -404,5 +455,20 @@
                 });
 
                 // Stage Master form — no special validation needed (dropdowns always have a value)
+
+                // ===== Payout Config: auto-calc the read-only (×) multiplier + datepickers =====
+                function payoutRecalc($input) {
+                    var key = $input.data('key');
+                    var v = parseFloat($input.val());
+                    var calc = isNaN(v) ? 0 : v / 100;
+                    $('#payoutCalc_' + key).val(calc.toFixed(4));
+                }
+                $(document).on('input change', '.payout-value', function() { payoutRecalc($(this)); });
+                // Sync once on load (covers old-input re-render after a validation failure).
+                $('.payout-value').each(function() { payoutRecalc($(this)); });
+
+                $('.payout-date').datepicker({
+                    format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true, clearBtn: true,
+                });
             });
         </script>

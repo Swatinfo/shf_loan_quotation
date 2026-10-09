@@ -46,7 +46,7 @@ class QuotationController extends Controller
 
         $canViewAll = $user->hasPermission('view_all_quotations');
         $users = $canViewAll
-            ? User::select('id', 'name')->orderBy('name')->get()
+            ? User::selectable()->with('roles')->orderBy('name')->get()
             : collect();
 
         $permissions = [
@@ -105,7 +105,7 @@ class QuotationController extends Controller
         // at creation time. Everyone else creates under their own id only.
         $canAssignCreator = $user->hasAnyRole(['super_admin', 'admin', 'bdh']);
         $assignableUsers = $canAssignCreator
-            ? User::where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ? User::selectable()->with('roles')->orderBy('name')->get()
             : collect();
 
         $template = 'newtheme.quotations.create';

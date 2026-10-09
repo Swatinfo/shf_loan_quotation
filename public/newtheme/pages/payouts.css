@@ -1,0 +1,100 @@
+/* ===========================================================================
+   Payout pages — report + bank reconciliation.
+   Reuses the newtheme design-system primitives (.page-header, .card, .tbl,
+   .btn) from the shared assets; this file only adds the summary strip, inline
+   alerts, required marker and a few table helpers those two pages need, using
+   the newtheme CSS variables (--ink, --line, --accent, --green, --blue …).
+   =========================================================================== */
+
+/* ========== Required marker ========== */
+.ld-req { color: var(--red, #c0392b); }
+
+/* ========== Inline alerts ========== */
+.ld-alert { margin-bottom: 14px; border-left-width: 3px; border-left-style: solid; }
+.ld-alert-red   { border-left-color: var(--red, #c0392b);   background: var(--red-soft, rgba(192,57,43,0.06)); color: var(--red, #c0392b); }
+.ld-alert-amber { border-left-color: var(--amber, #d97706); background: var(--amber-soft, rgba(217,119,6,0.06)); color: var(--amber, #b85a00); }
+.ld-alert-green { border-left-color: var(--green, #1f8c4d); background: var(--green-soft, rgba(39,174,96,0.08)); color: var(--green, #1f8c4d); }
+
+/* ========== Summary strip ========== */
+.ld-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+@media (max-width: 560px) {
+    .ld-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.ld-summary-box {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent, #f15a29);
+    border-radius: 8px;
+    background: #fff;
+}
+.ld-summary-box .k {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.ld-summary-box .v {
+    font-family: 'Jost', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 2px;
+}
+.ld-summary-box.is-green { border-left-color: var(--green, #1f8c4d); }
+.ld-summary-box.is-blue { border-left-color: var(--blue, #2563eb); }
+
+/* ========== Section sub-heading inside a card ========== */
+.po-sub {
+    font-family: 'Jost', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 10px;
+}
+
+/* ========== Muted text in tables / meta ========== */
+.ls-muted { color: var(--ink-3); }
+
+/* ========== Scroll wrapper for wide tables ========== */
+.po-scroll { overflow-x: auto; }
+.po-scroll .tbl { width: 100%; min-width: 520px; }
+
+/* ========== Diff rows (reconcile) ========== */
+.po-row-db-only    { background: var(--accent-dim, rgba(241, 90, 41, 0.08)); }
+.po-row-excel-only { background: rgba(192, 57, 43, 0.07); }
+.po-card-db-only    { border-left: 3px solid var(--accent, #f15a29); }
+.po-card-excel-only { border-left: 3px solid var(--red, #c0392b); }
+
+/* ========== Empty cell ========== */
+.po-empty { padding: 16px; text-align: center; color: var(--ink-3); }
+
+/* ========== Finalize action bar ========== */
+.po-actions { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ========== Filter grid ========== */
+.po-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+.po-filters .field { margin-bottom: 0; }
+/* The buttons cell sits on the baseline with the inputs. */
+.po-filters .po-btns {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.po-filters .po-btns .btn { white-space: nowrap; }
+
+/* ========== Right-aligned numeric cells ========== */
+.tbl th.po-num, .tbl td.po-num { text-align: right; }
+
+/* ========== Hint text ========== */
+.po-hint { color: var(--ink-3); font-size: 12.5px; margin-bottom: 12px; line-height: 1.5; }

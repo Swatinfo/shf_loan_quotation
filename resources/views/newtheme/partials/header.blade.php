@@ -13,7 +13,7 @@
     $shortName = trim($first.' '.($last !== '' ? strtoupper($last[0]).'.' : ''));
 
     $canQuotations = $u->hasPermission('create_quotation') || $u->hasPermission('view_own_quotations') || $u->hasPermission('view_all_quotations');
-    $canLoans = $u->hasPermission('view_loans');
+    $canLoans = $u->hasPermission('view_loans') || $u->hasPermission('view_connector_loans');
     $canDvr = $u->hasPermission('view_dvr');
     $canUsers = $u->hasPermission('view_users');
     $canCustomers = $u->hasPermission('view_customers');
@@ -81,6 +81,9 @@
                 <div class="nav-dd">
                     <a class="nav-dd-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
                     <a class="nav-dd-item" href="{{ route('reports.loans') }}">Loan Report</a>
+                    <a class="nav-dd-item" href="{{ route('payouts.runs') }}">Payout Runs</a>
+                    <a class="nav-dd-item" href="{{ route('payouts.report') }}">Payout Report</a>
+                    <a class="nav-dd-item" href="{{ route('payouts.reconcile') }}">Payout Reconciliation</a>
                     @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh']))
                         <a class="nav-dd-item" href="{{ route('reports.management') }}">Management Summary</a>
                     @endif
@@ -110,6 +113,9 @@
                     @endif
                     @if ($u->hasPermission('view_activity_log'))
                         <a class="nav-dd-item" href="{{ route('activity-log') }}">Activity Log</a>
+                    @endif
+                    @if ($u->isSuperAdmin())
+                        <a class="nav-dd-item" href="{{ route('loans.disbursement-data') }}">Disbursement Data</a>
                     @endif
                 </div>
             </div>

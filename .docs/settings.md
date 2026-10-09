@@ -91,7 +91,7 @@ Tabs (query param `?tab=`):
 
 `storeBank`, `destroyBank`, `storeProduct`, `destroyProduct`. Delete is blocked when dependent records exist. `saveProductLocations` syncs `location_product` pivot.
 
-**Product payout config** (Products & Stages tab): each product carries `is_pf_based` (checkbox), optional `max_payout_amount` cap (decimal, 2 places), and payout slabs (rows of low range / high range / payout type ₹-or-% / payout value) stored in `product_payout_slabs`. Add form and Edit (pencil button populates the same collapse form, matching the banks/branches edit pattern) share a JS slab repeater. `storeProduct` validates: high > low per row, percent ≤ 100, no overlapping ranges; slabs are replaced wholesale inside a transaction. Storage only — the payout-to-loan-creator calculation is future scope. The product row's slab badge shows the count plus the overall range (lowest slab `low_amount` – highest slab `high_amount`, Indian ₹ format via `NumberToWordsService::formatCurrency`).
+`storeProduct` now saves **identity only** (bank, name, code, uniqueness per bank). **Product payout config moved to the Payout Config tab** (2026-10-06) — see below. The product's Edit button on this tab populates name/code/bank only.
 
 ### Master Stages
 
@@ -120,6 +120,19 @@ Multi-tier user resolution: branch → city → state → global default. See `u
 
 Clears `PermissionService` caches after save.
 
+### Payout Config
+
+`WorkflowConfigController::savePayoutConfig` (`POST /loan-settings/payout-config`, `loan-settings.payout-config.save`, `manage_workflow_config`). **Unlike the other loan-settings tabs, this is config-backed** — stored in `app_config.main` under `payoutConfig` via `ConfigService::updateSection`, NOT a structured table. Four percentage rates: `admin_gst`, `pf_gst`, `user_tds`, `user_insurance`. Each `{ value (percent 0–100), calc (decimal = value/100), effective_from (Y-m-d, nullable) }`. The operator enters `value` + `effective_from`; `calc` is **derived server-side** (never trusted from the client) and shown read-only in the UI (JS mirrors it live as value÷100). The calc has no own date — it inherits the value's `effective_from`. `LoanSettingsController::index` passes `$payoutConfig` (merged defaults + DB).
+
+**Product Payout sub-section** (moved here from Products & Stages, 2026-10-06): `WorkflowConfigController::savePayoutProduct` (`POST /loan-settings/payout-config/product`, `loan-settings.payout-product.save`, `manage_workflow_config`). Per-product `is_pf_based`, `max_payout_amount` cap, `payout_cycle_start_day`/`end_day` (1–31), and payout slabs (low/high range, internal type ₹-or-% + value, connector type + value) in `product_payout_slabs`. Each product row shows an **Effective <date>** badge (the current version's `effective_from`), and the **Edit Payout** button carries `data-effective` so the form's Effective From field is pre-filled with the current version's date — a save then updates that version rather than silently creating a new today-dated one (leave it blank/enter a future date to create a new version). A product list (grouped by bank) each has an **Edit Payout** button that populates one shared collapse form (hidden `product_id`); the slab repeater + validation (high>low, percent≤100, no overlap) is reused from the old product form. Slabs are replaced wholesale in a transaction. New products created on the Products tab get DB defaults (not PF, no cap, cycle 1–31) until edited here.
+
+**Consumed by `PayoutRunService`** (aggregate payout runs, 2026-10-07 redesign): `pf_gst.calc`, `user_tds.calc`, `user_insurance.calc` drive each user's net payout in a run —
+amount-based products: product-wide in-range disbursed **volume** picks the slab tier, each user earns `their disbursed volume × tier rate` (capped by `max_payout`, `-1` = uncapped). PF-based products are excluded from volume: commission on `pf_base = exGst(PF, pf_gst.calc)` × the PF slab rate, per the loan's payout user. Insurance = `insurance × user_insurance.calc` to the loan's payout user. Per user: `total = Σcommission + Σpf_payout + Σinsurance_payout`; `net = max(0, total − total × user_tds.calc)`. **No PF-GST deduction in the aggregate model** (PF base is already ex-GST). Snapshotted onto `payout_run_*` (run stores `insurance_rate`/`tds_rate`/`gst_rate`; each `payout_run_products` row stores the slab/version/tier/aggregate/max; `payout_run_users` stores the per-user rollup). Finalize stamps `disbursement_entries.payout_run_id` + `paid_amount_counted` and `disbursement_details.pf_payout_run_id`/`insurance_payout_run_id` for idempotency. `admin_gst` is not used in the payout.
+
+`PayoutService` now holds only the shared helpers: `payoutRates()` (current GST rates for the disbursement form) and `breakdown()`/`computeAmount()` (per-entry informational breakdown on the **verify-only** reconcile screen). The old per-loan finalize engine (`previewFinalize`/`finalizePayout`/`finalizeEntries`) and the loan-page / reconcile finalize buttons were retired — payouts finalize only via **Payout Runs** (`payouts.runs`). The legacy `loan_payouts` ledger remains read-only history on the Payout Report.
+
+**Effective-dated history (2026-10-06):** rates + product payout are now versioned (`payout_rate_versions`, `product_payout_versions`). A finalize resolves the version **in force on each tranche's disbursement date** (`PayoutConfigService::ratesAsOf()` / `productVersionAsOf()` — greatest `effective_from ≤ date`). Tranches straddling a rate/slab change are **split into one `loan_payouts` row per period**. Saving a rate/product with a new `effective_from` inserts a version and keeps the old one; the UI shows a per-rate / per-product history list. `payoutConfig` (app_config) and `products.*` + `products.current_payout_version_id` stay as today's denormalized mirrors (UI defaults, legacy reads); `Product::payoutSlabs` resolves to the current version's slabs via the pointer.
+
 ## Defaults file: `config/app-defaults.php`
 
 Source of truth for **what the config SHOULD be** when first seeded or reset. Top-level keys:
@@ -137,6 +150,7 @@ Source of truth for **what the config SHOULD be** when first seeded or reset. To
 | `quotationReferralTypes` | `[{key, label_en, label_gu}]` | Sequential — quotation "Referral Type" dropdown |
 | `gstPercent` | `int` | |
 | `ourServices` | multiline string | |
+| `payoutConfig` | `{ admin_gst, pf_gst, user_tds, user_insurance }` each `{ value:number, calc:float, effective_from:?Y-m-d }` | Assoc — merged per key; `calc` derived server-side (value/100) |
 
 ## Seed vs runtime
 

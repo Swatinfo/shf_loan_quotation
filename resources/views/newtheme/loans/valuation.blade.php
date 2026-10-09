@@ -33,7 +33,7 @@
                     <strong>{{ $loan->customer_name }}</strong>
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
                     @if ($v && $v->final_valuation)
-                        <span class="ld-chip" style="background:var(--green, #1f8c4d);">Final ₹ {{ number_format($v->final_valuation) }}</span>
+                        <span class="ld-chip" style="background:var(--green, #1f8c4d);">Final ₹ {{ inr($v->final_valuation) }}</span>
                     @endif
                 </div>
             </div>

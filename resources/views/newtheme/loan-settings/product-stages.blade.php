@@ -1,4 +1,4 @@
-@extends('newtheme.layouts.app', ['pageKey' => 'loan-settings'])
+@extends('newtheme.layouts.app', ['pageKey' => 'settings'])
 
 @section('title', $product->bank->name . ' / ' . $product->name . ' · Stage Configuration · SHF World')
 

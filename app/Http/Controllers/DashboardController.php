@@ -605,7 +605,7 @@ class DashboardController extends Controller
 
     public function activityLog()
     {
-        $users = User::select('id', 'name')->orderBy('name')->get();
+        $users = User::selectable()->with('roles')->orderBy('name')->get();
         $actionTypes = ActivityLog::select('description')->distinct()->orderBy('description')->pluck('description');
 
         $template = 'newtheme.activity-log';
@@ -676,7 +676,7 @@ class DashboardController extends Controller
                 if (isset($props['customer_name'])) {
                     $details = e($props['customer_name']);
                     if (isset($props['loan_amount'])) {
-                        $details .= ' — ₹ '.number_format($props['loan_amount']);
+                        $details .= ' — ₹ '.inr($props['loan_amount']);
                     }
                 } elseif (isset($props['name'])) {
                     $details = e($props['name']);
@@ -789,15 +789,20 @@ class DashboardController extends Controller
     private function newthemeTabsConfig(User $user, array $counts): array
     {
         $hasLoanContext = $user->hasPermission('view_loans') || $user->hasWorkflowRole();
+        // Connectors get a read-only Loans tab (their own quotations' loans), but
+        // not the ops funnel or the loan-stage "My Tasks" tab (both empty for them).
+        $connectorLoans = $user->hasPermission('view_connector_loans');
+        $canSeeLoans = $hasLoanContext || $connectorLoans;
+        $connectorOnly = $connectorLoans && ! $hasLoanContext;
         $canViewQuotations = $user->hasPermission('create_quotation')
             || $user->hasPermission('view_own_quotations')
             || $user->hasPermission('view_all_quotations');
 
         return [
-            ['key' => 'stage-breakdown', 'label' => 'Stage Breakdown', 'visible' => true, 'count' => 0],
+            ['key' => 'stage-breakdown', 'label' => 'Stage Breakdown', 'visible' => ! $connectorOnly, 'count' => 0],
             ['key' => 'personal-tasks', 'label' => 'Personal Tasks', 'visible' => true, 'count' => $counts['personal_tasks'] ?? 0],
             ['key' => 'tasks', 'label' => 'My Tasks', 'visible' => $hasLoanContext, 'count' => $counts['my_tasks'] ?? 0],
-            ['key' => 'loans', 'label' => 'Loans', 'visible' => $hasLoanContext, 'count' => $counts['loans'] ?? 0],
+            ['key' => 'loans', 'label' => 'Loans', 'visible' => $canSeeLoans, 'count' => $counts['loans'] ?? 0],
             ['key' => 'dvr', 'label' => 'DVR', 'visible' => $user->hasPermission('view_dvr'), 'count' => $counts['dvr'] ?? 0],
             ['key' => 'quotations', 'label' => 'Quotations', 'visible' => $canViewQuotations, 'count' => $counts['quotations'] ?? 0],
         ];

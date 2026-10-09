@@ -45,3 +45,4 @@ public/css/_backup/
 
 # Local snapshot of the live server code (reference only — never pushed)
 /live_code/
+/old_calculation_engine/

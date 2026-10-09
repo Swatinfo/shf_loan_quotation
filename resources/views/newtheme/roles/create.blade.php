@@ -1,4 +1,4 @@
-@extends('newtheme.layouts.app', ['pageKey' => 'roles'])
+@extends('newtheme.layouts.app', ['pageKey' => 'settings'])
 
 @section('title', 'New Role · SHF World')
 

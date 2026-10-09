@@ -213,7 +213,7 @@
                                     <select id="quotationCreatedBy" class="shf-input w-100">
                                         @foreach ($assignableUsers as $au)
                                             <option value="{{ $au->id }}"
-                                                {{ $au->id === $user->id ? 'selected' : '' }}>{{ $au->name }}</option>
+                                                {{ $au->id === $user->id ? 'selected' : '' }}>{{ $au->name }}@if ($au->workflow_role_label) ({{ $au->workflow_role_label }})@endif</option>
                                         @endforeach
                                     </select>
                                 </div>
