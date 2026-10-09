@@ -340,12 +340,12 @@
                             </div>
                             <div class="card-body py-2">
                                 @if ($assignment->started_at)
-                                    <small class="text-muted">Started:
+                                    <small class="text-muted text-nowrap d-inline-block">Started:
                                         {{ $assignment->started_at->format('d M Y H:i') }}</small>
                                 @endif
                                 @if ($assignment->completed_at)
                                     <small
-                                        class="text-muted ms-3">{{ $assignment->status === 'completed' ? 'Completed' : ucfirst($assignment->status) }}:
+                                        class="text-muted text-nowrap d-inline-block ms-3">{{ $assignment->status === 'completed' ? 'Completed' : ucfirst($assignment->status) }}:
                                         {{ $assignment->completed_at->format('d M Y H:i') }}</small>
                                 @endif
 
@@ -3073,7 +3073,8 @@ $canSkipLegalBank =
                                             @if ($assignment->status === 'completed' && $disbData)
                                                 <div class="mt-2 border-top pt-2">
                                                     @if (!empty($disbEntries))
-                                                        <div class="table-responsive mb-2">
+                                                        {{-- Desktop: full table (fits the wide/half-width column) --}}
+                                                        <div class="table-responsive mb-2 d-none d-md-block">
                                                             <table class="table table-sm table-hover mb-0 shf-text-sm">
                                                                 <thead>
                                                                     <tr>
@@ -3115,6 +3116,30 @@ $canSkipLegalBank =
                                                                     @endif
                                                                 </tfoot>
                                                             </table>
+                                                        </div>
+                                                        {{-- Mobile: compact 2-line rows (no squeezed table) --}}
+                                                        <div class="d-md-none mb-2 shf-text-sm">
+                                                            @foreach ($disbEntries as $entry)
+                                                                <div class="d-flex justify-content-between align-items-start border-bottom py-1">
+                                                                    <div class="pe-2">
+                                                                        <div><strong>{{ !empty($entry['disbursement_date']) ? \Carbon\Carbon::parse($entry['disbursement_date'])->format('d/m/Y') : '—' }}</strong>
+                                                                            · {{ ($entry['method'] ?? '') === 'cheque' ? 'Cheque' : 'Fund Transfer' }}</div>
+                                                                        <div class="text-muted shf-text-xs">{{ $entry['product_name'] ?? '—' }}
+                                                                            · A/c {{ $entry['loan_account_number'] ?? '—' }}</div>
+                                                                    </div>
+                                                                    <strong class="text-nowrap">₹ {{ inr($entry['amount'] ?? 0) }}</strong>
+                                                                </div>
+                                                            @endforeach
+                                                            <div class="d-flex justify-content-between py-1 fw-semibold">
+                                                                <span>Total</span>
+                                                                <strong>₹ {{ inr($disbData->grossTotal()) }}</strong>
+                                                            </div>
+                                                            @if ($disbData->insuranceTotal() > 0)
+                                                                <div class="d-flex justify-content-between text-muted shf-text-xs">
+                                                                    <span>Insurance (excluded)</span>
+                                                                    <span>₹ {{ inr($disbData->insuranceTotal()) }}</span>
+                                                                </div>
+                                                            @endif
                                                         </div>
                                                     @endif
                                                     @if ($disbData->notes)
