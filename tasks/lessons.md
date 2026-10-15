@@ -4,6 +4,16 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## IP-allowlisted maintenance mode (2026-10-15)
+
+- **Goal**: `php artisan down` but let specific client IPs through (GTPL 43.242.117.89, AIRTEL 122.173.87.25). Laravel's native maintenance has a `--secret` URL-token bypass but **no IP allowlist**.
+- **Implementation**: `App\Http\Middleware\PreventRequestsDuringMaintenance` extends the framework's and, while `isDownForMaintenance()`, lets a request through when `IpUtils::checkIp($request->ip(), config('maintenance.allowed_ips'))` matches (exact IPs + CIDR, v4/v6); otherwise falls to `parent::handle` (normal 503, `--secret` still works). Registered via `$middleware->replace(\Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class, \App\Http\Middleware\PreventRequestsDuringMaintenance::class)` in `bootstrap/app.php`. `config/maintenance.php` reads comma-separated `MAINTENANCE_ALLOWED_IPS` (env() only inside a config file, config:cache-safe).
+- **THE gotcha — real client IP behind a proxy**: Nginx → Apache on one host means `$request->ip()` is `127.0.0.1` unless proxies are trusted. Added `$middleware->trustProxies(at: ['127.0.0.1','::1'], headers: Request::HEADER_X_FORWARDED_FOR|...)`. Without it the allowlist never matches.
+- **Verified end-to-end** through the live Nginx→Apache: during `down`, XFF 43.242.117.89 / 122.173.87.25 → 200, XFF 8.8.8.8 and direct → 503. `php artisan up` restored it.
+- **Prod note**: `MAINTENANCE_ALLOWED_IPS` must be in the prod `.env` (not read from DB); re-run `php artisan config:cache` after changing it. `.env` is gitignored so the value lives only there; `.env.example` carries the documented format. Tests: `tests/Unit/MaintenanceIpAllowlistTest.php` (5, mocked app — no real `down` file touched).
+
+---
+
 ## Disbursement completion trigger + Rate&PF comma parse + reset data integrity (2026-10-15)
 
 - **Loan wouldn't close (loan 289).** `DisbursementService::syncDisbursementState()` is the SOLE owner of loan completion, but `LoanStageService::handleStageCompletion()` opened `otc_clearance` on disbursement completion WITHOUT re-invoking it. So completing disbursement via the generic "complete stage" button (or reset→re-advance) over already-OTC-settled tranches left the loan stuck open forever — no handover action remained to trigger `recordEntryOtc`→sync. Tell-tale: status `active` (not even `partial_disbursed`) with all entries settled. **Fix:** `handleStageCompletion` now calls `syncDisbursementState($loan->refresh())` when `$completedStageKey==='disbursement'`. Added a **per-loan static re-entrancy guard** (`self::$syncing[$loan->id]`) around a thin `syncDisbursementState` wrapper delegating to private `resolveDisbursementState` — the form path already calls sync→completes disbursement stage→handleStageCompletion→sync, and without the guard the nested call double-fired the loan-completed notification.

@@ -131,6 +131,29 @@ Verify with `php artisan schedule:list`:
 | `0 8 * * *` | `reminders:send-daily --when=morning` | Count today's DVR follow-ups + tasks, notify each user |
 | `0 20 * * *` | `reminders:send-daily --when=evening` | Count tomorrow's DVR follow-ups + tasks (heads-up) |
 
+## Maintenance mode (IP-allowlisted)
+
+Take the site down for everyone except specific client IPs:
+
+```bash
+# .env: MAINTENANCE_ALLOWED_IPS=43.242.117.89,122.173.87.25   (GTPL, AIRTEL; comma-separated; CIDR ok)
+php artisan config:cache     # re-cache after changing the env value
+php artisan down             # allowlisted IPs keep access; everyone else gets the branded 503
+php artisan up               # end maintenance
+```
+
+- Allowlist source: `MAINTENANCE_ALLOWED_IPS` env → `config/maintenance.php` (`allowed_ips`). Empty = no
+  bypass (down for everyone). Single IPs **and** CIDR ranges, IPv4 + IPv6.
+- Implemented by `App\Http\Middleware\PreventRequestsDuringMaintenance` (extends the framework's,
+  registered via `$middleware->replace(...)` in `bootstrap/app.php`), matching with `IpUtils::checkIp`.
+- **Real client IP:** Nginx → Apache run on the same host, so `bootstrap/app.php` sets
+  `trustProxies(at: ['127.0.0.1','::1'], headers: X-Forwarded-For|Host|Port|Proto)`. Without this,
+  `$request->ip()` would be `127.0.0.1` and the allowlist could never match. Verified end-to-end: an
+  allowlisted `X-Forwarded-For` → 200 during `down`, a non-allowlisted one → 503.
+- The `--secret=<token>` URL bypass still works as a fallback (useful for admins on dynamic IPs).
+- `MAINTENANCE_ALLOWED_IPS` must be present in the production `.env` (it is not read from the DB);
+  `.env.example` documents the format.
+
 ## Environment configuration
 
 - `APP_ENV=production` flips the DB config to use the `LIVE_DB_*` variables (see `config/database.php`).
