@@ -451,8 +451,11 @@ ORDER BY sa.loan_id;
 
 ### 4b. UPDATE (four statements in one transaction; run after confirming 4a)
 
-Values are stored trimmed of trailing decimal zeros (e.g. `900.00` → `900`, `747.90` → `747.9`) to
-match the app's format. Each statement is guarded by its own `base > 0` + mismatch condition.
+Recomputes **only** the GST and total of each side from the **stored** `processing_fee_amount` /
+`admin_charges` (those base amounts are never changed), for every rate_pf row whose base is `> 0`.
+Rows with `base = 0` (admin charge captured at disbursement time) are left untouched. Values are
+stored trimmed of trailing decimal zeros (e.g. `900.00` → `900`, `747.90` → `747.9`) to match the
+app's format.
 
 ```sql
 START TRANSACTION;
@@ -471,10 +474,7 @@ SET sa.notes = JSON_SET(sa.notes,
             * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
     sa.updated_at = NOW()
 WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
-  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2)) > 0
-  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.pf_gst_amount')) AS DECIMAL(15,2))
-        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2))
-          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2)) > 0;
 
 -- (ii) top-level Admin: admin_charges_gst_amount + total_admin_charges  (admin_charges = 0 skipped)
 UPDATE stage_assignments sa
@@ -490,10 +490,7 @@ SET sa.notes = JSON_SET(sa.notes,
             * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
     sa.updated_at = NOW()
 WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
-  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2)) > 0
-  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_amount')) AS DECIMAL(15,2))
-        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2))
-          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2)) > 0;
 
 -- (iii) original_values PF
 UPDATE stage_assignments sa
@@ -510,10 +507,7 @@ SET sa.notes = JSON_SET(sa.notes,
     sa.updated_at = NOW()
 WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
   AND JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount') IS NOT NULL
-  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2)) > 0
-  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.pf_gst_amount')) AS DECIMAL(15,2))
-        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
-          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2)) > 0;
 
 -- (iv) original_values Admin  (admin_charges = 0 skipped)
 UPDATE stage_assignments sa
@@ -530,10 +524,7 @@ SET sa.notes = JSON_SET(sa.notes,
     sa.updated_at = NOW()
 WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
   AND JSON_EXTRACT(sa.notes,'$.original_values.admin_charges') IS NOT NULL
-  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2)) > 0
-  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_amount')) AS DECIMAL(15,2))
-        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2))
-          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2)) > 0;
 
 -- Review the four affected-row counts, then:
 COMMIT;
