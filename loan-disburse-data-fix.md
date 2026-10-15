@@ -1,8 +1,12 @@
 # Loan / Disbursement Data Fix — Production Runbook
 
-Two independent data corrections tied to the Oct‑2026 fixes. **Each section has a SHOW query
+Independent data corrections tied to the Oct‑2026 fixes. **Each section has a SHOW query
 (run first, confirm the rows) and an UPDATE query (run only after confirming).** All UPDATEs are
 wrapped in a transaction and are **idempotent** (re‑running after the fix affects 0 rows).
+
+> **Section 4 is the complete Rate & PF recompute** (PF GST, Total PF, Admin GST, Total Admin) and
+> supersedes Section 1 (which fixed only the severe comma‑bug admin cases). If you run Section 4 you
+> do not also need Section 1.
 
 > ⚠️ Take a DB backup / snapshot before running. Run SHOW → eyeball the rows → run UPDATE →
 > run the VERIFY query (should return 0 rows). Run inside a transaction so you can `ROLLBACK`
@@ -380,6 +384,169 @@ COMMIT;
 ### 3c. VERIFY
 
 Re‑run the three **3a** scans — all must return 0 rows.
+
+---
+
+## Section 4 — Recompute ALL Rate & PF derived charges (PF GST, Total PF, Admin GST, Total Admin)
+
+**Why:** the complete fix for the Rate & PF stage. Each derived field is recomputed from the stored
+**base** amounts and GST %:
+- `pf_gst_amount`  = round(`processing_fee_amount` × `gst_percent` / 100, 2)
+- `total_pf`       = `processing_fee_amount` + `pf_gst_amount`
+- `admin_charges_gst_amount` = round(`admin_charges` × `admin_charges_gst_percent` / 100, 2)
+- `total_admin_charges`      = `admin_charges` + `admin_charges_gst_amount`
+
+Both in the **top-level** notes and the **`original_values`** snapshot.
+
+> **Guardrails — read before running:**
+> - The **base** amounts (`processing_fee_amount`, `admin_charges`) are **never changed** — only the
+>   derived GST/totals are recomputed. `processing_fee_amount` is *not* recomputed from the loan amount
+>   (the loan amount can change at KFS, after rate_pf).
+> - Rows where a base is **0 are skipped.** In particular, loans whose admin charge is captured at
+>   **disbursement time** (stored on `disbursement_details`, with `admin_charges = 0` in the rate_pf
+>   notes but non-zero GST/total) are **left untouched** — this section never recomputes those and
+>   never touches `disbursement_details`.
+> - Touches **only `stage_assignments.notes` for `stage_key = 'rate_pf'`.**
+
+### 4a. SHOW — rate_pf rows whose derived charges don't match the stored base amounts
+
+```sql
+SELECT sa.loan_id, sa.status,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.processing_fee_amount'))    AS pf_amount,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.pf_gst_amount'))            AS pf_gst_stored,
+    ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.processing_fee_amount')) AS DECIMAL(15,2))
+        * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.gst_percent')) AS DECIMAL(9,4)) / 100, 2) AS pf_gst_correct,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.total_pf'))                 AS total_pf_stored,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges'))            AS admin_charges,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges_gst_amount')) AS admin_gst_stored,
+    ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges')) AS DECIMAL(15,2))
+        * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges_gst_percent')) AS DECIMAL(9,4)) / 100, 2) AS admin_gst_correct,
+    JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.total_admin_charges'))      AS total_admin_stored
+FROM stage_assignments sa
+WHERE sa.stage_key = 'rate_pf' AND JSON_VALID(sa.notes) = 1
+  AND (
+    -- top-level PF derived wrong (base > 0)
+    ( CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.processing_fee_amount')) AS DECIMAL(15,2)) > 0
+      AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.pf_gst_amount')) AS DECIMAL(15,2))
+            - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.processing_fee_amount')) AS DECIMAL(15,2))
+              * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.gst_percent')) AS DECIMAL(9,4)) / 100, 2)) > 0.01 )
+    -- top-level Admin derived wrong (base > 0; admin_charges = 0 rows are disbursement-time → skipped)
+ OR ( CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges')) AS DECIMAL(15,2)) > 0
+      AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges_gst_amount')) AS DECIMAL(15,2))
+            - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges')) AS DECIMAL(15,2))
+              * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.admin_charges_gst_percent')) AS DECIMAL(9,4)) / 100, 2)) > 0.01 )
+    -- original_values PF derived wrong (base > 0)
+ OR ( CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.processing_fee_amount')) AS DECIMAL(15,2)) > 0
+      AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.pf_gst_amount')) AS DECIMAL(15,2))
+            - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
+              * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.gst_percent')) AS DECIMAL(9,4)) / 100, 2)) > 0.01 )
+    -- original_values Admin derived wrong (base > 0)
+ OR ( CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.admin_charges')) AS DECIMAL(15,2)) > 0
+      AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.admin_charges_gst_amount')) AS DECIMAL(15,2))
+            - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.admin_charges')) AS DECIMAL(15,2))
+              * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes, '$.original_values.admin_charges_gst_percent')) AS DECIMAL(9,4)) / 100, 2)) > 0.01 )
+  )
+ORDER BY sa.loan_id;
+```
+
+### 4b. UPDATE (four statements in one transaction; run after confirming 4a)
+
+Values are stored trimmed of trailing decimal zeros (e.g. `900.00` → `900`, `747.90` → `747.9`) to
+match the app's format. Each statement is guarded by its own `base > 0` + mismatch condition.
+
+```sql
+START TRANSACTION;
+
+-- (i) top-level PF: pf_gst_amount + total_pf
+UPDATE stage_assignments sa
+SET sa.notes = JSON_SET(sa.notes,
+      '$.pf_gst_amount',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.gst_percent')) AS DECIMAL(9,4))/100, 2) AS CHAR))),
+      '$.total_pf',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2))
+            + ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
+    sa.updated_at = NOW()
+WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2)) > 0
+  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.pf_gst_amount')) AS DECIMAL(15,2))
+        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.processing_fee_amount')) AS DECIMAL(15,2))
+          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+
+-- (ii) top-level Admin: admin_charges_gst_amount + total_admin_charges  (admin_charges = 0 skipped)
+UPDATE stage_assignments sa
+SET sa.notes = JSON_SET(sa.notes,
+      '$.admin_charges_gst_amount',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2) AS CHAR))),
+      '$.total_admin_charges',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2))
+            + ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
+    sa.updated_at = NOW()
+WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2)) > 0
+  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_amount')) AS DECIMAL(15,2))
+        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges')) AS DECIMAL(15,2))
+          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+
+-- (iii) original_values PF
+UPDATE stage_assignments sa
+SET sa.notes = JSON_SET(sa.notes,
+      '$.original_values.pf_gst_amount',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.gst_percent')) AS DECIMAL(9,4))/100, 2) AS CHAR))),
+      '$.original_values.total_pf',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
+            + ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
+    sa.updated_at = NOW()
+WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
+  AND JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount') IS NOT NULL
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2)) > 0
+  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.pf_gst_amount')) AS DECIMAL(15,2))
+        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.processing_fee_amount')) AS DECIMAL(15,2))
+          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+
+-- (iv) original_values Admin  (admin_charges = 0 skipped)
+UPDATE stage_assignments sa
+SET sa.notes = JSON_SET(sa.notes,
+      '$.original_values.admin_charges_gst_amount',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2) AS CHAR))),
+      '$.original_values.total_admin_charges',
+      TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM CAST(
+        ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2))
+            + ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2))
+            * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2), 2) AS CHAR)))),
+    sa.updated_at = NOW()
+WHERE sa.stage_key='rate_pf' AND JSON_VALID(sa.notes)=1
+  AND JSON_EXTRACT(sa.notes,'$.original_values.admin_charges') IS NOT NULL
+  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2)) > 0
+  AND ABS(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_amount')) AS DECIMAL(15,2))
+        - ROUND(CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges')) AS DECIMAL(15,2))
+          * CAST(JSON_UNQUOTE(JSON_EXTRACT(sa.notes,'$.original_values.admin_charges_gst_percent')) AS DECIMAL(9,4))/100, 2)) > 0.01;
+
+-- Review the four affected-row counts, then:
+COMMIT;
+-- ROLLBACK;
+```
+
+### 4c. VERIFY (should return 0 rows)
+
+Re‑run the **4a SHOW query** — it must return no rows after the four UPDATEs.
+
+> On the local dev DB this already returns 0: the admin comma-bug loans (306/318/323/335/341/347) are
+> fixed in both locations, PF is correct everywhere, and the 11 `admin_charges = 0` disbursement-time
+> loans (104/129/140/152/219/278/288/295/298/302/305) are correctly **left untouched**.
 
 ---
 
