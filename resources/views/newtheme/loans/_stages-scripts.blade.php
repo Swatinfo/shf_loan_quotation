@@ -870,8 +870,14 @@
                 var $raw = $card.find('input[name="' + fieldName + '"].shf-amount-raw');
                 if ($raw.length) {
                     $raw.val(value);
-                    $raw.closest('.shf-amount-wrap').find('.shf-amount-input').val(value ? Number(value)
-                        .toLocaleString('en-IN') : '0');
+                    var $wrap = $raw.closest('.shf-amount-wrap');
+                    $wrap.find('.shf-amount-input').val(value ? Number(value).toLocaleString('en-IN') : '0');
+                    // Keep the amount-in-words in sync with the recomputed value so it
+                    // never lags behind (words render on whole rupees).
+                    var $words = $wrap.find('[data-amount-words]');
+                    if ($words.length && window.SHF && typeof SHF.bilingualAmountWords === 'function') {
+                        $words.text(value > 0 ? SHF.bilingualAmountWords(Math.round(value)) : '');
+                    }
                 } else {
                     // Fallback for non-currency fields
                     $card.find('input[name="' + fieldName + '"]').val(value);

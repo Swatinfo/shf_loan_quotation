@@ -153,7 +153,9 @@ $(function () {
             var $words = $wrap.find('[data-amount-words]');
 
             function update() {
-                var raw = parseInt($input.val().replace(/[^0-9]/g, ''), 10);
+                // Keep the decimal point so parseInt truncates to whole rupees;
+                // stripping it (/[^0-9]/g) turns "5015.00" into 501500 (x100 bug).
+                var raw = parseInt($input.val().replace(/[^0-9.-]/g, ''), 10);
                 if (isNaN(raw) || $input.val().trim() === '') {
                     $input.val('');
                     $hidden.val('');
