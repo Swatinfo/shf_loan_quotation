@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 class DisbursementService
 {
+    /**
+     * Per-loan re-entrancy guard for syncDisbursementState(). Keyed by loan id.
+     *
+     * @var array<int, bool>
+     */
+    private static array $syncing = [];
+
     public function __construct(
         private LoanStageService $stageService,
     ) {}
@@ -156,6 +163,28 @@ class DisbursementService
      * per-entry OTC settlement. Completed loans are terminal — never reopened.
      */
     public function syncDisbursementState(LoanDetail $loan, bool $allowReopen = false): void
+    {
+        // Re-entrancy guard (per loan): completing the disbursement stage now
+        // re-invokes this resolver via LoanStageService::handleStageCompletion, and
+        // the disbursement form path already calls it — without the guard the nested
+        // call would run twice and could double-fire the "loan completed" notification.
+        if (! empty(self::$syncing[$loan->id])) {
+            return;
+        }
+        self::$syncing[$loan->id] = true;
+
+        try {
+            $this->resolveDisbursementState($loan, $allowReopen);
+        } finally {
+            unset(self::$syncing[$loan->id]);
+        }
+    }
+
+    /**
+     * The actual disbursement/OTC lifecycle resolution. Always reached through
+     * syncDisbursementState() so the per-loan re-entrancy guard applies.
+     */
+    private function resolveDisbursementState(LoanDetail $loan, bool $allowReopen = false): void
     {
         // Completed is terminal: never downgrade or reopen (protects historical loans)
         // UNLESS $allowReopen (the super-admin correction tool fully re-resolves).

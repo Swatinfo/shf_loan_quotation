@@ -1,4 +1,21 @@
-# TODO — GROSS disbursement totals + first-tranche charge attribution + OTC lock  ← CURRENT (2026-10-09)
+# TODO — Disbursement completion / Rate&PF charges / reset integrity  ← CURRENT (2026-10-15)
+
+Plan: `tasks/plan-disbursement-ratepf-reset-fix.md`. Data SQL: `loan-disburse-data-fix.md`.
+
+- [x] A1 `LoanStageService::handleStageCompletion` → `syncDisbursementState` when disbursement completes; `DisbursementService` per-loan re-entrancy guard (wrapper + `resolveDisbursementState`)
+- [x] B1 Rate&PF `recalcPfTotals` strip commas on admin_charges + remove console.log
+- [x] C1 reset `forceDelete`s disbursement entries; C2a payout-block (RuntimeException + controller 422); C2b clear `sanctioned_amount` (≤docket) + close forward queries; C3 hide Reset UI via `LoanDetail::hasFinalizedPayout()`
+- [x] Tests: DisbursementMultiEntryTest (+1 generic-complete, +serviceEntry() making the 3 direct-service date tests robust), LoanStageResetTest (+4). **Suite 407/407 green**, Pint clean, view:clear
+- [x] Confirmed date-parse bug was TEST-ONLY: LoanDisbursementController::store normalizes d/m/Y→Y-m-d before the service, so browser/prod unaffected
+- [x] **DEV DB backfill applied** (local shf_all_operations): Rate&PF GST fixed on 6 loans — BOTH top-level AND `original_values` snapshot (the "Original:" hints); 306/318/323/335/341 (900/5900), 347 (765/5015). Detector now returns 0.
+- [x] **Live browser verified** (loan 347): form recomputes 5000→900/5900, 100000→18000/118000, 4250→765/5015; Original hints now 765/5015
+- [x] Runbook S1 updated to fix original_values too (two UPDATEs)
+- [ ] **PROD (manual):** run `loan-disburse-data-fix.md` S1 (6 rate_pf loans, both UPDATEs) + S2 (loan 289) + S3 audit
+- [ ] Not committed
+
+---
+
+# TODO — GROSS disbursement totals + first-tranche charge attribution + OTC lock  ← (2026-10-09)
 
 Plan: `.claude/plans/floofy-dazzling-parrot.md`. User-confirmed: all reporting "Disbursed" aggregates GROSS; undated PF+admin ride the **first tranche** (earliest date, tie id); insurance always separate.
 

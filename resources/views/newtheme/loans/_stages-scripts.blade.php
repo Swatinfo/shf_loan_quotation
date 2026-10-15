@@ -851,10 +851,12 @@
                 setAmountField($card, 'pf_gst_amount', pfGst);
                 setAmountField($card, 'total_pf', totalPf);
 
-                // Admin charges
-                var adminCharges = parseFloat($card.find('input[name="admin_charges_input"]').val()) || 0;
+                // Admin charges — the visible input is a currency field formatted with
+                // Indian commas ("4,250"), so strip commas before parsing; a bare
+                // parseFloat("4,250") returns 4 and under-computes GST + total.
+                var adminCharges = parseFloat(($card.find('input[name="admin_charges_input"]').val() || '')
+                    .toString().replace(/,/g, '')) || 0;
 
-                console.log('Admin Charges:', adminCharges);
                 var adminGstPercent = parseFloat($card.find('input[name="admin_charges_gst_percent"]').val()) || 0;
                 var adminGst = Math.round(adminCharges * adminGstPercent / 100 * 100) / 100;
                 var totalAdmin = Math.round((adminCharges + adminGst) * 100) / 100;

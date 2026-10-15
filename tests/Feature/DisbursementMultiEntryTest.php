@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\DisbursementDetail;
+use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Models\Role;
@@ -13,8 +14,10 @@ use App\Models\StageAssignment;
 use App\Models\StageQuery;
 use App\Models\User;
 use App\Services\DisbursementService;
+use App\Services\LoanStageService;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Mockery;
 use Tests\TestCase;
 
@@ -140,6 +143,25 @@ class DisbursementMultiEntryTest extends TestCase
             $e['cheque_name'] = 'CUSTOMER NAME';
             $e['cheque_number'] = '000123';
             $e['cheque_date'] = now()->format('d/m/Y');
+        }
+
+        return $e;
+    }
+
+    /**
+     * entry() in the form's d/m/Y shape, converted to the storage format the
+     * SERVICE expects (Y-m-d) — the controller normalizes dates before calling
+     * processDisbursement(), so tests that invoke the service directly must do the
+     * same. (cheque_date is stored as a raw string, so it is left untouched.)
+     */
+    private function serviceEntry(Product $product, int $amount, string $method = 'fund_transfer', string $otc = 'pending', ?string $handover = null): array
+    {
+        $e = $this->entry($product, $amount, $method, $otc, $handover);
+
+        foreach (['disbursement_date', 'transfer_date', 'otc_handover_date'] as $field) {
+            if (! empty($e[$field])) {
+                $e[$field] = Carbon::createFromFormat('d/m/Y', $e[$field])->toDateString();
+            }
         }
 
         return $e;
@@ -428,7 +450,7 @@ class DisbursementMultiEntryTest extends TestCase
         [$loan, $product] = $this->makeLoanAtDisbursement($admin);
 
         app(DisbursementService::class)->processDisbursement($loan->fresh(), [
-            'entries' => [$this->entry($product, 800000, 'cheque', 'pending')],
+            'entries' => [$this->serviceEntry($product, 800000, 'cheque', 'pending')],
             'pf_amount' => '150000', 'admin_charges' => '50000', 'insurance_amount' => '100000',
         ]);
 
@@ -444,7 +466,7 @@ class DisbursementMultiEntryTest extends TestCase
 
         // First disbursement: a NEFT tranche (auto-skipped = OTC settled) + one-time charges.
         $service->processDisbursement($loan->fresh(), [
-            'entries' => [$this->entry($product, 800000, 'fund_transfer', 'skipped')],
+            'entries' => [$this->serviceEntry($product, 800000, 'fund_transfer', 'skipped')],
             'pf_amount' => '150000', 'admin_charges' => '50000', 'insurance_amount' => '100000',
         ]);
         $this->assertTrue($loan->fresh()->disbursement->chargesLocked());
@@ -452,8 +474,8 @@ class DisbursementMultiEntryTest extends TestCase
         // Re-save adding a tranche with DIFFERENT charges — they must be ignored.
         $service->processDisbursement($loan->fresh(), [
             'entries' => [
-                $this->entry($product, 800000, 'fund_transfer', 'skipped'),
-                $this->entry($product, 250000, 'fund_transfer', 'skipped'),
+                $this->serviceEntry($product, 800000, 'fund_transfer', 'skipped'),
+                $this->serviceEntry($product, 250000, 'fund_transfer', 'skipped'),
             ],
             'pf_amount' => '999999', 'admin_charges' => '888888', 'insurance_amount' => '777777',
         ]);
@@ -465,8 +487,8 @@ class DisbursementMultiEntryTest extends TestCase
         // Super-admin correction path ($allowReopen) bypasses the lock.
         $service->processDisbursement($loan->fresh(), [
             'entries' => [
-                $this->entry($product, 800000, 'fund_transfer', 'skipped'),
-                $this->entry($product, 250000, 'fund_transfer', 'skipped'),
+                $this->serviceEntry($product, 800000, 'fund_transfer', 'skipped'),
+                $this->serviceEntry($product, 250000, 'fund_transfer', 'skipped'),
             ],
             'pf_amount' => '111111', 'admin_charges' => '22222', 'insurance_amount' => '33333',
         ], allowReopen: true);
@@ -506,6 +528,37 @@ class DisbursementMultiEntryTest extends TestCase
         // Re-running the resolver must never downgrade a completed loan.
         app(DisbursementService::class)->syncDisbursementState($loan->fresh());
         $this->assertSame(LoanDetail::STATUS_COMPLETED, $loan->fresh()->status);
+    }
+
+    public function test_completing_disbursement_stage_with_all_otc_settled_completes_loan(): void
+    {
+        // Loan 289 reproduction: a disbursement whose tranches are ALL already
+        // OTC-settled, but the disbursement stage is still in_progress (reached via
+        // reset / generic "complete stage", not the disbursement form). Completing
+        // the disbursement stage must flow through to loan completion — the resolver
+        // is re-invoked from handleStageCompletion.
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin); // sanctioned 2,000,000
+
+        $detail = DisbursementDetail::create([
+            'loan_id' => $loan->id,
+            'disbursement_type' => 'cheque',
+            'amount_disbursed' => 2000000,
+            'completion_intent' => 'full',
+        ]);
+        DisbursementEntry::create([
+            'loan_id' => $loan->id, 'disbursement_detail_id' => $detail->id,
+            'method' => 'cheque', 'amount' => 2000000, 'cheque_number' => '999',
+            'otc_status' => 'cleared', 'otc_handover_date' => now()->toDateString(), 'is_active' => true,
+        ]);
+
+        app(LoanStageService::class)
+            ->updateStageStatus($loan->fresh(), 'disbursement', 'completed', $admin->id);
+
+        $loan->refresh();
+        $this->assertSame(LoanDetail::STATUS_COMPLETED, $loan->status);
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status'));
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'otc_clearance')->value('status'));
     }
 
     public function test_product_from_another_bank_is_rejected(): void
@@ -598,7 +651,7 @@ class DisbursementMultiEntryTest extends TestCase
 
         // Full NEFT disbursement (gross 2,000,000 = target, OTC skipped) with the query open.
         app(DisbursementService::class)->processDisbursement($loan, [
-            'entries' => [$this->entry($product, 2000000, 'fund_transfer', 'skipped')],
+            'entries' => [$this->serviceEntry($product, 2000000, 'fund_transfer', 'skipped')],
         ]);
 
         $loan->refresh();

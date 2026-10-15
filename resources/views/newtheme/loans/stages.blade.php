@@ -119,8 +119,10 @@
 @section('content')
     @php
         // Stage-reset control is gated by the reset_loan_stages permission.
-        // Build grouped options from the stages this loan has.
-        $canResetStages = auth()->user()->canResetLoanStages();
+        // Build grouped options from the stages this loan has. Hidden entirely once
+        // any disbursed tranche has a finalized payout — reversing those tranches
+        // would orphan the payout ledger (the server also blocks the reset).
+        $canResetStages = auth()->user()->canResetLoanStages() && ! $loan->hasFinalizedPayout();
         $resetStageGroups = [];
         if ($canResetStages) {
             $mainOpts = [];

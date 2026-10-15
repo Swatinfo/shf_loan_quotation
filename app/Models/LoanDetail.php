@@ -224,6 +224,21 @@ class LoanDetail extends Model
     }
 
     /**
+     * True when any active disbursement tranche is already covered by a finalized
+     * payout (a per-loan ledger row or a payout run). Used to block a stage reset
+     * past disbursement and to hide the reset UI — reversing those tranches would
+     * orphan the payout ledger.
+     */
+    public function hasFinalizedPayout(): bool
+    {
+        return $this->disbursementEntries()
+            ->where(function ($query) {
+                $query->whereNotNull('loan_payout_id')->orWhereNotNull('payout_run_id');
+            })
+            ->exists();
+    }
+
+    /**
      * Keep disbursement entry rows' is_active flag in sync with the loan
      * status: cancelled / rejected / on_hold deactivate, active / completed
      * reactivate. Bulk query update — no per-row audit stamping intended.

@@ -88,12 +88,16 @@ class LoanStageController extends Controller
 
         $fromStage = $loan->current_stage;
 
-        $log = $this->stageService->resetToStage(
-            $loan,
-            $validated['stage_key'],
-            $validated['phase'] ?? null,
-            $validated['variant'] ?? null,
-        );
+        try {
+            $log = $this->stageService->resetToStage(
+                $loan,
+                $validated['stage_key'],
+                $validated['phase'] ?? null,
+                $validated['variant'] ?? null,
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
 
         ActivityLog::log('reset_loan_stage', $loan, [
             'loan_number' => $loan->loan_number,

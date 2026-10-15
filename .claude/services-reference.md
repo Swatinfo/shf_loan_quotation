@@ -253,7 +253,7 @@ Orchestration logic:
 - All parallel subs done → mark `parallel_processing` complete; flag off → advance to `rate_pf`; flag on → call `advanceToSanctionIfReady()`
 - **rate_pf** done (flag on only) → intercepted at top; call `advanceToSanctionIfReady()` and return
 - **sanction** done → compute `expected_docket_date` from app_number stage notes (custom_docket_date OR docket_days_offset)
-- **disbursement** done → normal sequential advance opens `otc_clearance`. Loan completion + per-entry OTC settlement are owned by `DisbursementService::syncDisbursementState`, NOT here (the old fund_transfer→skip-OTC→complete and otc→complete branches were removed, 2026-10-05).
+- **disbursement** done → normal sequential advance opens `otc_clearance`, **then calls `DisbursementService::syncDisbursementState($loan->refresh())`** (2026-10-15) so a loan whose tranches are already all OTC-settled completes immediately instead of stranding open (the generic complete / reset-re-advance path otherwise never re-invokes the resolver). Loan completion + per-entry OTC settlement are owned by `syncDisbursementState`, NOT here. The resolver is wrapped by a per-loan static re-entrancy guard (`syncDisbursementState` → private `resolveDisbursementState`) so this nested call can't double-fire the completion notification.
 - **otc_clearance** done → no loan-completion side effect here (see `syncDisbursementState`).
 - Sequential advance + auto-assign next stage otherwise
 

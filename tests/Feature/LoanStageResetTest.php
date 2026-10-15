@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Bank;
 use App\Models\Branch;
+use App\Models\DisbursementDetail;
+use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\StageAssignment;
+use App\Models\StageQuery;
 use App\Models\User;
 use App\Services\PermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -193,6 +196,97 @@ class LoanStageResetTest extends TestCase
         $this->actingAs($allowed)
             ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'not_a_stage'])
             ->assertStatus(422);
+    }
+
+    private function attachDisbursement(LoanDetail $loan, array $entryOverrides = []): DisbursementEntry
+    {
+        $detail = DisbursementDetail::create([
+            'loan_id' => $loan->id,
+            'disbursement_type' => 'cheque',
+            'amount_disbursed' => 1000000,
+            'completion_intent' => 'full',
+        ]);
+
+        return DisbursementEntry::create(array_merge([
+            'loan_id' => $loan->id,
+            'disbursement_detail_id' => $detail->id,
+            'method' => 'cheque',
+            'amount' => 1000000,
+            'cheque_number' => '12345',
+            'otc_status' => 'cleared',
+            'is_active' => true,
+        ], $entryOverrides));
+    }
+
+    public function test_reset_to_rate_pf_removes_disbursement_entries(): void
+    {
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
+        $owner = $this->user('owner-'.uniqid().'@test');
+        $loan = $this->makeCompletedLoan($owner);
+        $this->attachDisbursement($loan);
+
+        $this->assertSame(1, $loan->disbursementEntries()->count());
+
+        $this->actingAs($allowed)
+            ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'rate_pf'])
+            ->assertOk();
+
+        $this->assertSame(0, $loan->disbursementEntries()->count(), 'disbursement entries should be deleted');
+        $this->assertSame(0, DisbursementEntry::withTrashed()->where('loan_id', $loan->id)->count(), 'entries should be force-deleted, not soft-deleted');
+        $this->assertNull($loan->fresh()->disbursement);
+    }
+
+    public function test_reset_is_blocked_when_a_tranche_has_a_finalized_payout(): void
+    {
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
+        $owner = $this->user('owner-'.uniqid().'@test');
+        $loan = $this->makeCompletedLoan($owner);
+        $this->attachDisbursement($loan, ['payout_run_id' => 1]);
+
+        $this->actingAs($allowed)
+            ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'rate_pf'])
+            ->assertStatus(422)
+            ->assertJsonPath('error', fn ($m) => str_contains($m, 'finalized payout'));
+
+        // Nothing changed — still completed, entry intact.
+        $this->assertSame('completed', $loan->fresh()->status);
+        $this->assertSame(1, $loan->disbursementEntries()->count());
+    }
+
+    public function test_reset_to_rate_pf_clears_sanctioned_amount(): void
+    {
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
+        $owner = $this->user('owner-'.uniqid().'@test');
+        $loan = $this->makeCompletedLoan($owner);
+        $loan->update(['sanctioned_amount' => 950000]);
+
+        $this->actingAs($allowed)
+            ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'rate_pf'])
+            ->assertOk();
+
+        $this->assertNull($loan->fresh()->sanctioned_amount);
+    }
+
+    public function test_reset_closes_open_queries_on_forward_stages(): void
+    {
+        $allowed = $this->user('bm-'.uniqid().'@test', 'branch_manager');
+        $owner = $this->user('owner-'.uniqid().'@test');
+        $loan = $this->makeCompletedLoan($owner);
+
+        $query = StageQuery::create([
+            'stage_assignment_id' => $loan->stageAssignments->firstWhere('stage_key', 'disbursement')->id,
+            'loan_id' => $loan->id,
+            'stage_key' => 'disbursement',
+            'query_text' => 'please clarify',
+            'raised_by' => $owner->id,
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($allowed)
+            ->postJson(route('loans.stages.reset', $loan), ['stage_key' => 'rate_pf'])
+            ->assertOk();
+
+        $this->assertSame('resolved', $query->fresh()->status);
     }
 
     public function test_console_command_non_interactive_reset(): void

@@ -658,6 +658,15 @@ class LoanStageService
             }
         }
 
+        // When the disbursement stage completes, re-run the disbursement/OTC
+        // resolver so a loan whose tranches are already all OTC-settled finishes
+        // immediately instead of waiting for a handover action that never comes
+        // (the generic "complete stage" / reset-re-advance path never calls it).
+        // Idempotent and guarded; a no-op while any cheque handover is outstanding.
+        if ($completedStageKey === 'disbursement') {
+            app(DisbursementService::class)->syncDisbursementState($loan->refresh());
+        }
+
         // When sanction completes, calculate expected docket date from app_number notes
         if ($completedStageKey === 'sanction') {
             $appNumberAssignment = $loan->stageAssignments()->where('stage_key', 'app_number')->first();
@@ -1786,6 +1795,14 @@ class LoanStageService
 
         $loan->loadMissing('stageAssignments');
 
+        // A reset that clears the disbursement must not strand a finalized payout:
+        // reversing paid tranches would orphan the payout ledger. Block it — the
+        // payout has to be reversed first.
+        if (array_search($stageKey, self::RESET_STAGE_ORDER, true) <= array_search('disbursement', self::RESET_STAGE_ORDER, true)
+            && $loan->hasFinalizedPayout()) {
+            throw new \RuntimeException('Cannot reset this loan past disbursement — one or more disbursed tranches already have a finalized payout. Reverse the payout first.');
+        }
+
         // Phased stages default to their entry phase when none is given.
         if ($phase === null && $this->resetGetPhaseNoteKey($stageKey) !== null) {
             $phase = 1;
@@ -1833,6 +1850,12 @@ class LoanStageService
         if ($targetIdx <= array_search('sanction', self::RESET_STAGE_ORDER, true)) {
             $loanUpdate['expected_docket_date'] = null;
         }
+        if ($targetIdx <= array_search('docket', self::RESET_STAGE_ORDER, true)) {
+            // sanctioned_amount is captured at docket (phase 2). Clear the mirror
+            // column when rewinding to docket or earlier so a stale figure can't
+            // drive the disbursement target; a redo re-populates it from the notes.
+            $loanUpdate['sanctioned_amount'] = null;
+        }
         if ($targetIdx <= array_search('disbursement', self::RESET_STAGE_ORDER, true)) {
             // Disbursement record (incl. per-entry OTC + completion_intent) is
             // deleted in resetClearRelatedData; clear the mirrored column too.
@@ -1860,6 +1883,22 @@ class LoanStageService
 
         // 5. Reset all stages after the target.
         $log = array_merge($log, $this->resetStagesAfter($loan, $stageKey));
+
+        // 5b. Close any open (pending/responded) queries on the target stage and
+        // every stage after it — a rewound stage must start clean, and a lingering
+        // query would otherwise block its completion.
+        $forwardKeys = array_slice(self::RESET_STAGE_ORDER, array_search($stageKey, self::RESET_STAGE_ORDER, true));
+        $closedQueries = StageQuery::where('loan_id', $loan->id)
+            ->whereIn('stage_key', $forwardKeys)
+            ->whereIn('status', ['pending', 'responded'])
+            ->update([
+                'status' => StageQuery::STATUS_RESOLVED,
+                'resolved_at' => now(),
+                'resolved_by' => auth()->id(),
+            ]);
+        if ($closedQueries > 0) {
+            $log[] = "Closed {$closedQueries} open ".($closedQueries === 1 ? 'query' : 'queries').' on reset stages';
+        }
 
         // 6. Recalculate progress.
         $this->recalculateProgress($loan);
@@ -1976,8 +2015,14 @@ class LoanStageService
         $log = [];
 
         if ($targetIdx <= array_search('disbursement', self::RESET_STAGE_ORDER, true)) {
-            if ($loan->disbursement()->delete()) {
-                $log[] = 'Disbursement record cleared';
+            // Hard-delete the per-tranche entries too: the header is hard-deleted
+            // (no soft deletes) and syncEntryRows only reconciles the CURRENT
+            // detail, so leaving them would strand orphaned/duplicate cheque rows
+            // that inflate the disbursed total on the next disbursement.
+            $deletedEntries = $loan->disbursementEntries()->forceDelete();
+            $deletedDetail = $loan->disbursement()->delete();
+            if ($deletedDetail || $deletedEntries) {
+                $log[] = 'Disbursement record + '.$deletedEntries.' tranche row(s) cleared';
             }
         }
 
