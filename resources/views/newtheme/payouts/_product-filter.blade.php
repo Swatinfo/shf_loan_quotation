@@ -6,12 +6,17 @@
 @php $selectedProductIds = array_map('strval', (array) ($input['product_ids'] ?? [])); @endphp
 <div class="field">
     <label class="lbl">Products <span class="ld-req">*</span></label>
-    <select name="product_ids[]" class="select po-product-select" multiple required
-        data-product-select data-placeholder="Select product(s)…">
-        @foreach ($products->where('bank_id', (int) ($input['bank_id'] ?? 0)) as $p)
-            <option value="{{ $p->id }}" @selected(in_array((string) $p->id, $selectedProductIds, true))>{{ $p->name }}</option>
-        @endforeach
-    </select>
+    {{-- Wrapper so SHF.validateForm appends the error BELOW the Select2 box
+         (it appends after the closest .position-relative; without it the message
+         lands after the hidden <select>, i.e. above the box). --}}
+    <div class="position-relative">
+        <select name="product_ids[]" class="select po-product-select" multiple required
+            data-product-select data-placeholder="Select product(s)…">
+            @foreach ($products->where('bank_id', (int) ($input['bank_id'] ?? 0)) as $p)
+                <option value="{{ $p->id }}" @selected(in_array((string) $p->id, $selectedProductIds, true))>{{ $p->name }}</option>
+            @endforeach
+        </select>
+    </div>
 </div>
 
 @once
