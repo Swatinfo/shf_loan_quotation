@@ -75,8 +75,9 @@ class PayoutController extends Controller
     {
         return view('newtheme.payouts.reconcile', [
             'banks' => Bank::active()->orderBy('name')->get(),
+            'products' => Product::active()->orderBy('name')->get(['id', 'name', 'bank_id']),
             'result' => null,
-            'input' => $request->only(['bank_id', 'from', 'to']),
+            'input' => $request->only(['bank_id', 'from', 'to', 'product_ids']),
             'canFinalizePayout' => $request->user()->hasPermission('finalize_payout'),
             'pageKey' => 'reports',
         ]);
@@ -103,11 +104,14 @@ class PayoutController extends Controller
             'bank_id' => 'required|exists:banks,id',
             'from' => 'required|date',
             'to' => 'required|date',
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'integer|exists:products,id',
             'file' => 'required|file|mimes:xlsx|max:10240',
         ]);
 
+        $productIds = array_map('intval', $request->input('product_ids', []));
         $excelRows = app(XlsxImportService::class)->readAssoc($request->file('file')->getRealPath());
-        $our = $this->ourEntries((int) $request->bank_id, $request->from, $request->to);
+        $our = $this->ourEntries((int) $request->bank_id, $request->from, $request->to, $productIds);
         $payoutService = app(PayoutService::class);
 
         // Build match keys for both sides.
@@ -191,7 +195,8 @@ class PayoutController extends Controller
 
         return view('newtheme.payouts.reconcile', [
             'banks' => Bank::active()->orderBy('name')->get(),
-            'input' => $request->only(['bank_id', 'from', 'to']),
+            'products' => Product::active()->orderBy('name')->get(['id', 'name', 'bank_id']),
+            'input' => $request->only(['bank_id', 'from', 'to', 'product_ids']),
             'result' => [
                 'matched' => $matched,
                 'db_only' => $dbOnly,
@@ -208,14 +213,22 @@ class PayoutController extends Controller
     /**
      * Our active disbursement entries for a bank + date range.
      */
-    private function ourEntries(int $bankId, string $from, string $to)
+    /**
+     * @param  array<int,int>  $productIds  Empty = all products of the bank.
+     */
+    private function ourEntries(int $bankId, string $from, string $to, array $productIds = [])
     {
         return DisbursementEntry::query()
             ->with([
                 'loan:id,customer_name,bank_id,product_id,payout_user_id',
                 'loan.bank:id,name', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement',
             ])
-            ->whereHas('loan', fn ($q) => $q->where('bank_id', $bankId))
+            ->whereHas('loan', function ($q) use ($bankId, $productIds) {
+                $q->where('bank_id', $bankId);
+                if ($productIds) {
+                    $q->whereIn('product_id', $productIds);
+                }
+            })
             ->where('is_active', true)
             // Settlement-date basis: match our settled tranches (otc_handover_date =
             // NEFT transfer date / cheque cleared date) against the bank statement.

@@ -64,6 +64,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @include('newtheme.payouts._product-filter')
                     <div class="field">
                         <label class="lbl">From <span class="ld-req">*</span></label>
                         <input type="text" name="from" id="rcFrom" class="input po-date"

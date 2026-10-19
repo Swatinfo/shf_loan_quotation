@@ -106,6 +106,7 @@ class PayoutReconcileTest extends TestCase
 
         $resp = $this->actingAs($admin)->post(route('payouts.reconcile.run'), [
             'bank_id' => $bank->id,
+            'product_ids' => [$product->id],
             'from' => '2024-07-01',
             'to' => '2024-08-31',
             'file' => $upload,

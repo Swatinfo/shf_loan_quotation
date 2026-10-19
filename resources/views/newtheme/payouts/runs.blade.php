@@ -55,6 +55,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @include('newtheme.payouts._product-filter')
                     <div class="field">
                         <label class="lbl">From <span class="ld-req">*</span></label>
                         <input type="text" name="from" id="prFrom" class="input po-date"
@@ -93,6 +94,9 @@
                     data-confirm="Finalize this payout run ({{ $preview['from'] }} → {{ $preview['to'] }})? ₹ {{ inr($preview['totals']['net']) }} net will be locked and the covered tranches marked paid.">
                     @csrf
                     <input type="hidden" name="bank_id" value="{{ $preview['bank_id'] }}">
+                    @foreach ($preview['product_ids'] ?? [] as $pid)
+                        <input type="hidden" name="product_ids[]" value="{{ $pid }}">
+                    @endforeach
                     <input type="hidden" name="from" value="{{ $preview['from'] }}">
                     <input type="hidden" name="to" value="{{ $preview['to'] }}">
                     <button type="submit" class="btn primary">Finalize Run</button>

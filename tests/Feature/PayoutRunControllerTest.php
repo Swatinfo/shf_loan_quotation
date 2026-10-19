@@ -33,11 +33,11 @@ class PayoutRunControllerTest extends TestCase
         return $u->fresh('roles');
     }
 
-    private function loanWithEntry(User $payoutUser, int $amount, string $date): LoanDetail
+    private function loanWithEntry(User $payoutUser, int $amount, string $date, ?Bank $bank = null): LoanDetail
     {
-        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
+        $bank = $bank ?: Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
         $branch = Branch::create(['name' => 'Br-'.uniqid(), 'is_active' => true]);
-        $product = Product::create(['name' => 'HL', 'bank_id' => $bank->id, 'is_active' => true]);
+        $product = Product::create(['name' => 'HL-'.uniqid(), 'bank_id' => $bank->id, 'is_active' => true]);
         $version = ProductPayoutVersion::create([
             'product_id' => $product->id, 'effective_from' => '2000-01-01',
             'is_pf_based' => false, 'payout_cycle_start_day' => 1, 'payout_cycle_end_day' => 31,
@@ -74,7 +74,7 @@ class PayoutRunControllerTest extends TestCase
         $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
         $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15'); // 60L @ 1% = 60,000
 
-        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loan->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loan->bank_id, 'product_ids' => [$loan->product_id], 'from' => '2026-10-01', 'to' => '2026-10-31']));
 
         $resp->assertOk();
         $preview = $resp->viewData('preview');
@@ -90,7 +90,7 @@ class PayoutRunControllerTest extends TestCase
         $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
         $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15');
 
-        $resp = $this->actingAs($admin)->post(route('payouts.runs.finalize'), ['bank_id' => $loan->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']);
+        $resp = $this->actingAs($admin)->post(route('payouts.runs.finalize'), ['bank_id' => $loan->bank_id, 'product_ids' => [$loan->product_id], 'from' => '2026-10-01', 'to' => '2026-10-31']);
 
         $run = PayoutRun::latest('id')->first();
         $this->assertNotNull($run);
@@ -109,18 +109,26 @@ class PayoutRunControllerTest extends TestCase
     {
         $admin = $this->admin();
         $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
-        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $bank->id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
+        $product = Product::create(['name' => 'P', 'bank_id' => $bank->id, 'is_active' => true]);
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $bank->id, 'product_ids' => [$product->id], 'from' => '2026-10-01', 'to' => '2026-10-31']));
 
         $resp->assertOk();
         $this->assertFalse($resp->viewData('preview')['can_finalize']);
     }
 
-    public function test_finalize_requires_a_bank(): void
+    public function test_finalize_requires_a_bank_and_products(): void
     {
         $admin = $this->admin();
+        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
+
         $this->actingAs($admin)
             ->post(route('payouts.runs.finalize'), ['from' => '2026-10-01', 'to' => '2026-10-31'])
-            ->assertSessionHasErrors('bank_id');
+            ->assertSessionHasErrors(['bank_id', 'product_ids']);
+
+        // Bank present but no products → still blocked on product_ids.
+        $this->actingAs($admin)
+            ->post(route('payouts.runs.finalize'), ['bank_id' => $bank->id, 'from' => '2026-10-01', 'to' => '2026-10-31'])
+            ->assertSessionHasErrors('product_ids');
     }
 
     public function test_bank_filter_scopes_the_run_to_the_selected_bank(): void
@@ -133,9 +141,38 @@ class PayoutRunControllerTest extends TestCase
         $loanA = $this->loanWithEntry($advisor, 6000000, '2026-10-15'); // bank A: 60L @ 1% = 60,000
         $this->loanWithEntry($advisor, 9000000, '2026-10-15');          // bank B: must be excluded
 
-        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loanA->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loanA->bank_id, 'product_ids' => [$loanA->product_id], 'from' => '2026-10-01', 'to' => '2026-10-31']));
 
         $preview = $resp->viewData('preview');
         $this->assertSame(60000, $preview['totals']['gross']); // only bank A counted
+    }
+
+    public function test_product_filter_scopes_run_and_leaves_other_products_untouched(): void
+    {
+        $admin = $this->admin();
+        $advisor = User::create(['name' => 'Adv', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
+        $advisor = $advisor->fresh('roles');
+
+        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
+        $loanA = $this->loanWithEntry($advisor, 6000000, '2026-10-15', $bank); // product A (same bank)
+        $loanB = $this->loanWithEntry($advisor, 5000000, '2026-10-15', $bank); // product B (same bank)
+
+        // Run for product A only.
+        $this->actingAs($admin)->post(route('payouts.runs.finalize'), [
+            'bank_id' => $bank->id, 'product_ids' => [$loanA->product_id],
+            'from' => '2026-10-01', 'to' => '2026-10-31',
+        ])->assertRedirect();
+
+        // A is covered; B is left untouched (not deleted/affected).
+        $this->assertNotNull($loanA->disbursementEntries()->first()->payout_run_id);
+        $this->assertNull($loanB->disbursementEntries()->first()->payout_run_id);
+
+        // A later run for product B picks up B's still-uncovered tranche.
+        $this->actingAs($admin)->post(route('payouts.runs.finalize'), [
+            'bank_id' => $bank->id, 'product_ids' => [$loanB->product_id],
+            'from' => '2026-10-01', 'to' => '2026-10-31',
+        ])->assertRedirect();
+        $this->assertNotNull($loanB->disbursementEntries()->first()->fresh()->payout_run_id);
     }
 }

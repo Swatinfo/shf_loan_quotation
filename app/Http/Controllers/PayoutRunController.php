@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use App\Models\PayoutRun;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\PayoutRunService;
 use Illuminate\Http\Request;
@@ -18,21 +19,27 @@ class PayoutRunController extends Controller
 
     public function index(Request $request)
     {
-        $input = $request->only(['from', 'to', 'bank_id']);
+        $input = $request->only(['from', 'to', 'bank_id', 'product_ids']);
         $preview = null;
-        if ($request->filled('from') && $request->filled('to') && $request->filled('bank_id')) {
+        if ($request->filled('from') && $request->filled('to') && $request->filled('bank_id') && $request->filled('product_ids')) {
             $data = $request->validate([
                 'bank_id' => 'required|exists:banks,id',
                 'from' => 'required|date',
                 'to' => 'required|date|after_or_equal:from',
+                'product_ids' => 'required|array|min:1',
+                'product_ids.*' => 'integer|exists:products,id',
             ]);
-            $preview = $this->enrich($this->service->previewRun($data['from'], $data['to'], (int) $data['bank_id']));
+            $preview = $this->enrich($this->service->previewRun(
+                $data['from'], $data['to'], (int) $data['bank_id'],
+                array_map('intval', $data['product_ids'] ?? []),
+            ));
         }
 
         return view('newtheme.payouts.runs', [
             'preview' => $preview,
             'input' => $input,
             'banks' => Bank::active()->orderBy('name')->get(['id', 'name']),
+            'products' => Product::active()->orderBy('name')->get(['id', 'name', 'bank_id']),
             'runs' => PayoutRun::with(['finalizedBy', 'bank'])->latest('id')->limit(50)->get(),
             'canFinalize' => $request->user()->hasPermission('finalize_payout'),
             'pageKey' => 'reports',
@@ -45,9 +52,14 @@ class PayoutRunController extends Controller
             'bank_id' => 'required|exists:banks,id',
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'integer|exists:products,id',
         ]);
 
-        $run = $this->service->finalizeRun($data['from'], $data['to'], $request->user(), (int) $data['bank_id']);
+        $run = $this->service->finalizeRun(
+            $data['from'], $data['to'], $request->user(), (int) $data['bank_id'],
+            array_map('intval', $data['product_ids'] ?? []),
+        );
 
         return redirect()->route('payouts.runs.show', $run)->with(
             'success',

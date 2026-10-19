@@ -34,19 +34,25 @@ class PayoutRunService
      *
      * @return array<string, mixed>
      */
-    public function previewRun(string $from, string $to, ?int $bankId = null): array
+    /**
+     * @param  array<int,int>  $productIds  Empty = all products of the bank.
+     */
+    public function previewRun(string $from, string $to, ?int $bankId = null, array $productIds = []): array
     {
-        return $this->computeRun($from, $to, $bankId);
+        return $this->computeRun($from, $to, $bankId, $productIds);
     }
 
     /**
      * Finalize a run: persist the snapshot (run + products + lines + per-user totals)
      * and stamp coverage so the tranches / one-time PF+insurance are never paid twice.
      */
-    public function finalizeRun(string $from, string $to, User $actor, ?int $bankId = null): PayoutRun
+    /**
+     * @param  array<int,int>  $productIds  Empty = all products of the bank.
+     */
+    public function finalizeRun(string $from, string $to, User $actor, ?int $bankId = null, array $productIds = []): PayoutRun
     {
-        return DB::transaction(function () use ($from, $to, $actor, $bankId) {
-            $data = $this->computeRun($from, $to, $bankId);
+        return DB::transaction(function () use ($from, $to, $actor, $bankId, $productIds) {
+            $data = $this->computeRun($from, $to, $bankId, $productIds);
 
             $run = PayoutRun::create([
                 'from_date' => $data['from'],
@@ -147,7 +153,10 @@ class PayoutRunService
      *
      * @return array<string, mixed>
      */
-    private function computeRun(string $from, string $to, ?int $bankId = null): array
+    /**
+     * @param  array<int,int>  $productIds
+     */
+    private function computeRun(string $from, string $to, ?int $bankId = null, array $productIds = []): array
     {
         $fromDate = CarbonImmutable::parse($from)->startOfDay();
         $toDate = CarbonImmutable::parse($to)->endOfDay();
@@ -157,12 +166,25 @@ class PayoutRunService
         // Keyed on the SETTLEMENT date (otc_handover_date): NEFT = transfer date,
         // cheque = cleared date. Un-cleared cheque tranches have a null handover and
         // are excluded until cleared — payout is paid only on settled money.
-        // Scoped to one bank when $bankId is given (the loan's product's bank).
+        // Scoped to one bank (required by the UI) and, optionally, a subset of that
+        // bank's products. Empty $productIds = all of the bank's products. The scope
+        // only narrows the query — a run never touches tranches outside it, and
+        // coverage is per-tranche (payout_run_id), so a later subset run picks up
+        // only its own still-uncovered tranches.
         $entries = DisbursementEntry::query()
             ->whereNull('payout_run_id')
             ->where('is_active', true)
             ->whereBetween('otc_handover_date', [$fromDate->toDateString(), $toDate->toDateString()])
-            ->when($bankId, fn ($q) => $q->whereHas('loan.product', fn ($q2) => $q2->where('bank_id', $bankId)))
+            ->when($bankId || $productIds, function ($q) use ($bankId, $productIds) {
+                $q->whereHas('loan', function ($q2) use ($bankId, $productIds) {
+                    if ($bankId) {
+                        $q2->where('bank_id', $bankId);
+                    }
+                    if ($productIds) {
+                        $q2->whereIn('product_id', $productIds);
+                    }
+                });
+            })
             ->with(['loan.product.bank', 'loan.payoutUser.roles', 'loan.disbursement'])
             ->get();
 
@@ -341,6 +363,7 @@ class PayoutRunService
             'from' => $fromDate->toDateString(),
             'to' => $toDate->toDateString(),
             'bank_id' => $bankId,
+            'product_ids' => array_values($productIds),
             'rates' => $rates,
             'products' => array_values($productOut),
             'lines' => $lines,

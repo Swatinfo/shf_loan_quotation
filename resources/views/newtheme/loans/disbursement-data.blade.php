@@ -121,7 +121,7 @@
                     partial_disbursed</em>. <strong>Preview</strong> first, then <strong>Confirm Import</strong>.
                 </div>
                 <form method="POST" action="{{ route('loans.disbursement-data.preview') }}" enctype="multipart/form-data"
-                    class="row g-2 align-items-end" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                    id="ddPreviewForm" class="row g-2 align-items-end" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
                     @csrf
                     <div class="field" style="margin-bottom:0;">
                         <label class="lbl">Filled sheet (.xlsx)</label>
@@ -225,3 +225,17 @@
         @endif
     </main>
 @endsection
+
+@push('page-scripts')
+    <script>
+        $(function () {
+            // Client-side validation (matches the project's SHF.validateForm pattern).
+            $('#ddPreviewForm').on('submit', function (e) {
+                if (!window.SHF || !SHF.validateForm) { return; }
+                if (!SHF.validateForm($(this), { file: { required: true, label: 'Filled sheet (.xlsx)' } })) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+@endpush
