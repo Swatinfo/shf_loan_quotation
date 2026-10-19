@@ -528,10 +528,23 @@ class PayoutReconcileTest extends TestCase
      *
      * @param  array<int, array<int, mixed>>  $rows
      */
+    /**
+     * Build an upload. Rows are given in the convenient order
+     * [acc, customer, cheque, date, loan_amount, pf, admin, insurance, application?]
+     * and are mapped here to the actual column order (application_number is first).
+     *
+     * @param  array<int, array<int, mixed>>  $rows
+     */
     private function makeUpload(array $rows): UploadedFile
     {
-        $headers = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount', 'application_number'];
-        $resp = app(XlsxExportService::class)->download('u.xlsx', $headers, $rows);
+        $headers = ['application_number', 'loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
+        $mapped = array_map(function (array $r) {
+            [$acc, $cust, $cheque, $date, $amt, $pf, $admin, $ins] = array_pad(array_slice($r, 0, 8), 8, '');
+
+            return [$r[8] ?? '', $acc, $cust, $cheque, $date, $amt, $pf, $admin, $ins];
+        }, $rows);
+
+        $resp = app(XlsxExportService::class)->download('u.xlsx', $headers, $mapped);
         $tmp = tempnam(sys_get_temp_dir(), 'rcu').'.xlsx';
         copy($resp->getFile()->getPathname(), $tmp);
 

@@ -25,7 +25,7 @@ class PayoutController extends Controller
      * either one (plus a customer-name fallback), so the bank can fill whichever
      * their statement carries (or both).
      */
-    private const COLUMNS = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount', 'application_number'];
+    private const COLUMNS = ['application_number', 'loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
 
     /**
      * D6 — user-wise payout report (finalized loan_payouts), grouped by cycle.
@@ -101,7 +101,7 @@ class PayoutController extends Controller
             'payout-reconciliation-template.xlsx',
             self::COLUMNS,
             [], // headers only — blank format
-            [4 => XlsxExportService::TYPE_NUMBER, 5 => XlsxExportService::TYPE_NUMBER, 6 => XlsxExportService::TYPE_NUMBER, 7 => XlsxExportService::TYPE_NUMBER],
+            [5 => XlsxExportService::TYPE_NUMBER, 6 => XlsxExportService::TYPE_NUMBER, 7 => XlsxExportService::TYPE_NUMBER, 8 => XlsxExportService::TYPE_NUMBER],
         );
     }
 
