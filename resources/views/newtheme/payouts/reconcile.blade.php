@@ -295,6 +295,13 @@
                 $('.po-date').datepicker({
                     format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true, clearBtn: true,
                 });
+                // Picking the start date auto-sets the end date to +1 month.
+                $('#rcFrom').on('changeDate', function (e) {
+                    if (!e.date) { return; }
+                    var d = new Date(e.date.getTime());
+                    d.setMonth(d.getMonth() + 1);
+                    $('#rcTo').datepicker('setDate', d);
+                });
             });
         </script>
     @endpush
