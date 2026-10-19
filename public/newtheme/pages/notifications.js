@@ -102,7 +102,7 @@
         enable.addEventListener('click', function () {
             enable.disabled = true; enable.textContent = 'Enabling…';
             window.SHFPush.enable().then(refresh).catch(function (err) {
-                alert((err && err.message) || 'Failed to enable notifications.');
+                SHF.alert({ icon: 'error', text: (err && err.message) || 'Failed to enable notifications.' });
                 refresh();
             }).finally(function () { enable.disabled = false; enable.textContent = 'Enable'; });
         });

@@ -45,6 +45,73 @@ SHF.copyBtn = SHF.copyBtn || function (value) {
         '</button>';
 };
 
+// ── SweetAlert-backed dialogs ──────────────────────────────────────────
+// Project standard: no native alert/confirm/prompt in page code — use these
+// everywhere. They return a Promise so callers handle the result in .then().
+// A single native fallback lives here for the edge case where the SweetAlert2
+// vendor file failed to load (a broken page), so the app still functions.
+SHF.confirm = SHF.confirm || function (opts) {
+    opts = typeof opts === 'string' ? { text: opts } : (opts || {});
+    var title = opts.title || 'Are you sure?';
+    var text = opts.text || '';
+    if (!window.Swal) {
+        return Promise.resolve(window.confirm((title + (text ? '\n' + text : '')).trim()));
+    }
+    var cfg = {
+        title: title,
+        icon: opts.icon || 'warning',
+        showCancelButton: true,
+        reverseButtons: true,
+        confirmButtonText: opts.confirmText || 'Yes',
+        cancelButtonText: opts.cancelText || 'Cancel',
+        confirmButtonColor: opts.danger ? '#c0392b' : '#f15a29',
+        cancelButtonColor: '#6c757d',
+        focusCancel: !!opts.focusCancel,
+    };
+    if (opts.html) { cfg.html = opts.html; } else { cfg.text = text; }
+    return window.Swal.fire(cfg).then(function (r) { return !!r.isConfirmed; });
+};
+
+SHF.alert = SHF.alert || function (opts) {
+    opts = typeof opts === 'string' ? { text: opts } : (opts || {});
+    var title = opts.title || '';
+    var text = opts.text || '';
+    if (!window.Swal) { window.alert(((title ? title + '\n' : '') + text).trim()); return Promise.resolve(); }
+    return window.Swal.fire({
+        title: title || (opts.icon === 'error' ? 'Error' : (opts.icon === 'success' ? 'Done' : '')),
+        text: text,
+        icon: opts.icon || 'info',
+        confirmButtonText: opts.confirmText || 'OK',
+        confirmButtonColor: '#f15a29',
+    });
+};
+
+SHF.prompt = SHF.prompt || function (opts) {
+    opts = opts || {};
+    var title = opts.title || '';
+    if (!window.Swal) {
+        return Promise.resolve(window.prompt((title + (opts.text ? '\n' + opts.text : '')).trim(), opts.value || ''));
+    }
+    return window.Swal.fire({
+        title: title,
+        text: opts.text || '',
+        input: opts.input || 'text',
+        inputLabel: opts.inputLabel || '',
+        inputValue: opts.value || '',
+        inputPlaceholder: opts.placeholder || '',
+        icon: opts.icon || undefined,
+        showCancelButton: true,
+        reverseButtons: true,
+        confirmButtonText: opts.confirmText || 'OK',
+        cancelButtonText: opts.cancelText || 'Cancel',
+        confirmButtonColor: opts.danger ? '#c0392b' : '#f15a29',
+        cancelButtonColor: '#6c757d',
+        inputValidator: opts.required ? function (val) {
+            return (!val || !String(val).trim()) ? (opts.requiredMsg || 'This field is required') : undefined;
+        } : undefined,
+    }).then(function (r) { return r.isConfirmed ? (r.value == null ? '' : r.value) : null; });
+};
+
 $(function () {
     'use strict';
 
@@ -394,17 +461,30 @@ $(function () {
         if (this.__shfConfirmed) { return; }
         e.preventDefault();
         var form = this;
-        if (!window.Swal) { if (confirm('Delete this item? This cannot be undone.')) { form.__shfConfirmed = true; form.submit(); } return; }
-        Swal.fire({
+        SHF.confirm({
             title: 'Delete?',
             text: $(form).data('confirmText') || 'This cannot be undone.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#c0392b',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, delete',
-        }).then(function (result) {
-            if (result.isConfirmed) { form.__shfConfirmed = true; form.submit(); }
+            confirmText: 'Yes, delete',
+            danger: true,
+        }).then(function (ok) {
+            if (ok) { form.__shfConfirmed = true; form.submit(); }
+        });
+    });
+
+    // Generic declarative confirm-on-submit: any <form data-confirm="message">.
+    // Replaces inline onsubmit="return confirm(...)" and per-page handlers.
+    $(document).on('submit', 'form[data-confirm]', function (e) {
+        if (this.__shfConfirmed) { return; }
+        e.preventDefault();
+        var form = this;
+        SHF.confirm({
+            title: form.getAttribute('data-confirm-title') || 'Please confirm',
+            text: form.getAttribute('data-confirm') || 'Are you sure?',
+            icon: form.getAttribute('data-confirm-icon') || 'warning',
+            confirmText: form.getAttribute('data-confirm-ok') || 'Yes',
+            danger: form.hasAttribute('data-confirm-danger'),
+        }).then(function (ok) {
+            if (ok) { form.__shfConfirmed = true; form.submit(); }
         });
     });
 

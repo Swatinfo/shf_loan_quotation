@@ -28,11 +28,7 @@
                 window.location.reload();
             }).fail(function () {
                 $btn.prop('disabled', false).css('opacity', 1);
-                if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: 'Failed to update status', confirmButtonColor: '#f15a29' });
-                } else {
-                    alert('Failed to update status');
-                }
+                SHF.alert({ icon: 'error', title: 'Failed to update status' });
             });
         });
 
@@ -153,22 +149,14 @@
             if ($(this).data('confirmed')) { return; }
             e.preventDefault();
             var $f = $(this);
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Delete this task?',
-                    text: 'This cannot be undone.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, delete',
-                    cancelButtonText: 'Cancel',
-                }).then(function (r) {
-                    if (r.isConfirmed) { $f.data('confirmed', true); $f[0].submit(); }
-                });
-            } else if (confirm('Delete this task? This cannot be undone.')) {
-                $f.data('confirmed', true); $f[0].submit();
-            }
+            SHF.confirm({
+                title: 'Delete this task?',
+                text: 'This cannot be undone.',
+                confirmText: 'Yes, delete',
+                danger: true,
+            }).then(function (ok) {
+                if (ok) { $f.data('confirmed', true); $f[0].submit(); }
+            });
         });
 
         /* ───────── Comment delete confirmation ───────── */
@@ -176,21 +164,13 @@
             if ($(this).data('confirmed')) { return; }
             e.preventDefault();
             var $f = $(this);
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Delete this comment?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Delete',
-                    cancelButtonText: 'Cancel',
-                }).then(function (r) {
-                    if (r.isConfirmed) { $f.data('confirmed', true); $f[0].submit(); }
-                });
-            } else if (confirm('Delete this comment?')) {
-                $f.data('confirmed', true); $f[0].submit();
-            }
+            SHF.confirm({
+                title: 'Delete this comment?',
+                confirmText: 'Delete',
+                danger: true,
+            }).then(function (ok) {
+                if (ok) { $f.data('confirmed', true); $f[0].submit(); }
+            });
         });
 
         /* ───────── Comment form validation ───────── */

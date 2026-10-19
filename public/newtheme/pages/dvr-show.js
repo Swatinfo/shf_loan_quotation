@@ -156,28 +156,16 @@
                 }).done(function () {
                     location.reload();
                 }).fail(function () {
-                    if (window.Swal) {
-                        Swal.fire({ icon: 'error', title: 'Could not update', confirmButtonColor: '#f15a29' });
-                    } else {
-                        alert('Could not update.');
-                    }
+                    SHF.alert({ icon: 'error', title: 'Could not update' });
                 });
             };
 
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Mark Follow-up Done?',
-                    text: 'This marks the follow-up as completed without logging a new visit.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#f15a29',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, mark done',
-                    cancelButtonText: 'Cancel',
-                }).then(function (r) { if (r.isConfirmed) { runMark(); } });
-            } else if (confirm('Mark follow-up done?')) {
-                runMark();
-            }
+            SHF.confirm({
+                title: 'Mark Follow-up Done?',
+                text: 'This marks the follow-up as completed without logging a new visit.',
+                icon: 'question',
+                confirmText: 'Yes, mark done',
+            }).then(function (ok) { if (ok) { runMark(); } });
         });
 
         /* ───────── Delete confirmation ───────── */
@@ -185,22 +173,14 @@
             if ($(this).data('confirmed')) { return; }
             e.preventDefault();
             var $f = $(this);
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Delete this visit report?',
-                    text: 'This action cannot be undone.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, delete',
-                    cancelButtonText: 'Cancel',
-                }).then(function (r) {
-                    if (r.isConfirmed) { $f.data('confirmed', true); $f[0].submit(); }
-                });
-            } else if (confirm('Delete this visit report?')) {
-                $f.data('confirmed', true); $f[0].submit();
-            }
+            SHF.confirm({
+                title: 'Delete this visit report?',
+                text: 'This action cannot be undone.',
+                confirmText: 'Yes, delete',
+                danger: true,
+            }).then(function (ok) {
+                if (ok) { $f.data('confirmed', true); $f[0].submit(); }
+            });
         });
     });
 })(window.jQuery);

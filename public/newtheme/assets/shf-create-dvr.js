@@ -208,7 +208,7 @@
                     });
                     $form.find('.is-invalid').first().trigger('focus');
                 } else {
-                    alert('Failed to save visit. Please try again.');
+                    SHF.alert({ icon: 'error', text: 'Failed to save visit. Please try again.' });
                 }
             }).always(function () {
                 $save.prop('disabled', false).css('opacity', 1);

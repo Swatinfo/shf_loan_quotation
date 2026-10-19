@@ -325,15 +325,17 @@
         if (el.dataset.next) setTimeout(() => location.href = el.dataset.next, 700);
       } else if (action === 'delete') {
         e.preventDefault();
-        if (confirm('Are you sure? This cannot be undone.')) {
-          window.shfToast(arg || 'Deleted');
-        }
+        SHF.confirm({ text: 'This cannot be undone.', confirmText: 'Yes', danger: true }).then(function (ok) {
+          if (ok) { window.shfToast(arg || 'Deleted'); }
+        });
       } else if (action === 'confirm') {
         e.preventDefault();
-        if (confirm(el.dataset.msg || 'Confirm action?')) {
-          window.shfToast(arg || 'Confirmed');
-          if (el.dataset.next) setTimeout(() => location.href = el.dataset.next, 500);
-        }
+        SHF.confirm({ text: el.dataset.msg || 'Confirm action?' }).then(function (ok) {
+          if (ok) {
+            window.shfToast(arg || 'Confirmed');
+            if (el.dataset.next) setTimeout(function () { location.href = el.dataset.next; }, 500);
+          }
+        });
       } else if (action === 'print') {
         e.preventDefault();
         window.print();
@@ -523,7 +525,8 @@
       if (!del) return;
       e.preventDefault();
       const label = del.getAttribute('data-confirm-delete') || 'this item';
-      if (confirm('Delete ' + label + '? This cannot be undone.')) {
+      SHF.confirm({ title: 'Delete ' + label + '?', text: 'This cannot be undone.', confirmText: 'Yes, delete', danger: true }).then(function (ok) {
+        if (!ok) { return; }
         const row = del.closest('tr');
         if (row) {
           row.style.transition = 'opacity 0.2s';
@@ -531,7 +534,7 @@
           setTimeout(() => row.remove(), 200);
         }
         window.shfToast && window.shfToast('Deleted ' + label, {icon:'🗑'});
-      }
+      });
     });
   }
 

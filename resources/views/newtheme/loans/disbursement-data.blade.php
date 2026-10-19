@@ -207,7 +207,8 @@
 
                     @if ($okLoans->isNotEmpty())
                         <form method="POST" action="{{ route('loans.disbursement-data.import') }}" style="margin-top:14px;"
-                            onsubmit="return confirm('Apply these corrections to {{ $okLoans->count() }} loan(s)? This rewrites disbursement + OTC data and re-resolves loan status.');">
+                            data-confirm-title="Confirm Import" data-confirm-ok="Yes, import"
+                            data-confirm="Apply these corrections to {{ $okLoans->count() }} loan(s)? This rewrites disbursement + OTC data and re-resolves loan status.">
                             @csrf
                             <input type="hidden" name="token" value="{{ $token }}">
                             <button type="submit" class="btn primary">Confirm Import ({{ $okLoans->count() }} loan(s))</button>

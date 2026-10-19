@@ -80,7 +80,8 @@
 
             @if ($canFinalize && $preview['can_finalize'])
                 <form method="POST" action="{{ route('payouts.runs.finalize') }}" style="margin:0 0 14px;"
-                    onsubmit="return confirm('Finalize this payout run ({{ $preview['from'] }} → {{ $preview['to'] }})? ₹ {{ inr($preview['totals']['net']) }} net will be locked and the covered tranches marked paid.');">
+                    data-confirm-title="Finalize Payout Run" data-confirm-ok="Yes, finalize"
+                    data-confirm="Finalize this payout run ({{ $preview['from'] }} → {{ $preview['to'] }})? ₹ {{ inr($preview['totals']['net']) }} net will be locked and the covered tranches marked paid.">
                     @csrf
                     <input type="hidden" name="from" value="{{ $preview['from'] }}">
                     <input type="hidden" name="to" value="{{ $preview['to'] }}">

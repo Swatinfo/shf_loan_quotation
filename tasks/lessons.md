@@ -4,6 +4,15 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## No native alert/confirm/prompt — use SHF.confirm/alert/prompt (2026-10-19)
+
+- **Rule**: never use `window.alert/confirm/prompt` in page code. Use the SweetAlert2-backed, Promise-returning helpers defined (parse-time) in `public/newtheme/assets/shf-newtheme.js` (loaded globally): `SHF.confirm({title,text,html,icon,confirmText,cancelText,danger,focusCancel}) → Promise<bool>`, `SHF.alert({title,text,icon}) → Promise`, `SHF.prompt({title,text,input:'text'|'textarea',inputLabel,placeholder,value,required,requiredMsg,danger}) → Promise<string|null>`. A **single native fallback** lives INSIDE each helper for the edge case where the Swal vendor file didn't load — that's the only native dialog allowed anywhere.
+- **Declarative form confirm**: any `<form data-confirm="msg" [data-confirm-title] [data-confirm-ok] [data-confirm-danger]>` is handled by a global delegated submit handler in shf-newtheme.js (SweetAlert → on confirm sets `__shfConfirmed` + resubmits). Replaced the inline `onsubmit="return confirm(...)"` on the disbursement-import / payout-finalize / sync-stage-config forms, and let `quotations.js` + `general-tasks.js` drop their own `form[data-confirm]` handlers. `.shf-confirm-delete` still works (now routed through SHF.confirm too).
+- **Sync→async gotcha**: native confirm/prompt are synchronous; the helpers return a Promise, so every call site moved its post-confirm logic into `.then()`. Converted: header impersonate, loan-show status change (textarea reason via `SHF.prompt({input:'textarea'})`) + remark/err alerts, task-show delete task/comment + status err, dvr-show mark-done/delete + err, shf-interactive data-action delete/confirm + data-confirm-delete, create-task/create-dvr/notifications error alerts.
+- Public JS changed → bumped `SHF_VERSION` (.env) + `SHF_SW_VERSION` (sw.js) → `20261019120000` + config:clear. Verified in-browser: the disbursement "Confirm Import" is now a SweetAlert (Cancel / "Yes, import"); helpers present (`SHF.confirm/alert/prompt`). `layouts/app.blade.php` `deferredPrompt.prompt()` is the PWA install API, NOT a dialog — left as-is.
+
+---
+
 ## IP-allowlisted maintenance mode (2026-10-15)
 
 - **Goal**: `php artisan down` but let specific client IPs through (GTPL 43.242.117.89, AIRTEL 122.173.87.25). Laravel's native maintenance has a `--secret` URL-token bypass but **no IP allowlist**.

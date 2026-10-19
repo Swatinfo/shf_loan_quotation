@@ -361,20 +361,8 @@
     }
 
     function wireRowMenus() {
-        // Inline-action rows just need a confirm guard on each delete form.
-        rowsEl
-            .querySelectorAll(".qx-actions form[data-confirm]")
-            .forEach(function (f) {
-                if (f.dataset.shfBound) {
-                    return;
-                }
-                f.dataset.shfBound = "1";
-                f.addEventListener("submit", function (ev) {
-                    if (!confirm(f.dataset.confirm || "Are you sure?")) {
-                        ev.preventDefault();
-                    }
-                });
-            });
+        // Confirm-on-submit for `form[data-confirm]` is handled globally by the
+        // delegated SweetAlert handler in shf-newtheme.js — nothing to wire here.
     }
 
     /* ======= Pagination ======= */

@@ -677,7 +677,8 @@
                             </div>
                             <form method="POST" action="{{ route('loan-settings.sync-stage-config') }}"
                                 class="m-0"
-                                onsubmit="return confirm('Re-apply the current stage configuration to all active loans? Manually transferred stages will be kept.');">
+                                data-confirm-title="Sync Settings" data-confirm-ok="Yes, re-apply"
+                                data-confirm="Re-apply the current stage configuration to all active loans? Manually transferred stages will be kept.">
                                 @csrf
                                 <button type="submit" class="btn-accent btn-accent-sm shf-text-nowrap">
                                     Sync Settings

@@ -267,21 +267,13 @@
 
                         var go = function () { window.location.href = URL_TAKE + '/' + encodeURIComponent(userId); };
 
-                        if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
-                            Swal.fire({
-                                title: 'Impersonate User?',
-                                html: 'You will be logged in as <strong>' + userName + '</strong>.<br><small style="color:#6b7280;">You can return to your account anytime by clicking "Leave".</small>',
-                                icon: 'question',
-                                showCancelButton: true,
-                                confirmButtonColor: '#f15a29',
-                                cancelButtonColor: '#6c757d',
-                                confirmButtonText: 'Yes, impersonate',
-                                cancelButtonText: 'Cancel',
-                                focusCancel: true,
-                            }).then(function (r) { if (r && r.isConfirmed) { go(); } });
-                        } else if (window.confirm('Impersonate ' + userName + '?')) {
-                            go();
-                        }
+                        SHF.confirm({
+                            title: 'Impersonate User?',
+                            html: 'You will be logged in as <strong>' + userName + '</strong>.<br><small style="color:#6b7280;">You can return to your account anytime by clicking "Leave".</small>',
+                            icon: 'question',
+                            confirmText: 'Yes, impersonate',
+                            focusCancel: true,
+                        }).then(function (ok) { if (ok) { go(); } });
                     });
                 })();
                 </script>

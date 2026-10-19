@@ -29,34 +29,30 @@
                 ? 'Put Loan On Hold?'
                 : (status === 'cancelled' ? 'Cancel Loan?' : 'Reactivate Loan?');
 
-            if (!window.Swal) {
-                if (needsReason) {
-                    var reason = prompt(title + '\nPlease enter a reason:');
-                    if (!reason) { return; }
-                    postStatus(status, reason);
-                } else if (confirm(title)) {
-                    postStatus(status, '');
-                }
-                return;
+            if (needsReason) {
+                SHF.prompt({
+                    title: title,
+                    input: 'textarea',
+                    inputLabel: 'Reason (required)',
+                    placeholder: 'Reason for ' + status.replace('_', ' ') + '…',
+                    required: true,
+                    requiredMsg: 'Please provide a reason',
+                    icon: 'question',
+                    danger: status === 'cancelled',
+                    confirmText: 'Yes, confirm',
+                }).then(function (reason) {
+                    if (reason !== null) { postStatus(status, reason); }
+                });
+            } else {
+                SHF.confirm({
+                    title: title,
+                    text: 'The loan will be reactivated.',
+                    icon: 'question',
+                    confirmText: 'Yes, confirm',
+                }).then(function (ok) {
+                    if (ok) { postStatus(status, ''); }
+                });
             }
-
-            Swal.fire({
-                title: title,
-                input: needsReason ? 'textarea' : undefined,
-                inputLabel: needsReason ? 'Reason (required)' : undefined,
-                inputPlaceholder: needsReason ? 'Reason for ' + status.replace('_', ' ') + '…' : undefined,
-                inputValidator: needsReason ? function (v) { if (!v) { return 'Please provide a reason'; } } : undefined,
-                text: !needsReason ? 'The loan will be reactivated.' : undefined,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: status === 'cancelled' ? '#dc2626' : '#f15a29',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, confirm',
-            }).then(function (result) {
-                if (result.isConfirmed) {
-                    postStatus(status, result.value || '');
-                }
-            });
         });
 
         function postStatus(status, reason) {
@@ -68,11 +64,7 @@
                 location.reload();
             }).fail(function (xhr) {
                 var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to update status.';
-                if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: msg, confirmButtonColor: '#f15a29' });
-                } else {
-                    alert(msg);
-                }
+                SHF.alert({ icon: 'error', title: msg });
             });
         }
 
@@ -121,11 +113,7 @@
                     loadRemarks();
                 }
             }).fail(function () {
-                if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: 'Could not post remark', confirmButtonColor: '#f15a29' });
-                } else {
-                    alert('Could not post remark.');
-                }
+                SHF.alert({ icon: 'error', title: 'Could not post remark' });
             });
         });
 
