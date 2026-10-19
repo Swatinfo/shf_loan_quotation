@@ -49,8 +49,10 @@
             <div class="card-bd">
                 <div class="po-hint">
                     Download the blank template (top-right) and paste the bank's statement into it, then pick a bank +
-                    date range here and upload the filled file to reconcile against our disbursed entries. Match = loan
-                    A/c + amount + date (customer name + amount + date for placeholder accounts).
+                    date range here and upload the filled file to reconcile against our settled (cleared) entries. Each
+                    loan matches on its <strong>loan A/c number</strong> OR <strong>application number</strong> (fill whichever
+                    the statement carries — both is best), with customer name as a fallback. Amount &amp; date are then compared
+                    and any difference is highlighted.
                 </div>
                 <form method="POST" action="{{ route('payouts.reconcile.run') }}" enctype="multipart/form-data"
                     id="reconcileForm" class="po-filters">
@@ -284,7 +286,7 @@
                                     @php $r = $m['excel']; $g = $m['loan']; @endphp
                                     <tr style="background:#fff8ec;">
                                         <td>
-                                            {{ $r['loan_acc_no'] ?? '—' }}
+                                            {{ $r['loan_acc_no'] ?: '—' }}@if (!empty($r['application_number'])) · App {{ $r['application_number'] }}@endif
                                             <div style="{{ $dbLine }}">
                                                 DB: {{ $g['loan_number'] ?? '—' }} · {{ $g['application_number'] ?: '—' }}<br>
                                                 A/c: {{ !empty($g['accounts']) ? implode(', ', $g['accounts']) : '—' }}
@@ -338,11 +340,14 @@
                         <span class="ls-muted" style="font-weight:400;">· the account/application number appears nowhere in our records for this bank.</span>
                     </h3>
                     <table class="tbl">
-                        <thead><tr><th>Identifier (A/c / App #)</th><th>Customer</th><th>Date</th><th class="po-num">Loan Amount</th></tr></thead>
+                        <thead><tr><th>Identifier (A/c · App #)</th><th>Customer</th><th>Date</th><th class="po-num">Loan Amount</th></tr></thead>
                         <tbody>
                             @forelse ($result['excel_only'] as $r)
                                 <tr class="po-row-excel-only">
-                                    <td>{{ $r['loan_acc_no'] ?? '—' }}</td>
+                                    <td>
+                                        {{ $r['loan_acc_no'] ?: '—' }}
+                                        @if (!empty($r['application_number']))<div class="ls-muted" style="font-size:11px;">App #: {{ $r['application_number'] }}</div>@endif
+                                    </td>
                                     <td>{{ $r['customer_name'] ?? '—' }}</td>
                                     <td>
                                         @if ($r['_date_error'])

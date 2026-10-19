@@ -19,8 +19,13 @@ use Illuminate\Support\Collection;
 
 class PayoutController extends Controller
 {
-    /** The bank-statement columns we export/import for reconciliation. */
-    private const COLUMNS = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
+    /**
+     * The bank-statement columns we export/import for reconciliation. `loan_acc_no`
+     * and `application_number` are BOTH identifiers — a row matches our loan on
+     * either one (plus a customer-name fallback), so the bank can fill whichever
+     * their statement carries (or both).
+     */
+    private const COLUMNS = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount', 'application_number'];
 
     /**
      * D6 — user-wise payout report (finalized loan_payouts), grouped by cycle.
@@ -134,9 +139,12 @@ class PayoutController extends Controller
                 '_amount' => (int) round((float) ($r['loan_amount'] ?? 0)),
                 '_insurance' => ($ins !== null && $ins !== '' && is_numeric($ins)) ? (int) round((float) $ins) : null,
             ];
-            $acc = $this->normId($r['loan_acc_no'] ?? '');
-            if ($acc !== '' && ! isset($accIndex[$acc])) {
-                $accIndex[$acc] = $idx;
+            // Index the row under BOTH its A/c number and its application number, so
+            // our loan matches on either identifier.
+            foreach ([$this->normId($r['loan_acc_no'] ?? ''), $this->normId($r['application_number'] ?? '')] as $id) {
+                if ($id !== '' && ! isset($accIndex[$id])) {
+                    $accIndex[$id] = $idx;
+                }
             }
             $nm = $this->normName($r['customer_name'] ?? '');
             if ($nm !== '' && ! isset($nameIndex[$nm])) {
@@ -248,9 +256,12 @@ class PayoutController extends Controller
         $excelOnly = [];
         foreach ($unmatchedExcel as $r) {
             $acc = $this->normId($r['loan_acc_no'] ?? '');
+            $app = $this->normId($r['application_number'] ?? '');
             $nm = $this->normName($r['customer_name'] ?? '');
+            // Does this row exist in our DB by A/c number, application number, or name?
             $hit = ($acc !== '' && isset($dbIndex['acc'][$acc])) ? $dbIndex['acc'][$acc]
-                : (($nm !== '' && isset($dbIndex['name'][$nm])) ? $dbIndex['name'][$nm] : null);
+                : (($app !== '' && isset($dbIndex['acc'][$app])) ? $dbIndex['acc'][$app]
+                : (($nm !== '' && isset($dbIndex['name'][$nm])) ? $dbIndex['name'][$nm] : null));
             if ($hit) {
                 $rc = $this->mismatchReason($hit, $matchedLoanIds, $fromStr, $toStr);
                 $excelInDb[] = ['excel' => $r, 'loan' => $hit, 'reason' => $rc['reason'], 'category' => $rc['category']];

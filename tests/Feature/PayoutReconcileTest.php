@@ -159,6 +159,39 @@ class PayoutReconcileTest extends TestCase
         $this->assertSame(2000, $matched['ACC-2']['calc']['insurance']); // DB fallback (blank cell)
     }
 
+    public function test_template_includes_the_application_number_column(): void
+    {
+        $admin = User::create(['name' => 'SA', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $admin->roles()->sync(Role::where('slug', 'super_admin')->pluck('id'));
+
+        $resp = $this->actingAs($admin->fresh('roles'))->get(route('payouts.reconcile.template'))->assertOk();
+        $headerRow = app(XlsxImportService::class)->readGrid($resp->baseResponse->getFile()->getPathname())[0] ?? [];
+
+        $this->assertContains('application_number', $headerRow);
+        $this->assertContains('loan_acc_no', $headerRow);
+    }
+
+    public function test_matches_on_the_application_number_column(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        // Our loan: A/c = ACC-X, application number = APP-999.
+        $this->makeLoanWithEntry($bank, $branch, $product, $admin, 'ACC-X', 'APP-999', 500000, '2026-08-20', 0);
+
+        // Bank statement carries only the APPLICATION number (A/c column blank).
+        $upload = $this->makeUpload([
+            ['', 'Cust', '', '20-08-2026', 500000, 0, 0, 0, 'APP-999'],
+        ]);
+        $resp = $this->actingAs($admin)->post(route('payouts.reconcile.run'), [
+            'bank_id' => $bank->id, 'product_ids' => [$product->id],
+            'from' => '2026-08-16', 'to' => '2026-09-15', 'file' => $upload,
+        ])->assertOk();
+
+        $result = $resp->viewData('result');
+        $this->assertCount(1, $result['matched']);          // matched via the app-number column
+        $this->assertCount(0, $result['excel_only']);
+        $this->assertCount(0, $result['excel_in_db']);
+    }
+
     public function test_multi_tranche_loan_matches_on_identifier_and_flags_discrepancies(): void
     {
         [$admin, $bank, $branch, $product] = $this->scaffold();
@@ -497,7 +530,7 @@ class PayoutReconcileTest extends TestCase
      */
     private function makeUpload(array $rows): UploadedFile
     {
-        $headers = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
+        $headers = ['loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount', 'application_number'];
         $resp = app(XlsxExportService::class)->download('u.xlsx', $headers, $rows);
         $tmp = tempnam(sys_get_temp_dir(), 'rcu').'.xlsx';
         copy($resp->getFile()->getPathname(), $tmp);
