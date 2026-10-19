@@ -32,9 +32,12 @@
         .dd-fields .dd-old { color: var(--ink-3); }
         .dd-row-chg .dd-old { text-decoration: line-through; }
         .dd-row-chg .dd-new { color: var(--red, #c0392b); font-weight: 700; }
-        /* Flat preview table: one row per entry, grouped by loan */
-        .dd-flat { min-width: 940px; }
-        .dd-flat td { white-space: nowrap; vertical-align: middle; }
+        /* Changed cells: old (struck) and new value on separate lines via <br> */
+        /* Flat preview table: one row per entry, grouped by loan. Fit the
+           container (no horizontal scroll) by letting Cheque Name wrap. */
+        .dd-flat { width: 100%; }
+        .dd-flat td, .dd-flat th { white-space: nowrap; vertical-align: top; padding: 4px 6px; }
+        .dd-flat .dd-col-cheque { white-space: normal; max-width: 170px; min-width: 110px; word-break: break-word; }
         .dd-flat tbody tr:hover td { background: rgba(0,0,0,.015); }
         .dd-grp td { background: var(--bg-alt, #f5f6f7); border-top: 2px solid var(--line); padding: 7px 8px; white-space: normal; }
         .dd-grp a { font-weight: 600; margin-right: 6px; }
@@ -160,7 +163,7 @@
                                     <th>Entry&nbsp;#</th>
                                     <th>Method</th>
                                     <th>Amount</th>
-                                    <th>Cheque Name</th>
+                                    <th class="dd-col-cheque">Cheque Name</th>
                                     <th>Cheque No</th>
                                     <th>Disb. Date</th>
                                     <th>Transfer Date</th>
@@ -187,11 +190,14 @@
                                             <td><span class="dd-badge dd-{{ $pe['action'] }}">{{ $actionLabel[$pe['action']] ?? $pe['action'] }}</span></td>
                                             <td>#{{ $pe['entry_id'] }}</td>
                                             @foreach (['Method', 'Amount', 'Cheque Name', 'Cheque No', 'Disb. Date', 'Transfer Date', 'OTC', 'OTC Date'] as $col)
-                                                @php $f = $fb->get($col); @endphp
+                                                @php
+                                                    $f = $fb->get($col);
+                                                    $colClass = $col === 'Cheque Name' ? 'dd-col-cheque' : '';
+                                                @endphp
                                                 @if ($f && $f['changed'])
-                                                    <td class="dd-row-chg"><span class="dd-old">{{ $f['old'] }}</span> → <span class="dd-new">{{ $f['new'] }}</span></td>
+                                                    <td class="dd-row-chg {{ $colClass }}"><span class="dd-old">{{ $f['old'] }}</span><br><span class="dd-new">{{ $f['new'] }}</span></td>
                                                 @else
-                                                    <td>{{ $f['old'] ?? '—' }}</td>
+                                                    <td class="{{ $colClass }}">{{ $f['old'] ?? '—' }}</td>
                                                 @endif
                                             @endforeach
                                         </tr>
