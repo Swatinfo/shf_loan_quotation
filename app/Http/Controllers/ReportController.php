@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use App\Models\Branch;
+use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Models\Stage;
@@ -341,12 +342,12 @@ class ReportController extends Controller
             })
             ->whereNull('de.deleted_at')->whereNull('ld.deleted_at')
             ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))
-            ->when($from, fn ($q) => $q->where('de.disbursement_date', '>=', $from->toDateString()))
-            ->when($to, fn ($q) => $q->where('de.disbursement_date', '<=', $to->toDateString()))
+            ->when($from, fn ($q) => $q->whereRaw($this->txnDateExpr().' >= ?', [$from->toDateString()]))
+            ->when($to, fn ($q) => $q->whereRaw($this->txnDateExpr().' <= ?', [$to->toDateString()]))
             ->groupBy('de.loan_id')
             ->select([
                 'de.loan_id',
-                DB::raw('MIN(de.disbursement_date) as first_disbursed_on'),
+                DB::raw('MIN('.$this->txnDateExpr().') as first_disbursed_on'),
                 // GROSS: net tranches + the loan's one-time PF/admin on its first tranche.
                 DB::raw('SUM('.$this->grossTrancheExpr().') as period_amount'),
                 DB::raw('SUM(CASE WHEN de.otc_handover_date IS NOT NULL THEN de.amount ELSE 0 END) as settled_amount'),
@@ -428,12 +429,12 @@ class ReportController extends Controller
             ->leftJoin('disbursement_details as dd', 'dd.loan_id', '=', 'de.loan_id')
             ->whereNull('de.deleted_at')->whereNull('ld.deleted_at')
             ->when($branchIds !== null, fn ($q) => $q->whereIn('ld.branch_id', $branchIds))
-            ->where('de.disbursement_date', '>=', $start->toDateString())
+            ->whereRaw($this->txnDateExpr().' >= ?', [$start->toDateString()])
             // GROSS per tranche: net + the loan's one-time PF/admin on its first tranche,
             // so the fees land in the first-tranche month (never double-counted).
-            ->select(['de.loan_id', 'de.disbursement_date', DB::raw('('.$this->grossTrancheExpr().') as amount')])
+            ->select(['de.loan_id', DB::raw($this->txnDateExpr().' as txn_date'), DB::raw('('.$this->grossTrancheExpr().') as amount')])
             ->get()
-            ->groupBy(fn ($r) => Carbon::parse($r->disbursement_date)->format('Y-m'))
+            ->groupBy(fn ($r) => Carbon::parse($r->txn_date)->format('Y-m'))
             ->map(fn ($g) => ['count' => $g->pluck('loan_id')->unique()->count(), 'amount' => (int) $g->sum('amount')]);
 
         $months = [];
@@ -647,8 +648,19 @@ class ReportController extends Controller
         return 'de.amount + CASE WHEN de.id = ('
             .'SELECT de2.id FROM disbursement_entries de2 '
             .'WHERE de2.loan_id = de.loan_id AND de2.deleted_at IS NULL '
-            .'ORDER BY de2.disbursement_date ASC, de2.id ASC LIMIT 1'
+            .'ORDER BY DATE(COALESCE(de2.otc_handover_date, de2.disbursement_date)) ASC, de2.id ASC LIMIT 1'
             .') THEN COALESCE(dd.pf_amount, 0) + COALESCE(dd.admin_charges, 0) ELSE 0 END';
+    }
+
+    /**
+     * The payout "settlement date" SQL for a disbursement_entries alias: the OTC
+     * handover date (cheque cleared / NEFT transfer date), else the disbursement
+     * date for not-yet-settled tranches (see DisbursementEntry::TXN_DATE_SQL).
+     * Disbursed figures window on this, consistent with payouts/reconcile.
+     */
+    private function txnDateExpr(string $alias = 'de'): string
+    {
+        return "DATE(COALESCE({$alias}.otc_handover_date, {$alias}.disbursement_date))";
     }
 
     /**
@@ -682,7 +694,7 @@ class ReportController extends Controller
             ->leftJoin('disbursement_details as dd', 'dd.loan_id', '=', 'de.loan_id')
             ->whereNull('de.deleted_at')
             ->whereNull('ld.deleted_at');
-        $this->applyFilters($disbursedQuery, $request, 'ld', null, 'de.disbursement_date');
+        $this->applyFilters($disbursedQuery, $request, 'ld', null, $this->txnDateExpr('de'));
         $this->applyScope($disbursedQuery, $scope);
         // `s` = GROSS disbursed (net tranches + first-tranche PF/admin); `settled`
         // stays NET (OTC settlement applies only to the tranche money).
@@ -715,7 +727,7 @@ class ReportController extends Controller
             ->groupBy('loan_id')
             ->select([
                 'loan_id',
-                DB::raw('MAX(disbursement_date) as last_disbursed_on'),
+                DB::raw('MAX('.DisbursementEntry::TXN_DATE_SQL.') as last_disbursed_on'),
                 DB::raw('COALESCE(SUM(CASE WHEN otc_handover_date IS NOT NULL THEN amount ELSE 0 END), 0) as settled_amount'),
             ]);
 
@@ -743,8 +755,8 @@ class ReportController extends Controller
         // semantics — NOT on when the loan was created.
         if ($status === 'disbursed') {
             $entryAgg
-                ->when($request->filled('date_from'), fn ($q) => $q->whereDate('disbursement_date', '>=', $request->date_from))
-                ->when($request->filled('date_to'), fn ($q) => $q->whereDate('disbursement_date', '<=', $request->date_to));
+                ->when($request->filled('date_from'), fn ($q) => $q->whereRaw(DisbursementEntry::TXN_DATE_SQL.' >= ?', [$request->date_from]))
+                ->when($request->filled('date_to'), fn ($q) => $q->whereRaw(DisbursementEntry::TXN_DATE_SQL.' <= ?', [$request->date_to]));
             $query->joinSub($entryAgg, 'dea', 'dea.loan_id', '=', 'ld.id');
             $this->applyFilters($query, $request, 'ld', null, false); // dates live in the aggregate
             $orderColumn = 'dea.last_disbursed_on';
@@ -1028,12 +1040,19 @@ class ReportController extends Controller
     private function applyFilters($query, Request $request, string $loanAlias, ?string $userColumn = null, string|false|null $dateColumn = null): void
     {
         $dateColumn ??= "{$loanAlias}.created_at";
+        // A date column may be a raw SQL expression (e.g. the transaction-date
+        // COALESCE); those already apply DATE() themselves, so window via whereRaw.
+        $isExpr = $dateColumn !== false && str_contains($dateColumn, '(');
 
         if ($dateColumn !== false && $request->filled('date_from')) {
-            $query->whereDate($dateColumn, '>=', $request->date_from);
+            $isExpr
+                ? $query->whereRaw("{$dateColumn} >= ?", [$request->date_from])
+                : $query->whereDate($dateColumn, '>=', $request->date_from);
         }
         if ($dateColumn !== false && $request->filled('date_to')) {
-            $query->whereDate($dateColumn, '<=', $request->date_to);
+            $isExpr
+                ? $query->whereRaw("{$dateColumn} <= ?", [$request->date_to])
+                : $query->whereDate($dateColumn, '<=', $request->date_to);
         }
         if ($request->filled('bank_id')) {
             $query->where("{$loanAlias}.bank_id", $request->bank_id);

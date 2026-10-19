@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\DisbursementDetail;
 use App\Models\DisbursementEntry;
+use App\Models\LoanDetail;
 use App\Models\PayoutRun;
 use App\Models\ProductPayoutSlab;
 use App\Models\User;
@@ -163,9 +164,10 @@ class PayoutRunService
         $rates = $this->payoutConfig->ratesAsOf($toDate);
 
         /** @var Collection<int, DisbursementEntry> $entries */
-        // Keyed on the SETTLEMENT date (otc_handover_date): NEFT = transfer date,
-        // cheque = cleared date. Un-cleared cheque tranches have a null handover and
-        // are excluded until cleared — payout is paid only on settled money.
+        // Only settled money (a non-null handover = cleared cheque or NEFT; un-cleared
+        // cheques are excluded until cleared), but bucket by the TRANSACTION date
+        // (NEFT transfer / disbursement date) — see DisbursementEntry::TXN_DATE_SQL —
+        // not the internal OTC clearance date.
         // Scoped to one bank (required by the UI) and, optionally, a subset of that
         // bank's products. Empty $productIds = all of the bank's products. The scope
         // only narrows the query — a run never touches tranches outside it, and
@@ -174,7 +176,10 @@ class PayoutRunService
         $entries = DisbursementEntry::query()
             ->whereNull('payout_run_id')
             ->where('is_active', true)
-            ->whereBetween('otc_handover_date', [$fromDate->toDateString(), $toDate->toDateString()])
+            ->whereNotNull('otc_handover_date')
+            ->whereRaw(DisbursementEntry::TXN_DATE_SQL.' BETWEEN ? AND ?', [$fromDate->toDateString(), $toDate->toDateString()])
+            // Never pay a cancelled / on-hold / rejected loan, regardless of scope.
+            ->whereHas('loan', fn ($q2) => $q2->whereNotIn('status', LoanDetail::PAYOUT_EXCLUDED_STATUSES))
             ->when($bankId || $productIds, function ($q) use ($bankId, $productIds) {
                 $q->whereHas('loan', function ($q2) use ($bankId, $productIds) {
                     if ($bankId) {
@@ -241,12 +246,17 @@ class PayoutRunService
             if (! isset($loanRows[$loanKey])) {
                 $loanRows[$loanKey] = [
                     'product_id' => $pid, 'payout_user_id' => $uid, 'loan_id' => $loan->id,
-                    'loan_number' => $loan->loan_number, 'is_pf_based' => (bool) $product->is_pf_based,
+                    'loan_number' => $loan->loan_number, 'application_number' => $loan->application_number,
+                    'account_numbers' => [], 'is_pf_based' => (bool) $product->is_pf_based,
                     'volume' => 0, 'pf_base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
                 ];
             }
             $loanRows[$loanKey]['volume'] += (int) $e->amount; // disbursed (always)
-            $sd = optional($e->otc_handover_date)->toDateString();
+            $acc = trim((string) $e->loan_account_number);
+            if ($acc !== '' && ! in_array($acc, $loanRows[$loanKey]['account_numbers'], true)) {
+                $loanRows[$loanKey]['account_numbers'][] = $acc; // distinct A/c #s across tranches
+            }
+            $sd = optional($e->transactionDate())->toDateString();
             if ($sd && ($loanRows[$loanKey]['settlement_date'] === null || $sd > $loanRows[$loanKey]['settlement_date'])) {
                 $loanRows[$loanKey]['settlement_date'] = $sd;
             }

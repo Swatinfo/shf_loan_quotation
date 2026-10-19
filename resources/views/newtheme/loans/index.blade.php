@@ -190,7 +190,7 @@
                 <div class="t"><span class="num">L</span>Loans <span class="sub" id="lxResultCount">—</span>
                 </div>
                 <input type="search" id="lxSearch" class="input" autocomplete="off"
-                    placeholder="Search loan # / customer / phone / bank…" style="max-width:320px;min-width:200px;">
+                    placeholder="Search loan # / app # / a/c # / customer / phone / bank…" style="max-width:320px;min-width:200px;">
             </div>
             <div class="card-bd" style="padding:0;overflow-x:auto;">
                 <div id="lxRows" class="d-desktop-only">

@@ -258,7 +258,7 @@ Each tranche is also mirrored into the **`disbursement_entries` table** (json en
   - `custom` pairs with `docket_date` (yyyy-mm-dd) to filter on effective date ≤ that date.
 - `date_from` / `date_to` — filter on **stage-completion activity**, not `loan_details.created_at`. With a `stage` selected, the range applies to that stage's `completed_at` (see above). Without a stage, the range matches the loan's **latest** stage completion via a correlated subquery `DATE((SELECT MAX(completed_at) FROM stage_assignments WHERE loan_id = loan_details.id))` (portable across MySQL + SQLite), so a loan surfaces only in the window where it last moved.
 
-Search: `loan_number`, `application_number`, `customer_name`, `bank_name`, `customer_phone`, `customer_email`. UI exposes this via the always-visible search input in the results-card header (debounced 250 ms, sent as the standard `search[value]` DataTables param).
+Search: `loan_number`, `application_number`, `customer_name`, `bank_name`, `customer_phone`, `customer_email`, **and the bank loan account number** (`disbursement_entries.loan_account_number` of active tranches, via `orWhereHas('disbursementEntries')` — it's per tranche, not a `loan_details` column, so it needs the relation clause; added 2026-10-19). UI exposes this via the always-visible search input in the results-card header (debounced 250 ms, sent as the standard `search[value]` DataTables param).
 
 **Index-page stage dropdown** now shows every enabled stage (top-level + all parallel sub-stages) — see the `stage` filter above.
 

@@ -61,6 +61,19 @@ class LoanDetail extends Model
         self::STATUS_CANCELLED,
     ];
 
+    /**
+     * Statuses that must NOT receive a payout — paused (on_hold) or closed
+     * unfavourably (cancelled / rejected). Excluded from both the Payout Runs
+     * engine and the Bank Reconciliation match (surfaced there with their status).
+     *
+     * @var array<int, string>
+     */
+    const PAYOUT_EXCLUDED_STATUSES = [
+        self::STATUS_CANCELLED,
+        self::STATUS_ON_HOLD,
+        self::STATUS_REJECTED,
+    ];
+
     const STATUS_LABELS = [
         'active' => ['label' => 'Active', 'color' => 'primary'],
         'partial_disbursed' => ['label' => 'Partially Disbursed', 'color' => 'info'],
@@ -745,11 +758,17 @@ class LoanDetail extends Model
         }
 
         $query->where(function ($q) use ($user) {
-            // Own loans (created or assigned as advisor)
+            // Own loans (created or assigned as advisor) — always.
             $q->where('created_by', $user->id)
-                ->orWhere('assigned_advisor', $user->id)
-                // Assigned to any stage (current or past)
-                ->orWhereHas('stageAssignments', fn ($sq) => $sq->where('assigned_to', $user->id));
+                ->orWhere('assigned_advisor', $user->id);
+
+            // Stage-level visibility is for the operational roles that actually work
+            // stages (advisors, bank/office employees). BM/BDH deliberately do NOT get
+            // it — they see their own loans + everything in their branch, not a loan
+            // outside their branch just because they're assigned one stage of it.
+            if ($user->hasAnyRole(['loan_advisor', 'bank_employee', 'office_employee'])) {
+                $q->orWhereHas('stageAssignments', fn ($sq) => $sq->where('assigned_to', $user->id));
+            }
 
             // Branch managers and BDHs can see all loans in their branches
             if ($user->hasRole('branch_manager') || $user->hasRole('bdh')) {

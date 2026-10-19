@@ -275,7 +275,12 @@ class LoanController extends Controller
                     ->orWhere('customer_name', 'like', "%{$search}%")
                     ->orWhere('bank_name', 'like', "%{$search}%")
                     ->orWhere('customer_phone', 'like', "%{$search}%")
-                    ->orWhere('customer_email', 'like', "%{$search}%");
+                    ->orWhere('customer_email', 'like', "%{$search}%")
+                    // Bank loan account number lives per tranche on disbursement_entries.
+                    ->orWhereHas('disbursementEntries', function ($d) use ($search) {
+                        $d->where('is_active', true)
+                            ->where('loan_account_number', 'like', "%{$search}%");
+                    });
             });
         }
 

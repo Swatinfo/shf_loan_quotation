@@ -263,6 +263,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:view_reports')->group(function () {
         // Aggregate payout runs (date-range, product-wide volume tier).
         Route::get('/payouts/runs', [PayoutRunController::class, 'index'])->name('payouts.runs');
+        // Calculate/preview via POST so the bank/products/dates stay out of the URL (clean URLs).
+        Route::post('/payouts/runs', [PayoutRunController::class, 'index'])->name('payouts.runs.calculate');
         Route::post('/payouts/runs/finalize', [PayoutRunController::class, 'finalize'])
             ->middleware('permission:finalize_payout')->name('payouts.runs.finalize');
         Route::get('/payouts/runs/{run}', [PayoutRunController::class, 'show'])->name('payouts.runs.show');

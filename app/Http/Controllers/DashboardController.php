@@ -799,7 +799,9 @@ class DashboardController extends Controller
             || $user->hasPermission('view_all_quotations');
 
         return [
-            ['key' => 'stage-breakdown', 'label' => 'Stage Breakdown', 'visible' => ! $connectorOnly, 'count' => 0],
+            // Connectors see the stage breakdown too, scoped to their own loans
+            // (loans created from their quotations) — see LoanPipelineBreakdownService.
+            ['key' => 'stage-breakdown', 'label' => 'Stage Breakdown', 'visible' => $canSeeLoans, 'count' => 0],
             ['key' => 'personal-tasks', 'label' => 'Personal Tasks', 'visible' => true, 'count' => $counts['personal_tasks'] ?? 0],
             ['key' => 'tasks', 'label' => 'My Tasks', 'visible' => $hasLoanContext, 'count' => $counts['my_tasks'] ?? 0],
             ['key' => 'loans', 'label' => 'Loans', 'visible' => $canSeeLoans, 'count' => $counts['loans'] ?? 0],

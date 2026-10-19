@@ -3082,11 +3082,15 @@ $canSkipLegalBank =
                                                                         <th>Method</th>
                                                                         <th>Product</th>
                                                                         <th>Loan A/c No.</th>
+                                                                        <th>Cheque Date</th>
+                                                                        <th>Handover Date</th>
+                                                                        <th>OTC Status</th>
                                                                         <th class="text-end">Amount</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
                                                                     @foreach ($disbEntries as $entry)
+                                                                        @php [$otcLabel, $otcClass] = \App\Models\DisbursementEntry::otcStatusBadge($entry['otc_status'] ?? null, $entry['method'] ?? null); @endphp
                                                                         <tr>
                                                                             <td>{{ !empty($entry['disbursement_date']) ? \Carbon\Carbon::parse($entry['disbursement_date'])->format('d/m/Y') : '—' }}
                                                                             </td>
@@ -3094,6 +3098,9 @@ $canSkipLegalBank =
                                                                             </td>
                                                                             <td>{{ $entry['product_name'] ?? '—' }}</td>
                                                                             <td>{{ $entry['loan_account_number'] ?? '—' }}</td>
+                                                                            <td>{{ !empty($entry['cheque_date']) ? $entry['cheque_date'] : '—' }}</td>
+                                                                            <td>{{ !empty($entry['otc_handover_date']) ? \Carbon\Carbon::parse($entry['otc_handover_date'])->format('d/m/Y') : '—' }}</td>
+                                                                            <td><span class="shf-badge {{ $otcClass }}">{{ $otcLabel }}</span></td>
                                                                             <td class="text-end">₹
                                                                                 {{ inr($entry['amount'] ?? 0) }}
                                                                             </td>
@@ -3102,13 +3109,13 @@ $canSkipLegalBank =
                                                                 </tbody>
                                                                 <tfoot>
                                                                     <tr>
-                                                                        <th colspan="4" class="text-end">Total</th>
+                                                                        <th colspan="7" class="text-end">Total</th>
                                                                         <th class="text-end">₹
                                                                             {{ inr($disbData->grossTotal()) }}</th>
                                                                     </tr>
                                                                     @if ($disbData->insuranceTotal() > 0)
                                                                         <tr>
-                                                                            <td colspan="4" class="text-end text-muted">
+                                                                            <td colspan="7" class="text-end text-muted">
                                                                                 Insurance (excluded)</td>
                                                                             <td class="text-end text-muted">₹
                                                                                 {{ inr($disbData->insuranceTotal()) }}</td>
@@ -3120,12 +3127,18 @@ $canSkipLegalBank =
                                                         {{-- Mobile: compact 2-line rows (no squeezed table) --}}
                                                         <div class="d-md-none mb-2 shf-text-sm">
                                                             @foreach ($disbEntries as $entry)
+                                                                @php [$otcLabel, $otcClass] = \App\Models\DisbursementEntry::otcStatusBadge($entry['otc_status'] ?? null, $entry['method'] ?? null); @endphp
                                                                 <div class="d-flex justify-content-between align-items-start border-bottom py-1">
                                                                     <div class="pe-2">
                                                                         <div><strong>{{ !empty($entry['disbursement_date']) ? \Carbon\Carbon::parse($entry['disbursement_date'])->format('d/m/Y') : '—' }}</strong>
                                                                             · {{ ($entry['method'] ?? '') === 'cheque' ? 'Cheque' : 'Fund Transfer' }}</div>
                                                                         <div class="text-muted shf-text-xs">{{ $entry['product_name'] ?? '—' }}
                                                                             · A/c {{ $entry['loan_account_number'] ?? '—' }}</div>
+                                                                        <div class="text-muted shf-text-xs">
+                                                                            Cheque: {{ !empty($entry['cheque_date']) ? $entry['cheque_date'] : '—' }}
+                                                                            · Handover: {{ !empty($entry['otc_handover_date']) ? \Carbon\Carbon::parse($entry['otc_handover_date'])->format('d/m/Y') : '—' }}
+                                                                        </div>
+                                                                        <div class="shf-text-xs mt-1"><span class="shf-badge {{ $otcClass }}">OTC: {{ $otcLabel }}</span></div>
                                                                     </div>
                                                                     <strong class="text-nowrap">₹ {{ inr($entry['amount'] ?? 0) }}</strong>
                                                                 </div>

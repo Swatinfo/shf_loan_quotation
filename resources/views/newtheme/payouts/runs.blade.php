@@ -45,7 +45,8 @@
                     (PF-based products pay on PF). Only tranches not yet covered by a run are counted. Then
                     <strong>Finalize</strong> to lock the run (it stamps those tranches paid and snapshots the rates for the record).
                 </div>
-                <form method="GET" action="{{ route('payouts.runs') }}" class="po-filters">
+                <form method="POST" action="{{ route('payouts.runs.calculate') }}" class="po-filters">
+                    @csrf
                     <div class="field">
                         <label class="lbl">Bank <span class="ld-req">*</span></label>
                         <select name="bank_id" class="input" required>
@@ -160,6 +161,23 @@
                                     </tr>
                                 @endforeach
                             </tbody>
+                            @if (!empty($preview['users']))
+                                @php $U = collect($preview['users']); @endphp
+                                <tfoot>
+                                    <tr style="font-weight:600;background:var(--bg-alt,#f5f6f7);">
+                                        <td class="text-end">Total ({{ $U->count() }})</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_volume')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_pf_base')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_insurance_base')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_commission')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_pf_payout')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_insurance_payout')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('total_payout')) }}</td>
+                                        <td class="text-end">₹ {{ inr($U->sum('tds_amount')) }}</td>
+                                        <td class="text-end"><strong>₹ {{ inr($U->sum('net_payout')) }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            @endif
                         </table>
                     </div>
                 </div>
@@ -186,7 +204,13 @@
                                             <tr><td colspan="6" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
                                             @foreach ($pLoans as $l)
                                                 <tr>
-                                                    <td style="padding-left:32px;">{{ $l['loan_number'] }}</td>
+                                                    <td style="padding-left:32px;">
+                                                        {{ $l['loan_number'] }}
+                                                        <div class="text-muted" style="font-size:11px;">
+                                                            App #: {{ $l['application_number'] ?: '—' }}<br>
+                                                            A/c #: {{ !empty($l['account_numbers']) ? implode(', ', $l['account_numbers']) : '—' }}
+                                                        </div>
+                                                    </td>
                                                     <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
                                                     <td class="text-end">₹ {{ inr($l['volume']) }}</td>
                                                     <td class="text-end">₹ {{ inr($l['pf_base']) }}</td>
@@ -197,6 +221,16 @@
                                         @endforeach
                                     @endforeach
                                 </tbody>
+                                @php $AL = collect($preview['loan_lines'] ?? []); @endphp
+                                <tfoot>
+                                    <tr style="font-weight:700;border-top:2px solid var(--border,#bcbec0);">
+                                        <td colspan="2" class="text-end">Grand Total ({{ $AL->count() }} loans)</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('volume')) }}</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('pf_base')) }}</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('insurance_base')) }}</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('payout')) }}</td>
+                                    </tr>
+                                </tfoot>
                             </table>
                             <div class="po-subhint" style="font-size:11.5px;color:var(--ink-3);margin-top:6px;">
                                 * per-loan payout is a gross, pre-cap figure (base × rate + insurance). The max-payout cap is applied per user × product, so a user's net above may be lower.
@@ -239,11 +273,13 @@
     <script>
         $(function () {
             $('.po-date').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true, clearBtn: true });
-            // Picking the start date auto-sets the end date to +1 month.
+            // Picking the start date auto-sets the end date to one month minus a day
+            // (16th → 15th of next month), i.e. a full one-month period.
             $('#prFrom').on('changeDate', function (e) {
                 if (!e.date) { return; }
                 var d = new Date(e.date.getTime());
                 d.setMonth(d.getMonth() + 1);
+                d.setDate(d.getDate() - 1);
                 $('#prTo').datepicker('setDate', d);
             });
         });

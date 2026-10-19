@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasAuditColumns;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -28,6 +29,16 @@ class DisbursementEntry extends Model
 
     /** OTC states that count as settled (no further handover needed). */
     const OTC_SETTLED = [self::OTC_CLEARED, self::OTC_SKIPPED];
+
+    /**
+     * SQL expression for the payout "settlement date" — when the money settled at
+     * the bank, which is what a bank statement reflects: the OTC handover date
+     * (cheque cleared date, or the NEFT transfer date stamped on it), falling back
+     * to the disbursement date for tranches not yet settled (so un-cleared cheques
+     * still appear in operational reports). This is the date all payout/report
+     * windows bucket on.
+     */
+    const TXN_DATE_SQL = 'DATE(COALESCE(otc_handover_date, disbursement_date))';
 
     protected $fillable = [
         'loan_id', 'disbursement_detail_id', 'disbursement_date', 'method',
@@ -59,9 +70,39 @@ class DisbursementEntry extends Model
         return $this->loan_payout_id !== null;
     }
 
+    /**
+     * The payout "settlement date": the OTC handover date (cheque cleared / NEFT
+     * transfer date), else the disbursement date for not-yet-settled tranches.
+     * Drives the payout window + reconcile comparison — see {@see self::TXN_DATE_SQL}.
+     */
+    public function transactionDate(): ?CarbonInterface
+    {
+        return $this->otc_handover_date ?? $this->disbursement_date;
+    }
+
     public function loanPayout(): BelongsTo
     {
         return $this->belongsTo(LoanPayout::class, 'loan_payout_id');
+    }
+
+    /**
+     * UI label + `shf-badge-*` class for an OTC status. Fund transfers never go
+     * through OTC, so they read as "N/A (transfer)".
+     *
+     * @return array{0: string, 1: string} [label, badgeClass]
+     */
+    public static function otcStatusBadge(?string $status, ?string $method = null): array
+    {
+        if ($method === self::METHOD_FUND_TRANSFER) {
+            return ['N/A (transfer)', 'shf-badge-gray'];
+        }
+
+        return match ($status) {
+            self::OTC_CLEARED => ['Cleared', 'shf-badge-green'],
+            self::OTC_PENDING => ['Pending', 'shf-badge-orange'],
+            self::OTC_SKIPPED => ['N/A (transfer)', 'shf-badge-gray'],
+            default => ['—', 'shf-badge-gray'],
+        };
     }
 
     /**

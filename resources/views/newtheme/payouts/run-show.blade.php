@@ -128,7 +128,13 @@
                                     <tr><td colspan="5" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
                                     @foreach ($pLoans as $l)
                                         <tr>
-                                            <td style="padding-left:32px;">{{ $l['loan_number'] }}</td>
+                                            <td style="padding-left:32px;">
+                                                {{ $l['loan_number'] }}
+                                                <div class="text-muted" style="font-size:11px;">
+                                                    App #: {{ $l['application_number'] ?: '—' }}<br>
+                                                    A/c #: {{ !empty($l['account_numbers']) ? implode(', ', $l['account_numbers']) : '—' }}
+                                                </div>
+                                            </td>
                                             <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
                                             <td class="text-end">₹ {{ inr($l['amount']) }}</td>
                                             <td class="text-end">₹ {{ inr($l['pf']) }}</td>
@@ -138,6 +144,15 @@
                                 @endforeach
                             @endforeach
                         </tbody>
+                        @php $AL = collect($loansByUser)->flatten(1); @endphp
+                        <tfoot>
+                            <tr style="font-weight:700;border-top:2px solid var(--border,#bcbec0);">
+                                <td colspan="2" class="text-end">Grand Total ({{ $AL->count() }} loans)</td>
+                                <td class="text-end">₹ {{ inr($AL->sum('amount')) }}</td>
+                                <td class="text-end">₹ {{ inr($AL->sum('pf')) }}</td>
+                                <td class="text-end">₹ {{ inr($AL->sum('insurance')) }}</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>

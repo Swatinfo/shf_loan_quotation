@@ -33,7 +33,7 @@ class PayoutRunControllerTest extends TestCase
         return $u->fresh('roles');
     }
 
-    private function loanWithEntry(User $payoutUser, int $amount, string $date, ?Bank $bank = null): LoanDetail
+    private function loanWithEntry(User $payoutUser, int $amount, string $date, ?Bank $bank = null, string $status = 'partial_disbursed'): LoanDetail
     {
         $bank = $bank ?: Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
         $branch = Branch::create(['name' => 'Br-'.uniqid(), 'is_active' => true]);
@@ -51,20 +51,56 @@ class PayoutRunControllerTest extends TestCase
         ]);
 
         $loan = LoanDetail::create([
-            'loan_number' => 'L-'.uniqid(), 'customer_name' => 'C', 'customer_type' => 'salaried',
-            'loan_amount' => 10000000, 'status' => 'partial_disbursed', 'current_stage' => 'disbursement',
+            'loan_number' => 'L-'.uniqid(), 'application_number' => 'APP-'.uniqid(), 'customer_name' => 'C', 'customer_type' => 'salaried',
+            'loan_amount' => 10000000, 'status' => $status, 'current_stage' => 'disbursement',
             'bank_id' => $bank->id, 'branch_id' => $branch->id, 'product_id' => $product->id,
             'created_by' => $payoutUser->id, 'payout_user_id' => $payoutUser->id,
         ]);
         $disb = DisbursementDetail::create(['loan_id' => $loan->id, 'disbursement_type' => 'fund_transfer', 'amount_disbursed' => 0]);
         DisbursementEntry::create([
             'loan_id' => $loan->id, 'disbursement_detail_id' => $disb->id, 'method' => 'fund_transfer',
-            'amount' => $amount, 'disbursement_date' => $date,
+            'loan_account_number' => 'AC-'.uniqid(), 'amount' => $amount, 'disbursement_date' => $date,
             'transfer_date' => $date, 'otc_status' => 'skipped', 'otc_handover_date' => $date,
             'is_active' => true,
         ]);
 
         return $loan;
+    }
+
+    public function test_on_hold_loan_is_excluded_from_payout_run(): void
+    {
+        $admin = $this->admin();
+        $advisor = User::create(['name' => 'Adv', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
+        // On-hold loan with a fully-settled tranche in the range → must NOT be paid.
+        $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15', null, 'on_hold');
+
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', [
+            'bank_id' => $loan->bank_id, 'product_ids' => [$loan->product_id],
+            'from' => '2026-10-01', 'to' => '2026-10-31',
+        ]))->assertOk();
+
+        $preview = $resp->viewData('preview');
+        $this->assertFalse($preview['can_finalize']);        // nothing payable
+        $this->assertSame(0, $preview['totals']['gross']);
+        $this->assertCount(0, $preview['loan_lines']);
+    }
+
+    public function test_calculate_preview_works_via_post(): void
+    {
+        $admin = $this->admin();
+        $advisor = User::create(['name' => 'Adv', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
+        $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15');
+
+        // Calculate now posts (clean URL) to payouts.runs.calculate.
+        $resp = $this->actingAs($admin)->post(route('payouts.runs.calculate'), [
+            'bank_id' => $loan->bank_id, 'product_ids' => [$loan->product_id],
+            'from' => '2026-10-01', 'to' => '2026-10-31',
+        ])->assertOk();
+
+        $this->assertNotNull($resp->viewData('preview'));
+        $this->assertSame(60000, $resp->viewData('preview')['totals']['gross']);
     }
 
     public function test_preview_shows_gross_for_the_range(): void
@@ -86,6 +122,12 @@ class PayoutRunControllerTest extends TestCase
         // with distinct loan amount / PF / insurance.
         $this->assertCount(1, $preview['loan_lines']);
         $this->assertSame($loan->loan_number, $preview['loan_lines'][0]['loan_number']);
+        // Internal loan #, application #, and the loan's distinct A/c number(s) are surfaced.
+        $this->assertSame($loan->fresh()->application_number, $preview['loan_lines'][0]['application_number']);
+        $this->assertSame(
+            DisbursementEntry::where('loan_id', $loan->id)->pluck('loan_account_number')->filter()->unique()->values()->all(),
+            $preview['loan_lines'][0]['account_numbers'],
+        );
         $this->assertSame(6000000, $preview['loan_lines'][0]['volume']); // disbursed
         $this->assertSame(0, $preview['loan_lines'][0]['pf_base']);      // amount-based
         $this->assertSame(0, $preview['loan_lines'][0]['insurance_base']);

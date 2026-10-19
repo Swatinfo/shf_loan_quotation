@@ -88,10 +88,11 @@ Shreenathji Home Finance (SHF) -- a bilingual (English/Gujarati) loan management
 ## Loan Visibility
 - `LoanDetail::scopeVisibleTo($query, $user)` controls who sees what:
   - `view_all_loans` permission: see everything
-  - Own loans: `created_by` = user OR `assigned_advisor` = user
-  - Stage assigned: user has any `StageAssignment` on the loan
+  - Own loans: `created_by` = user OR `assigned_advisor` = user (all roles)
+  - Stage assigned: user has any `StageAssignment` on the loan — **only for operational roles** `loan_advisor` / `bank_employee` / `office_employee` (2026-10-19). BM/BDH do **not** get loans via stage assignment; they rely on branch scope, so a stage on an out-of-branch loan no longer leaks it to them.
   - Branch-based: branch_manager/bdh see loans in their branches (via `user_branches` pivot)
   - Transfer history: bank_employee/office_employee see loans they appear in `stage_transfers` (transferred_from or transferred_to)
+  - Connector: loans created from their own quotations (`quotation.user_id`); connectors also get the dashboard **Stage Breakdown** scoped to those loans (`LoanPipelineBreakdownService::applyScope` adds the quotation clause for connectors)
 
 ## Task Visibility
 - `GeneralTask::scopeVisibleTo($query, $user)` controls who sees what:

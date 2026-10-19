@@ -2,6 +2,9 @@
 
 Consolidated rules from past sessions. Follow these in all future work.
 
+## Git / Version Control
+- **Never `git commit` or `git push` without the user's explicit confirmation**, every time. Finish the code/docs/tests, verify (tests green, Pint clean, docs synced), summarize, then wait for an explicit "commit and push". A prior approval does NOT carry to later tasks — ask again.
+
 ## Frontend Stack
 - **Bootstrap 5.3 + jQuery 3.7** -- local vendor files, no build step
 - Newtheme is the only theme. All views live under `resources/views/newtheme/`.

@@ -105,9 +105,25 @@ class ConnectorLoanVisibilityTest extends TestCase
 
         $tabs = collect($resp->viewData('payload')['tabs'])->keyBy('key');
         $this->assertTrue($tabs['loans']['visible']);              // Loans tab shown
-        $this->assertFalse($tabs['stage-breakdown']['visible']);   // ops funnel hidden for connector-only
+        $this->assertTrue($tabs['stage-breakdown']['visible']);    // breakdown shown, scoped to their loans
         $this->assertFalse($tabs['tasks']['visible']);             // loan-stage tasks hidden (none for a connector)
         $this->assertSame(1, $tabs['loans']['count']);
+    }
+
+    public function test_connector_stage_breakdown_shows_only_their_loans(): void
+    {
+        $connector = $this->user('connector');
+        $staff = $this->user('loan_advisor');
+        $mine = $this->loanFromQuotationOf($connector, $staff);
+        $this->loanFromQuotationOf($this->user('connector'), $staff); // another connector's loan
+
+        // Endpoint is reachable for a connector and returns their "own" block.
+        $resp = $this->actingAs($connector)->getJson(route('dashboard.stage-breakdown'))->assertOk();
+        $this->assertNotEmpty($resp->json('blocks'));
+
+        // The breakdown scope resolves to exactly the connector's own loan.
+        $this->assertSame(1, LoanDetail::visibleTo($connector)->count());
+        $this->assertTrue(LoanDetail::visibleTo($connector)->pluck('id')->contains($mine->id));
     }
 
     public function test_connector_cannot_mutate_a_loan(): void

@@ -93,6 +93,13 @@
                                     </tr>
                                 @endforeach
                             </tbody>
+                            <tfoot>
+                                <tr style="font-weight:600;background:var(--bg-alt,#f5f6f7);">
+                                    <td>Total</td>
+                                    <td class="po-num">{{ $byUser->sum('count') }}</td>
+                                    <td class="po-num"><strong>₹ {{ inr($byUser->sum('total')) }}</strong></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -107,6 +114,7 @@
                             <th>Date</th>
                             <th>User</th>
                             <th>Loan #</th>
+                            <th>App #</th>
                             <th>Bank / Product</th>
                             <th class="po-num">Basis</th>
                             <th class="po-num">Commission</th>
@@ -123,6 +131,7 @@
                                 <td>{{ optional($p->finalized_at)->format('d/m/Y') }}</td>
                                 <td>{{ $p->payoutUser?->name ?? '—' }}</td>
                                 <td><a href="{{ route('loans.show', $p->loan_id) }}">{{ $p->loan?->loan_number }}</a></td>
+                                <td>{{ $p->loan?->application_number ?: '—' }}</td>
                                 <td>{{ $p->loan?->bank?->name }} <span
                                         class="ls-muted">/ {{ $p->loan?->product?->name }}</span></td>
                                 <td class="po-num">₹ {{ inr($p->basis_amount) }}</td>
@@ -136,10 +145,24 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="12" class="po-empty">No finalized payouts in this range.</td>
+                                <td colspan="13" class="po-empty">No finalized payouts in this range.</td>
                             </tr>
                         @endforelse
                     </tbody>
+                    @if ($payouts->isNotEmpty())
+                        <tfoot>
+                            <tr style="font-weight:600;background:var(--bg-alt,#f5f6f7);">
+                                <td colspan="4" class="text-end">Totals ({{ $payouts->count() }})</td>
+                                <td class="po-num">₹ {{ inr($payouts->sum('basis_amount')) }}</td>
+                                <td class="po-num">₹ {{ inr($payouts->sum('payout_amount')) }}</td>
+                                <td class="po-num">₹ {{ inr($payouts->sum('insurance_payout_amount')) }}</td>
+                                <td class="po-num">₹ {{ inr($payouts->sum('gst_amount')) }}</td>
+                                <td class="po-num">₹ {{ inr($payouts->sum('tds_amount')) }}</td>
+                                <td class="po-num"><strong>₹ {{ inr($payouts->sum('net_payout_amount')) }}</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    @endif
                 </table>
             </div>
         </div>

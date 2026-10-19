@@ -1,7 +1,8 @@
 {{--
     Product multi-select (Select2) for Payout Runs / Reconciliation. Options depend
-    on the selected bank; selecting at least one product is REQUIRED. Needs
-    $products (id, name, bank_id) + $input['bank_id'] / $input['product_ids'].
+    on the selected bank, and picking a bank auto-selects ALL of its products by
+    default (the user can then deselect). Selecting at least one product is REQUIRED.
+    Needs $products (id, name, bank_id) + $input['bank_id'] / $input['product_ids'].
 --}}
 @php $selectedProductIds = array_map('strval', (array) ($input['product_ids'] ?? [])); @endphp
 <div class="field">
@@ -39,7 +40,7 @@
                 function initSelect2($el) {
                     $el.select2({ placeholder: $el.data('placeholder') || 'Select…', width: '100%' });
                 }
-                function rebuild(bankSel, prodSel) {
+                function rebuild(bankSel, prodSel, selectAll) {
                     var $p = $(prodSel);
                     var bankId = parseInt(bankSel.value, 10) || 0;
                     var kept = ($p.val() || []).map(Number); // keep still-valid picks
@@ -48,7 +49,9 @@
                         .forEach(function (p) {
                             var o = document.createElement('option');
                             o.value = p.id; o.textContent = p.name;
-                            if (kept.indexOf(p.id) >= 0) { o.selected = true; }
+                            // On a bank change, default to ALL of that bank's products;
+                            // otherwise keep whatever was still selected.
+                            if (selectAll || kept.indexOf(p.id) >= 0) { o.selected = true; }
                             prodSel.appendChild(o);
                         });
                     if ($p.hasClass('select2-hidden-accessible')) { $p.select2('destroy'); }
@@ -77,7 +80,8 @@
 
                     var bankSel = form.querySelector('select[name="bank_id"]');
                     if (bankSel) {
-                        $(bankSel).on('change', function () { $(prodSel).val(null); rebuild(bankSel, prodSel); });
+                        // Picking a bank auto-selects ALL of its products by default.
+                        $(bankSel).on('change', function () { rebuild(bankSel, prodSel, true); });
                     }
                 });
             });

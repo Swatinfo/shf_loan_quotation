@@ -90,23 +90,27 @@ class PayoutRunController extends Controller
         // run id, grouped by payout user → product. (One row per loan, with PF/insurance.)
         $pfBasedProductIds = $run->products->where('is_pf_based', true)->pluck('product_id')->all();
         $loansByUser = DisbursementEntry::where('payout_run_id', $run->id)
-            ->with(['loan:id,loan_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement'])
+            ->with(['loan:id,loan_number,application_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement'])
             ->get()
             ->groupBy('loan_id')
             ->map(function ($entries) use ($run, $pfBasedProductIds) {
                 $loan = $entries->first()->loan;
                 $header = $loan?->disbursement;
                 $isPf = in_array($loan?->product_id, $pfBasedProductIds, true);
+                $accNumbers = $entries->pluck('loan_account_number')
+                    ->map(fn ($a) => trim((string) $a))->filter()->unique()->values()->all();
 
                 return [
                     'loan_number' => $loan?->loan_number ?? '—',
+                    'application_number' => $loan?->application_number,
+                    'account_numbers' => $accNumbers,
                     'payout_user_id' => $loan?->payout_user_id,
                     'payout_user' => $loan?->payoutUser?->name ?? '—',
                     'product_name' => $loan?->product?->name ?? '—',
                     'amount' => (int) $entries->sum('amount'),
                     'pf' => ($isPf && $header) ? DisbursementDetail::exGst((int) $header->pf_amount, (float) $run->gst_rate) : 0,
                     'insurance' => $header ? (int) $header->insurance_amount : 0,
-                    'settlement_date' => optional($entries->max('otc_handover_date'))->toDateString(),
+                    'settlement_date' => $entries->map(fn ($e) => optional($e->transactionDate())->toDateString())->filter()->max(),
                 ];
             })
             ->values()

@@ -243,10 +243,12 @@
                                     <th>Product</th>
                                     <th>Loan A/c No.</th>
                                     <th class="text-end">Amount</th>
+                                    <th>OTC Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($disbEntries as $entry)
+                                    @php [$otcLabel, $otcClass] = \App\Models\DisbursementEntry::otcStatusBadge($entry['otc_status'] ?? null, $entry['method'] ?? null); @endphp
                                     <tr>
                                         <td>{{ !empty($entry['disbursement_date']) ? \Carbon\Carbon::parse($entry['disbursement_date'])->format('d/m/Y') : '—' }}
                                         </td>
@@ -256,6 +258,12 @@
                                         <td>{{ $entry['loan_account_number'] ?? '—' }}</td>
                                         <td class="text-end">₹ {{ inr($entry['amount'] ?? 0) }}
                                         </td>
+                                        <td>
+                                            <span class="shf-badge {{ $otcClass }}">{{ $otcLabel }}</span>
+                                            @if (!empty($entry['otc_handover_date']))
+                                                <div class="text-muted shf-text-xs">{{ \Carbon\Carbon::parse($entry['otc_handover_date'])->format('d/m/Y') }}</div>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -263,11 +271,13 @@
                                 <tr>
                                     <th colspan="4" class="text-end">Total</th>
                                     <th class="text-end">₹ {{ inr($disbData->grossTotal()) }}</th>
+                                    <th></th>
                                 </tr>
                                 @if ($disbData->insuranceTotal() > 0)
                                     <tr>
                                         <td colspan="4" class="text-end text-muted">Insurance (excluded)</td>
                                         <td class="text-end text-muted">₹ {{ inr($disbData->insuranceTotal()) }}</td>
+                                        <td></td>
                                     </tr>
                                 @endif
                             </tfoot>
@@ -276,12 +286,14 @@
                     {{-- Mobile: compact 2-line rows --}}
                     <div class="d-md-none mb-2 shf-text-sm">
                         @foreach ($disbEntries as $entry)
+                            @php [$otcLabel, $otcClass] = \App\Models\DisbursementEntry::otcStatusBadge($entry['otc_status'] ?? null, $entry['method'] ?? null); @endphp
                             <div class="d-flex justify-content-between align-items-start border-bottom py-1">
                                 <div class="pe-2">
                                     <div><strong>{{ !empty($entry['disbursement_date']) ? \Carbon\Carbon::parse($entry['disbursement_date'])->format('d/m/Y') : '—' }}</strong>
                                         · {{ ($entry['method'] ?? '') === 'cheque' ? 'Cheque' : 'Fund Transfer' }}</div>
                                     <div class="text-muted shf-text-xs">{{ $entry['product_name'] ?? '—' }}
                                         · A/c {{ $entry['loan_account_number'] ?? '—' }}</div>
+                                    <div class="shf-text-xs mt-1"><span class="shf-badge {{ $otcClass }}">OTC: {{ $otcLabel }}</span></div>
                                 </div>
                                 <strong class="text-nowrap">₹ {{ inr($entry['amount'] ?? 0) }}</strong>
                             </div>

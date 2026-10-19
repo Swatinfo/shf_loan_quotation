@@ -360,11 +360,18 @@ class LoanPipelineBreakdownService
 
         // own — the target user's personal involvement (self by default)
         $targetId = $userId ?? $requester->id;
-        $query->where(function ($q) use ($targetId) {
+        $isConnector = $requester->hasRole('connector');
+        $query->where(function ($q) use ($targetId, $isConnector) {
             $q->where('created_by', $targetId)
                 ->orWhere('assigned_advisor', $targetId)
                 ->orWhereHas('stageAssignments', fn ($s) => $s->where('assigned_to', $targetId))
                 ->orWhereHas('stageTransfers', fn ($s) => $s->where('transferred_from', $targetId)->orWhere('transferred_to', $targetId));
+
+            // Connectors are involved via the quotation they authored, not via
+            // creation/assignment — so include loans from their quotations.
+            if ($isConnector) {
+                $q->orWhereHas('quotation', fn ($s) => $s->where('user_id', $targetId));
+            }
         });
     }
 
@@ -610,8 +617,9 @@ class LoanPipelineBreakdownService
     }
 
     /**
-     * Σ of tranche amounts whose disbursement_date falls inside the window
-     * (the Management-report basis — this is what makes "Cheque/Transfer Entry" reconcile).
+     * Σ of tranche amounts whose SETTLEMENT date (otc_handover_date, else the
+     * disbursement_date for not-yet-settled tranches — DisbursementEntry::transactionDate())
+     * falls inside the window — same basis as the Management report + payouts.
      * $settled: null = all tranches, true = OTC-settled only (otc_handover_date set),
      * false = unsettled only (pending cheques awaiting OTC).
      *
@@ -626,18 +634,18 @@ class LoanPipelineBreakdownService
         // so the gross total is counted exactly once, in that tranche's window/bucket.
         $addon = (int) ($loan->disbursement?->pf_amount ?? 0) + (int) ($loan->disbursement?->admin_charges ?? 0);
         $firstId = $loan->disbursementEntries
-            ->sortBy(fn ($e) => ($e->disbursement_date?->format('Ymd') ?? '00000000').str_pad((string) $e->id, 12, '0', STR_PAD_LEFT))
+            ->sortBy(fn ($e) => (optional($e->transactionDate())->format('Ymd') ?? '00000000').str_pad((string) $e->id, 12, '0', STR_PAD_LEFT))
             ->first()?->id;
 
         return (int) $loan->disbursementEntries
             ->filter(function ($e) use ($from, $to, $settled) {
-                if ($e->disbursement_date === null) {
+                if ($e->transactionDate() === null) {
                     return false;
                 }
                 if ($settled !== null && ($e->otc_handover_date !== null) !== $settled) {
                     return false;
                 }
-                $d = CarbonImmutable::parse($e->disbursement_date);
+                $d = CarbonImmutable::parse($e->transactionDate());
 
                 return ($from === null || $d >= $from) && ($to === null || $d <= $to);
             })
@@ -771,10 +779,10 @@ class LoanPipelineBreakdownService
         $to = $window['to'] ? CarbonImmutable::parse($window['to'])->endOfDay() : null;
 
         return $loan->disbursementEntries->contains(function ($e) use ($from, $to) {
-            if ($e->disbursement_date === null) {
+            if ($e->transactionDate() === null) {
                 return false;
             }
-            $d = CarbonImmutable::parse($e->disbursement_date);
+            $d = CarbonImmutable::parse($e->transactionDate());
 
             return ($from === null || $d >= $from) && ($to === null || $d <= $to);
         });

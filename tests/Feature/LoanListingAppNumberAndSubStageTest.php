@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Bank;
 use App\Models\Branch;
+use App\Models\DisbursementDetail;
+use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Models\Role;
@@ -101,6 +103,31 @@ class LoanListingAppNumberAndSubStageTest extends TestCase
         $names = $this->loanNumbers($response);
         $this->assertStringContainsString($match->loan_number, $names);
         $this->assertStringNotContainsString($other->loan_number, $names);
+    }
+
+    public function test_search_matches_loan_account_number(): void
+    {
+        $admin = $this->admin();
+        $match = $this->makeLoan($admin);
+        $other = $this->makeLoan($admin);
+
+        $disb = DisbursementDetail::create([
+            'loan_id' => $match->id, 'disbursement_type' => 'cheque', 'amount_disbursed' => 0,
+        ]);
+        DisbursementEntry::create([
+            'loan_id' => $match->id, 'disbursement_detail_id' => $disb->id, 'method' => 'cheque',
+            'loan_account_number' => 'TBRAJ00007885128', 'amount' => 100000, 'is_active' => true,
+        ]);
+
+        // Full and partial account-number searches both hit; the other loan never does.
+        foreach (['TBRAJ00007885128', '7885128'] as $term) {
+            $response = $this->actingAs($admin)
+                ->getJson(route('loans.data', ['search' => ['value' => $term]]))
+                ->assertOk();
+            $names = $this->loanNumbers($response);
+            $this->assertStringContainsString($match->loan_number, $names, 'account search '.$term);
+            $this->assertStringNotContainsString($other->loan_number, $names);
+        }
     }
 
     public function test_sub_stage_filter_matches_currently_at_not_completed(): void

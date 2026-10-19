@@ -1,4 +1,111 @@
-# TODO — Disbursement completion / Rate&PF charges / reset integrity  ← CURRENT (2026-10-15)
+# TODO — Reconcile mismatch categories + payout status exclusion  ← CURRENT (2026-10-19)
+
+- [x] Mismatch display fix: `dbIdentifierIndex` carries real otc_handover clearance dates + `pending` + `loan_id` + `status`, scans ALL tranches (amounts/dates from active only); blade shows "Pending (not cleared)" not disbursement fallback + a Reason column
+- [x] `mismatchReason()` → {category, reason}; categories difference / status / pending / outside / other; blade badge per category
+- [x] `LoanDetail::PAYOUT_EXCLUDED_STATUSES = [cancelled, on_hold, rejected]` excluded from BOTH `ourEntries` + `PayoutRunService` (never paid); shown in reconcile with status
+- [x] Tests: reconcile pending/difference/outside/status categories, on-hold excluded from payout run. **Full suite 431/431**, Pint clean, view:clear
+- [x] Docs: services-reference, settings, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Payout Runs POST + reconcile product cols + dashboard confirm  (2026-10-19)
+
+- [x] Payout Runs Calculate → POST `payouts.runs.calculate` (clean URLs); GET route kept for landing/deep-link; +test
+- [x] Reconcile: Product column on "In DB, not in Excel" (db_only via loan.product) + "In Excel & in our DB — mismatch" (dbIdentifierIndex carries product_name)
+- [x] Dashboard disbursement block / stage breakdown already on settlement date (transactionDate) — confirmed + fixed stale comment
+- [x] **Full suite 427/427**, Pint clean, view:clear
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Settlement-date basis + reconcile exists-in-DB + stages dates  (2026-10-19)
+
+User: use otc_handover (settlement) date everywhere; "not in DB" only when record truly absent; show cheque/handover/OTC status on stages disbursement table.
+
+- [x] `DisbursementEntry::TXN_DATE_SQL` → `DATE(COALESCE(otc_handover_date, disbursement_date))`; `transactionDate()` → `otc_handover_date ?? disbursement_date`. One definition change; reconcile/payout/reports/dashboard all use it. txnDateExpr + grossTrancheExpr order updated to otc_handover. COALESCE fallback keeps un-cleared cheques visible (dashboard awaiting-OTC bucket intact).
+- [x] reconcile(): split unmatched bank rows → `excel_in_db` (identifier exists in DB any date via `dbIdentifierIndex()` → "mismatch, not payable" section, both sides) vs `excel_only` (truly missing). Summary tile + blade sections.
+- [x] Stages disbursement table (`_stages-body.blade.php` desktop+mobile): + Cheque Date / Handover Date / OTC Status columns (separate partial from readonly-detail)
+- [x] Tests: reconcile window→settlement + exists-in-db + truly-missing (PayoutReconcileTest). **Full suite 426/426**, Pint clean, view:clear
+- [x] Verified real file: TBRAJ00007885128 (loan 241) now MATCHES (₹52,94,100 cleared 27/08 vs bank ₹53,00,000 19/08, discrepancy); "not in DB" 16→4 truly-missing, 12 moved to exists-in-db
+- [x] Docs: services-reference, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Reports txn-date + end-date −1day + visibility + connector breakdown  (2026-10-19)
+
+User asks (all with plan approval): ① Payout Runs already on txn-date ✓; ② auto end-date = +1mo−1day (16→15); ③④ reports/dashboard "correct data" — amounts already GROSS, align DISBURSED date window to txn-date; ⑤ BM/BDH shouldn't see stage-assigned (non-branch) loans; connectors should see stage breakdown for their loans.
+
+- [x] ② `d.setDate(d.getDate()-1)` on runs.blade (#prFrom→#prTo) + reconcile.blade (#rcFrom→#rcTo)
+- [x] ③④ ReportController: `txnDateExpr()` + `applyFilters` expr-aware; funnel/trend/loan-report(rows+totals) windows → txn-date; `grossTrancheExpr` first-tranche order → txn-date. `LoanPipelineBreakdownService` windowedTrancheAmount/hasTrancheInWindow → `transactionDate()`; **added transfer_date to the disbursementEntries eager-load**. Amounts unchanged (already GROSS). Pipeline/scoreboard stay on created_at.
+- [x] ⑤ `LoanDetail::scopeVisibleTo`: stage-assignment clause gated to loan_advisor/bank_employee/office_employee (BM/BDH excluded → own+branch only)
+- [x] Connector breakdown: DashboardController stage-breakdown tab `visible => $canSeeLoans`; `LoanPipelineBreakdownService::applyScope` own-branch += connector quotation clause
+- [x] Tests: new LoanVisibilityScopeTest (2), updated ConnectorLoanVisibilityTest (tab visible + breakdown scope). **Full suite 425/425**, Pint clean, view:clear
+- [x] Docs: project-context (visibility), services-reference, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Payout totals + OTC status col + transaction-date basis  (2026-10-19)
+
+- [x] Totals footers: reconcile Matched (+ summaries gain **Total Admin** col, controller by_product/by_user += admin), Payout Runs per-user + considered grand total, run-show grand total, Report detail + by-user
+- [x] OTC status column on Disbursement readonly stage table (desktop+mobile) via `DisbursementEntry::otcStatusBadge($status,$method)`; `entryList()` already carries otc_status
+- [x] **Transaction-date basis** (decision: NEFT/disbursement date, not OTC clearance; apply reconcile + Payout Runs): `DisbursementEntry::TXN_DATE_SQL = DATE(COALESCE(transfer_date, disbursement_date))` + `transactionDate()`; `ourEntries` + `PayoutRunService` entries window = `whereNotNull(otc_handover)` (keep settled gate) + `whereRaw(TXN_DATE_SQL BETWEEN)`; settlement/carrier/rate-as-of use transactionDate(); show() settlement_date too. Report unchanged (finalized_at).
+- [x] Tests: +window-uses-transaction-date, +neft-uses-transfer-date (PayoutReconcileTest 9/9). **Full suite 420/420**, Pint clean, view:clear
+- [x] Verified real file (ICICI 16/08–15/09): matched 14→20, db-only 8→2, excel-only 16→10; TBRAJ…5128 disbursed 14/08 now correctly prior-period
+- [x] Docs: services-reference, settings, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Loan listing: search by bank account number  (2026-10-19)
+
+- [x] `LoanController` `loans.data` search += `orWhereHas('disbursementEntries', active + loan_account_number like)` (app# already worked; a/c# is a relation, not a column)
+- [x] Widened search-box placeholder (index.blade): "loan # / app # / a/c # / customer / phone / bank…"
+- [x] Test `LoanListingAppNumberAndSubStageTest::test_search_matches_loan_account_number` (full + partial) — **6/6 green**, Pint clean, view:clear
+- [x] Docs: .docs/loans.md
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Reconcile loan-grain, identifier-only matching + discrepancies  (2026-10-19)
+
+Bug: bank files 1 row/loan (loan-level amount+date); we store 1 row/tranche. Old matcher keyed acc+amount+date → any diff split one loan into BOTH not-found lists (e.g. TBRAJ00007885128 / SHF-202608-0018).
+
+- [x] `reconcile()` rewritten to **loan grain**: group our tranches per loan (`loanSide()`), match by **identifier only** A/c# → app# → name (`normId` strips to [A-Z0-9]; `normName`). Amount/date compared after, never matched on.
+- [x] `loanCalc()` sums per-tranche `entryCalc` (carrier = earliest settled carries one-time PF/Admin/Insurance; uploaded insurance overrides DB on carrier)
+- [x] Flags amount/date/insurance → `has_discrepancy`; result adds `discrepancy_count` + `date_error_count`
+- [x] `parseFlexibleDate()` — dd-mm-yyyy / dd/mm/yyyy / dd.mm.yyyy / dd,mm,yyyy / d-m-yyyy / yyyy-mm-dd / 2-digit / Excel serial; native DateTimeImmutable+getLastErrors (NOT Carbon::createFromFormat); unreadable flagged + surfaced
+- [x] Blade: loan-grain Matched (Excel value + `DB:` on 2nd line same `<td>` via `<br>`, mismatch-highlighted cell+row), DB-only (loan grain), Excel-only (+date-error), summary boxes add ⚠ discrepancy + unreadable-dates
+- [x] Removed old `matchKey`/`entryMatchKeys`/`parseDate`
+- [x] Tests: PayoutReconcileTest rewrite (+multi-tranche-discrepancy, +flexible-dates reflection) **7/7**; payout set **27/27**, Pint clean, view:clear
+- [x] Verified real upload vs local DB: TBRAJ00007885128 now **matched (discrepancy)** amount 52,94,100(3tr) vs 53,00,000, date 27/08 vs 19/08; 14 matched / 8 db-only / 16 excel-only
+- [x] Docs: services-reference, settings, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Payout insurance-from-upload + Loan/App/A-c identifiers  (2026-10-19)
+
+User: (A) reconcile template missing insurance col, and upload must feed insurance into calc;
+(B) show internal loan # + application # + account # on Payout Runs, Reconciliation, Payout Report.
+Decisions: Report shows Loan#+App# only (no a/c); keep single `loan_acc_no` upload column; match order A/c# → App# → Name.
+
+- [x] A1 `PayoutController::COLUMNS` += `insurance_amount`; template numeric type at new index 7
+- [x] A2 `reconcile()` reads uploaded insurance per loan (first non-empty matched row); `entryCalc(…, ?int $excelInsurance)` uses it on carrier tranche, DB `disbursement.insurance_amount` fallback when blank
+- [x] B1 `ourEntries()` loan select += `loan_number`, `application_number`
+- [x] B2 `entryMatchKeys()` candidates per DB entry: A/c# → App# → Name (+amount+date); reconcile() tries each, marks excel key seen
+- [x] B3 `reconcile.blade`: Loan# + App# stacked under A/c cell on Matched + DB-only
+- [x] B4 `PayoutRunService` $loanRows += `application_number` + distinct `account_numbers[]`; `PayoutRunController::show()` same; runs.blade considered-loans + run-show per-loan render Loan#/App#/A/c#
+- [x] B5 `report.blade` (+App# col, colspan 13) + `exportReport` xlsx (App# after Loan#, numeric idx shifted to 6-11)
+- [x] Tests: PayoutReconcileTest +2 (insurance-from-upload+DB-fallback, match-by-app-number) **5/5**; PayoutRunControllerTest identifier assertions. Payout suite **19/19**, Pint clean, view:clear
+- [x] Docs: services-reference, settings, lessons
+- [ ] Not committed — awaiting user confirmation (standing rule: never commit/push without it)
+
+---
+
+# TODO — Disbursement completion / Rate&PF charges / reset integrity  (2026-10-15)
 
 Plan: `tasks/plan-disbursement-ratepf-reset-fix.md`. Data SQL: `loan-disburse-data-fix.md`.
 
