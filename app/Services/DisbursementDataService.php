@@ -458,6 +458,9 @@ class DisbursementDataService
             if ($key === 'method') {
                 return $this->methodToLabel($v);
             }
+            if (in_array($key, ['disbursement_date', 'transfer_date', 'otc_handover_date'], true)) {
+                return ($v === null || (string) $v === '') ? '—' : Carbon::parse($v)->format('d/m/Y');
+            }
 
             return $money ? $this->money($v) : ((string) ($v ?? '') === '' ? '—' : (string) $v);
         };
@@ -494,7 +497,7 @@ class DisbursementDataService
 
     private function money(mixed $v): string
     {
-        return '₹ '.number_format((int) $v);
+        return '₹ '.inr((int) $v);
     }
 
     /**

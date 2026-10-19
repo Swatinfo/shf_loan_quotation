@@ -32,6 +32,14 @@
         .dd-fields .dd-old { color: var(--ink-3); }
         .dd-row-chg .dd-old { text-decoration: line-through; }
         .dd-row-chg .dd-new { color: var(--red, #c0392b); font-weight: 700; }
+        /* Flat preview table: one row per entry, grouped by loan */
+        .dd-flat { min-width: 940px; }
+        .dd-flat td { white-space: nowrap; vertical-align: middle; }
+        .dd-flat tbody tr:hover td { background: rgba(0,0,0,.015); }
+        .dd-grp td { background: var(--bg-alt, #f5f6f7); border-top: 2px solid var(--line); padding: 7px 8px; white-space: normal; }
+        .dd-grp a { font-weight: 600; margin-right: 6px; }
+        .dd-grp .dd-ld { display: inline-block; margin-right: 14px; }
+        .dd-grp-note { padding: 6px 8px; }
     </style>
 @endpush
 
@@ -144,44 +152,58 @@
                     @php
                         $actionLabel = ['update' => 'Update', 'delete' => 'Delete', 'delete-blocked' => 'Delete blocked'];
                     @endphp
-                    @forelse ($okLoans as $c)
-                        <div class="dd-loan">
-                            <div class="dd-loan-hd">
-                                <a href="{{ route('loans.show', $c['loan']) }}">{{ $c['loan']->loan_number }}</a>
-                                @foreach (['advisor', 'payout_user', 'bank', 'product', 'sanctioned', 'pf', 'admin', 'insurance', 'status'] as $k)
-                                    @php $d = $c['loan_diff'][$k]; @endphp
-                                    <span class="dd-ld {{ $d['changed'] ? 'is-chg' : '' }}">
-                                        {{ $d['label'] }}: <span class="o">{{ $d['old'] }}</span>@if ($d['changed']) → <span class="n">{{ $d['new'] }}</span>@endif
-                                    </span>
-                                @endforeach
-                            </div>
-
-                            @forelse ($c['preview_entries'] as $pe)
-                                <div class="dd-entry">
-                                    <span class="dd-badge dd-{{ $pe['action'] }}">{{ $actionLabel[$pe['action']] ?? $pe['action'] }}</span>
-                                    <span class="dd-note">Entry #{{ $pe['entry_id'] }}</span>
-                                    <div class="dd-scroll">
-                                        <table class="tbl dd-fields">
-                                            <thead><tr><th>Field</th><th>Original</th><th>Imported</th></tr></thead>
-                                            <tbody>
-                                                @foreach ($pe['fields'] as $f)
-                                                    <tr class="{{ $f['changed'] ? 'dd-row-chg' : '' }}">
-                                                        <td>{{ $f['label'] }}</td>
-                                                        <td class="dd-old">{{ $f['old'] }}</td>
-                                                        <td class="dd-new">{{ $f['new'] }}</td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="dd-note">Loan-level changes only (no tranche edits).</div>
-                            @endforelse
-                        </div>
-                    @empty
-                        <div class="dd-note" style="padding:14px;">Nothing to update.</div>
-                    @endforelse
+                    <div class="dd-scroll">
+                        <table class="tbl dd-fields dd-flat">
+                            <thead>
+                                <tr>
+                                    <th>Action</th>
+                                    <th>Entry&nbsp;#</th>
+                                    <th>Method</th>
+                                    <th>Amount</th>
+                                    <th>Cheque Name</th>
+                                    <th>Cheque No</th>
+                                    <th>Disb. Date</th>
+                                    <th>Transfer Date</th>
+                                    <th>OTC</th>
+                                    <th>OTC Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($okLoans as $c)
+                                    <tr class="dd-grp">
+                                        <td colspan="10">
+                                            <a href="{{ route('loans.show', $c['loan']) }}">{{ $c['loan']->loan_number }}</a>
+                                            @foreach (['advisor', 'payout_user', 'bank', 'product', 'sanctioned', 'pf', 'admin', 'insurance', 'status'] as $k)
+                                                @php $d = $c['loan_diff'][$k]; @endphp
+                                                <span class="dd-ld {{ $d['changed'] ? 'is-chg' : '' }}">
+                                                    {{ $d['label'] }}: <span class="o">{{ $d['old'] }}</span>@if ($d['changed']) → <span class="n">{{ $d['new'] }}</span>@endif
+                                                </span>
+                                            @endforeach
+                                        </td>
+                                    </tr>
+                                    @forelse ($c['preview_entries'] as $pe)
+                                        @php $fb = collect($pe['fields'])->keyBy('label'); @endphp
+                                        <tr>
+                                            <td><span class="dd-badge dd-{{ $pe['action'] }}">{{ $actionLabel[$pe['action']] ?? $pe['action'] }}</span></td>
+                                            <td>#{{ $pe['entry_id'] }}</td>
+                                            @foreach (['Method', 'Amount', 'Cheque Name', 'Cheque No', 'Disb. Date', 'Transfer Date', 'OTC', 'OTC Date'] as $col)
+                                                @php $f = $fb->get($col); @endphp
+                                                @if ($f && $f['changed'])
+                                                    <td class="dd-row-chg"><span class="dd-old">{{ $f['old'] }}</span> → <span class="dd-new">{{ $f['new'] }}</span></td>
+                                                @else
+                                                    <td>{{ $f['old'] ?? '—' }}</td>
+                                                @endif
+                                            @endforeach
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="10" class="dd-note dd-grp-note">Loan-level changes only (no tranche edits).</td></tr>
+                                    @endforelse
+                                @empty
+                                    <tr><td colspan="10" class="dd-note" style="padding:14px;">Nothing to update.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
 
                     @if ($okLoans->isNotEmpty())
                         <form method="POST" action="{{ route('loans.disbursement-data.import') }}" style="margin-top:14px;"

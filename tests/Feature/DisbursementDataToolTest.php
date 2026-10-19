@@ -204,10 +204,14 @@ class DisbursementDataToolTest extends TestCase
         $byLabel = collect($pe['fields'])->keyBy('label');
 
         $this->assertTrue($byLabel['Amount']['changed']);
-        $this->assertSame('₹ 1,000,000', $byLabel['Amount']['old']);
-        $this->assertSame('₹ 1,500,000', $byLabel['Amount']['new']);
+        $this->assertSame('₹ 10,00,000', $byLabel['Amount']['old']);   // Indian grouping
+        $this->assertSame('₹ 15,00,000', $byLabel['Amount']['new']);
         $this->assertTrue($byLabel['OTC']['changed']);      // pending → cleared
         $this->assertFalse($byLabel['Method']['changed']);  // untouched (cheque → cheque)
+
+        // Dates render as dd/mm/yyyy (not the raw Y-m-d).
+        $this->assertMatchesRegularExpression('#^\d{2}/\d{2}/\d{4}$#', $byLabel['Disb. Date']['old']);
+        $this->assertSame('01/05/2026', $byLabel['OTC Date']['new']);  // imported 2026-05-01
     }
 
     public function test_import_updates_charges_and_recomputes_gross_status(): void
