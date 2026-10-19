@@ -81,6 +81,12 @@ class PayoutRunControllerTest extends TestCase
         $this->assertTrue($preview['can_finalize']);
         $this->assertSame(60000, $preview['totals']['gross']);
         $this->assertSame(57000, $preview['totals']['net']); // − 5% TDS
+
+        // Loan-level breakdown is surfaced (grouped by user → product in the view).
+        $this->assertCount(1, $preview['loan_lines']);
+        $this->assertSame($loan->loan_number, $preview['loan_lines'][0]['loan_number']);
+        $this->assertSame(6000000, $preview['loan_lines'][0]['base']);
+        $this->assertSame(60000, $preview['loan_lines'][0]['payout']); // 1% of 60L
     }
 
     public function test_finalize_creates_run_stamps_entry_and_redirects(): void

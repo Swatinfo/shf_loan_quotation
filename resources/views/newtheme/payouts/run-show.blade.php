@@ -95,5 +95,35 @@
                 </table>
             </div>
         </div>
+
+        {{-- Loans considered — grouped by user → product --}}
+        @if (($loansByUser ?? collect())->isNotEmpty())
+            <div class="card">
+                <div class="card-hd"><div class="t">Loans in this run — grouped by user → product</div></div>
+                <div class="card-bd" style="overflow-x:auto;">
+                    <table class="tbl" style="width:100%;">
+                        <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Disbursed</th></tr></thead>
+                        <tbody>
+                            @foreach ($loansByUser as $uid => $uLoans)
+                                <tr style="background:var(--bg-alt,#f5f6f7);">
+                                    <td colspan="3"><strong>{{ $uLoans->first()['payout_user'] }}</strong>
+                                        <span class="text-muted">· {{ $uLoans->count() }} loan(s)</span></td>
+                                </tr>
+                                @foreach ($uLoans->groupBy('product_name') as $pname => $pLoans)
+                                    <tr><td colspan="3" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
+                                    @foreach ($pLoans as $l)
+                                        <tr>
+                                            <td style="padding-left:32px;">{{ $l['loan_number'] }}</td>
+                                            <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
+                                            <td class="text-end">₹ {{ inr($l['amount']) }}</td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
     </main>
 @endsection

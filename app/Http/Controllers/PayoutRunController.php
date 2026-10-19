@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\DisbursementEntry;
 use App\Models\PayoutRun;
 use App\Models\Product;
 use App\Models\User;
@@ -75,10 +76,32 @@ class PayoutRunController extends Controller
         $linesByUser = $run->lines->groupBy('payout_user_id');
         $productName = $run->products->pluck('product_name', 'id');
 
+        // Loans considered in this run — derived from the tranches stamped with this
+        // run id, grouped by payout user → product. (One row per loan.)
+        $loansByUser = DisbursementEntry::where('payout_run_id', $run->id)
+            ->with(['loan:id,loan_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name'])
+            ->get()
+            ->groupBy('loan_id')
+            ->map(function ($entries) {
+                $loan = $entries->first()->loan;
+
+                return [
+                    'loan_number' => $loan?->loan_number ?? '—',
+                    'payout_user_id' => $loan?->payout_user_id,
+                    'payout_user' => $loan?->payoutUser?->name ?? '—',
+                    'product_name' => $loan?->product?->name ?? '—',
+                    'amount' => (int) $entries->sum('amount'),
+                    'settlement_date' => optional($entries->max('otc_handover_date'))->toDateString(),
+                ];
+            })
+            ->values()
+            ->groupBy('payout_user_id');
+
         return view('newtheme.payouts.run-show', [
             'run' => $run,
             'linesByUser' => $linesByUser,
             'productName' => $productName,
+            'loansByUser' => $loansByUser,
             'pageKey' => 'reports',
         ]);
     }

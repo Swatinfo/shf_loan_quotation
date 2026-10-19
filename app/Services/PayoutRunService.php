@@ -197,6 +197,7 @@ class PayoutRunService
         $insLoansSeen = [];  // loan_id => true (insurance counted once)
         $pfPaidDetailIds = [];
         $insPaidDetailIds = [];
+        $loanRows = [];      // "pid|uid|loan_id" => per-loan breakdown row
 
         foreach ($entries as $e) {
             $loan = $e->loan;
@@ -234,11 +235,26 @@ class PayoutRunService
 
             $coveredEntryCounts[$e->id] = 0;
 
+            // Per-loan breakdown row (grouped user → product in the UI).
+            $loanKey = $pid.'|'.$uid.'|'.$loan->id;
+            if (! isset($loanRows[$loanKey])) {
+                $loanRows[$loanKey] = [
+                    'product_id' => $pid, 'payout_user_id' => $uid, 'loan_id' => $loan->id,
+                    'loan_number' => $loan->loan_number, 'is_pf_based' => (bool) $product->is_pf_based,
+                    'base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
+                ];
+            }
+            $sd = optional($e->otc_handover_date)->toDateString();
+            if ($sd && ($loanRows[$loanKey]['settlement_date'] === null || $sd > $loanRows[$loanKey]['settlement_date'])) {
+                $loanRows[$loanKey]['settlement_date'] = $sd;
+            }
+
             if (! $product->is_pf_based) {
                 // Amount-based: tranche amount feeds the product volume + the user's volume.
                 $products[$pid]['volume'] += (int) $e->amount;
                 $userProd[$key]['user_volume'] += (int) $e->amount;
                 $coveredEntryCounts[$e->id] = (int) $e->amount;
+                $loanRows[$loanKey]['base'] += (int) $e->amount;
             } else {
                 // PF-based: the tranche amount is NOT volume; the loan's one-time PF (ex-GST)
                 // feeds the PF aggregate + the user's PF, counted once per loan.
@@ -249,6 +265,7 @@ class PayoutRunService
                         $userProd[$key]['user_pf'] += $pfBase;
                         $pfLoansSeen[$loan->id] = true;
                         $pfPaidDetailIds[] = $header->id;
+                        $loanRows[$loanKey]['base'] += $pfBase;
                     }
                 }
             }
@@ -258,6 +275,7 @@ class PayoutRunService
                 $userProd[$key]['insurance_base'] += (int) $header->insurance_amount;
                 $insLoansSeen[$loan->id] = true;
                 $insPaidDetailIds[] = $header->id;
+                $loanRows[$loanKey]['insurance_base'] += (int) $header->insurance_amount;
             }
         }
 
@@ -359,6 +377,22 @@ class PayoutRunService
         }
         unset($u);
 
+        // Enrich the per-loan rows with the product name + each loan's payout share
+        // (base × the user's rate for that product + insurance). These are gross,
+        // pre-cap contributions — the max_payout cap is applied at the user×product
+        // line level, not per loan.
+        foreach ($loanRows as &$lr) {
+            $pctx = $productOut[$lr['product_id']] ?? null;
+            $slab = $pctx['slab'] ?? null;
+            $isConn = ($userProd[$lr['product_id'].'|'.$lr['payout_user_id']]['is_connector'] ?? false);
+            $rate = $slab ? $slab->rateFor($isConn) : ['type' => 'percent', 'value' => 0.0];
+            $lr['product_name'] = $pctx['product_name'] ?? '';
+            $lr['rate_applied'] = (float) $rate['value'];
+            $lr['payout'] = $this->applyRate($rate['type'], (float) $rate['value'], (int) $lr['base'], null)
+                + (int) round($lr['insurance_base'] * $rates['insurance']);
+        }
+        unset($lr);
+
         return [
             'from' => $fromDate->toDateString(),
             'to' => $toDate->toDateString(),
@@ -367,6 +401,7 @@ class PayoutRunService
             'rates' => $rates,
             'products' => array_values($productOut),
             'lines' => $lines,
+            'loan_lines' => array_values($loanRows),
             'users' => array_values($users),
             'totals' => ['gross' => $gross, 'tds' => $tdsTotal, 'net' => $netTotal],
             'errors' => $errors,

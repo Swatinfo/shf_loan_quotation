@@ -159,6 +159,41 @@
                         </table>
                     </div>
                 </div>
+
+                {{-- Loans considered — grouped by user → product --}}
+                @php $loansByUser = collect($preview['loan_lines'] ?? [])->groupBy('payout_user_id'); @endphp
+                @if ($loansByUser->isNotEmpty())
+                    <div class="card">
+                        <div class="card-hd"><div class="t">Loans considered ({{ collect($preview['loan_lines'])->count() }}) — grouped by user → product</div></div>
+                        <div class="card-bd" style="overflow-x:auto;">
+                            <table class="tbl" style="width:100%;">
+                                <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Base</th><th class="text-end">Payout*</th></tr></thead>
+                                <tbody>
+                                    @foreach ($loansByUser as $uid => $uLoans)
+                                        <tr style="background:var(--bg-alt,#f5f6f7);">
+                                            <td colspan="4"><strong>{{ $preview['user_names'][$uid] ?? ('#'.$uid) }}</strong>
+                                                <span class="text-muted">· {{ $uLoans->count() }} loan(s) · payout ₹ {{ inr($uLoans->sum('payout')) }}</span></td>
+                                        </tr>
+                                        @foreach ($uLoans->groupBy('product_name') as $pname => $pLoans)
+                                            <tr><td colspan="4" class="text-muted" style="padding-left:16px;">↳ {{ $pname }} — base ₹ {{ inr($pLoans->sum('base')) }}</td></tr>
+                                            @foreach ($pLoans as $l)
+                                                <tr>
+                                                    <td style="padding-left:32px;">{{ $l['loan_number'] }}</td>
+                                                    <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['base']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['payout']) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @endforeach
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div class="po-subhint" style="font-size:11.5px;color:var(--ink-3);margin-top:6px;">
+                                * per-loan payout is a gross, pre-cap figure (base × rate + insurance). The max-payout cap is applied per user × product, so a user's net above may be lower.
+                            </div>
+                        </div>
+                    </div>
+                @endif
             @endif
         @endif
 
