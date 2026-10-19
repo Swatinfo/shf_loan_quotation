@@ -8,7 +8,8 @@ Consolidated rules from past sessions. Follow these in all future work.
 - Vendor libraries loaded globally in `newtheme/layouts/app.blade.php`: jQuery, Bootstrap Datepicker, SortableJS, SweetAlert2, `shf-newtheme.js`, `push-notifications.js`
 - `shf-newtheme.js` (global) carries a subset of the SHF.* helpers: `validateForm`, `formatIndianNumber`, `numberToWordsEn`/`numberToWordsGu`/`bilingualAmountWords` (guarded copies — shf-app.js stays authoritative where both load). Pages that don't load `shf-app.js` can rely on these.
 - `shf-newtheme.js` also installs **`SHF.loader`** — the global AJAX loading overlay. All jQuery AJAX shows it automatically via `ajaxSend`/`ajaxComplete` (opt out with `global: false` for background calls). `fetch()` is not hooked: fetch-based user actions call `SHF.loader.begin()`/`.end()` (finally) manually; poll/DataTables/offline fetches stay silent by design. Styles: `.shf-ajax-loader*` in `shf-extras.css`.
-- Vendor directory (`public/newtheme/vendor/`): bootstrap, datepicker, jquery, leaflet, sortablejs, sweetalert2
+- Vendor directory (`public/newtheme/vendor/`): bootstrap, datepicker, jquery, leaflet, sortablejs, sweetalert2, select2 (payout pages only)
+- **No native `alert`/`confirm`/`prompt`** anywhere — use `SHF.confirm/alert/prompt` (SweetAlert2-backed, Promise-returning; defined in `shf-newtheme.js`) or the declarative `<form data-confirm="…">` handler. The single native fallback lives inside those helpers.
 - Newtheme design-system CSS: `public/newtheme/assets/shf.css`, `shf-extras.css`, `shf-workflow.css`, `shf-modals.css`
 - Legacy `shf-*` CSS preserved at `public/newtheme/css/shf.css` for screens that still render legacy markup (loan stages, documents, valuation, quotation show, settings)
 - Core JS in `public/newtheme/js/shf-app.js` (SHF.* namespace, quotation create form only)
@@ -78,8 +79,9 @@ Consolidated rules from past sessions. Follow these in all future work.
 ## JS Patterns
 
 ### SHF namespace (`public/newtheme/js/shf-app.js`)
-- `SHF.validateForm($form, rules)` -- client-side validation with rule types: required, maxlength, minlength, min, max, email, numeric, pattern, patternMsg, dateFormat, custom
+- `SHF.validateForm($form, rules)` -- client-side validation with rule types: required, maxlength, minlength, min, max, email, numeric, pattern, patternMsg, dateFormat, custom. For a Select2/hidden `<select>`, wrap it in `.position-relative` so the error renders below the control, not after the hidden element.
 - `SHF.validateBeforeAjax($container, rules, url, data)` -- validate then AJAX POST
+- `SHF.confirm/alert/prompt(opts) → Promise` -- SweetAlert2 dialogs (replace native `alert/confirm/prompt`); `prompt` supports `input:'textarea'`. `<form data-confirm="…">` gets a confirm-on-submit automatically.
 - `SHF.formatIndianNumber(num)` -- format number with Indian comma system (lakh/crore)
 - `SHF.numberToWordsEn(num)` -- English amount in words (Crore/Lakh/Thousand)
 - `SHF.numberToWordsGu(num)` -- Gujarati amount in words

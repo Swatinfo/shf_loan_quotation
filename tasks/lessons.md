@@ -13,6 +13,17 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Payout Runs + Reconciliation — bank/product scope, Select2, loan breakdown (2026-10-19)
+
+- **Bank + product scope**: Payout Runs and Reconciliation now require a **bank** and **≥1 product** (both compulsory). `previewRun/finalizeRun/computeRun` take `?int $bankId` + `array $productIds`; reconcile's `ourEntries()` takes `$productIds`. Filter on the loan's own `bank_id`/`product_id` columns (`whereHas('loan', …)`). `payout_runs.bank_id` column added (migration `2026_10_19_130412`; nullable for legacy all-bank runs) + `PayoutRun::bank()`.
+- **Non-destructive subset runs (the key invariant)**: payout coverage is per-tranche (`payout_run_id`), so scoping by product only narrows the query. A run for product A stamps only A's tranches; a later run for B/subset picks up only its own still-uncovered tranches — **other products' data is never touched**. Covered by `test_product_filter_scopes_run_and_leaves_other_products_untouched`.
+- **Select2 multi-select** (shared partial `payouts/_product-filter.blade.php`): vendored locally at `public/newtheme/vendor/select2/` (4.1.0-rc.0; no CDN). Options are **bank-dependent** — embedded `window.__payoutProducts` (id/name/bank_id), rebuilt on bank `change` (destroy + re-init to pick up new `<option>`s). Loaded only on these pages via `@once @push`.
+- **Client validation**: added `SHF.validateForm` submit guards on Payout Runs / Reconcile / Disbursement Data (required bank/products/from/to + file). **Gotcha**: for a Select2 (hidden `<select>`) the error landed *above* the box because `validateForm` appends after the field — wrap the `<select>` in `.position-relative` so it appends below. The hidden select keeps `is-invalid`; a CSS rule mirrors the red border onto `.select2-selection`.
+- **Loan breakdown + base amounts**: `computeRun()` returns `loan_lines` (per loan×user×product: `volume`=disbursed, `pf_base`=PF ex-GST counted, `insurance_base`, `settlement_date`, `payout`=gross pre-cap); per-user rollup adds `total_volume`/`total_pf_base`/`total_insurance_base`. Preview shows a **"Loans considered" card grouped user → product** + base columns on the per-user table. `run-show` re-derives: per-user bases from stored `payout_run_lines` (volume = Σ base_amount − Σ pf_base), loans from stamped `disbursement_entries` + the run's `gst_rate` snapshot for PF ex-GST. Per-loan payout is **gross pre-cap** — the max-payout cap applies per user×product, noted in the UI.
+- **Nav active sub-item**: Reports/Settings dropdown parents highlight via `$pageKey`; sub-items now via a route-based `$ddActive(...request()->routeIs...)` helper + `.nav-dd-item.active` CSS. Public CSS → version bump (`20261019140000`/`150000`).
+
+---
+
 ## IP-allowlisted maintenance mode (2026-10-15)
 
 - **Goal**: `php artisan down` but let specific client IPs through (GTPL 43.242.117.89, AIRTEL 122.173.87.25). Laravel's native maintenance has a `--secret` URL-token bypass but **no IP allowlist**.

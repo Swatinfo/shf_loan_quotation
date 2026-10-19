@@ -44,7 +44,7 @@ Rules:
 - **`fetch()` is NOT hooked** — the notification badge poll, DataTables/list loads, offline sync, and push registration stay silent by design. A `fetch()`-based *user action* must call `SHF.loader.begin()` before and `SHF.loader.end()` in a `finally` (see quotation `_create-script.blade.php` submit, `loans/show.blade.php` DME update, `pages/users.js` `postJson`). Guard with `if (window.SHF && SHF.loader)` in files that can run without the newtheme bundle.
 - List pages that render their own inline `Loading…` placeholder (users/loans/quotations data loads) keep that pattern — don't add the global overlay to table refreshes.
 
-Vendor directories under `public/newtheme/vendor/`: `bootstrap`, `datepicker`, `jquery`, `leaflet`, `sortablejs`, `sweetalert2`.
+Vendor directories under `public/newtheme/vendor/`: `bootstrap`, `datepicker`, `jquery`, `leaflet`, `sortablejs`, `sweetalert2`, `select2` (4.1.0-rc.0; loaded only on the Payout Runs / Reconciliation pages via `payouts/_product-filter.blade.php`).
 
 Fonts under `public/fonts/`:
 - Jost (Regular, Medium, SemiBold, Bold) — display/headers, via `font-display` class
@@ -128,6 +128,7 @@ Named: `.shf-role-loan-advisor` `#2563eb`, `.shf-role-bank-employee` `#d97706`, 
 ### Tabs
 - `.shf-tabs` (dark container), `.shf-tab`, `.shf-tab.active`, `.shf-tab-pane-hidden`, `.shf-tab-close`
 - `.shf-nav-link` / `.shf-nav-active` — navbar tab styling
+- Topbar dropdowns (`partials/header.blade.php`): the parent (`.nav-item`) highlights via `$pageKey`; each `.nav-dd-item` highlights via a route-based `$ddActive(...request()->routeIs...)` helper (`.nav-dd-item.active` in `shf-extras.css`) so the current sub-page is marked inside Reports/Settings (2026-10-19).
 
 ### Tags & chips
 - `.shf-tag`, `.shf-tag-remove` — removable inline tag
@@ -221,6 +222,16 @@ Disabled fields are skipped (they never submit). Forms that reuse one `name` acr
 On failure: adds `.is-invalid`, inline error div `.shf-validation-error`, scrolls to first error (-120px), focuses. Clears automatically on next `input` / `change`.
 
 `SHF.validateBeforeAjax($container, rules, url, data)` — validate first, then `$.post` if valid. Returns jqXHR or `false`.
+
+### Dialogs — SweetAlert2 (2026-10-19)
+
+**No native `alert`/`confirm`/`prompt` in page code** — use these Promise-returning helpers (defined parse-time in the global `shf-newtheme.js`). A single native fallback lives inside each helper for the edge case where the SweetAlert2 vendor file failed to load.
+
+- `SHF.confirm({title, text, html, icon, confirmText, cancelText, danger, focusCancel}) → Promise<bool>`
+- `SHF.alert({title, text, icon}) → Promise` (errors → `icon:'error'`; a bare string is treated as `{text}`)
+- `SHF.prompt({title, text, input:'text'|'textarea', inputLabel, placeholder, value, required, requiredMsg, danger}) → Promise<string|null>`
+
+**Declarative confirm-on-submit**: add `data-confirm="message"` (+ optional `data-confirm-title`, `data-confirm-ok`, `data-confirm-danger`) to any `<form>`; a global delegated handler in `shf-newtheme.js` runs `SHF.confirm` then re-submits on confirm (sets `__shfConfirmed`). Replaces inline `onsubmit="return confirm(...)"`. The existing `.shf-confirm-delete` form class still works (now routed through `SHF.confirm`).
 
 ### Indian number formatting
 
