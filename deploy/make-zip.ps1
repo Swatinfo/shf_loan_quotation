@@ -1,12 +1,12 @@
-# Builds the deploy/transfer zip of the files listed in _deploy/MANIFEST.txt.
+# Builds the deploy/transfer zip of the files listed in deploy/MANIFEST.txt.
 # Paths resolve relative to THIS script's own folder, so it works from any CWD:
-#   powershell -File _deploy/make-zip.ps1          (from the repo root)
-#   powershell -File make-zip.ps1                  (from inside _deploy)
+#   powershell -File deploy/make-zip.ps1           (from the repo root)
+#   powershell -File make-zip.ps1                  (from inside deploy)
 # The zip name carries a ddMMyyHHmmss timestamp.
 param(
-    [string]$Root,       # repo root (default: the parent of _deploy)
-    [string]$Manifest,   # file list (default: _deploy/MANIFEST.txt)
-    [string]$Out         # output zip (default: _deploy/shf-payout-changes-<ddMMyyHHmmss>.zip)
+    [string]$Root,       # repo root (default: the parent of deploy)
+    [string]$Manifest,   # file list (default: deploy/MANIFEST.txt)
+    [string]$Out         # output zip (default: deploy/shf-payout-changes-<ddMMyyHHmmss>.zip)
 )
 
 $ScriptDir = $PSScriptRoot

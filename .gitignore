@@ -29,8 +29,8 @@ Thumbs.db
 *.tgz
 *.tar.gz
 *.rar
-# …but DO keep the deploy transfer zips (release bundles under _deploy/)
-!_deploy/*.zip
+# …but DO keep the deploy transfer zips (release bundles under deploy/)
+!deploy/*.zip
 
 # Composer binary (use system install)
 composer.phar

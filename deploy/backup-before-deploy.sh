@@ -4,7 +4,7 @@
 # overwrite them with the new code. Run this ON THE SERVER, from your Laravel
 # project root (or pass the root as the first argument).
 #
-#   bash _deploy/backup-before-deploy.sh          # project root = the parent of _deploy
+#   bash deploy/backup-before-deploy.sh           # project root = the parent of deploy
 #   bash backup-before-deploy.sh /var/www/shf     # explicit project root
 #
 # Produces: backup-before-deploy-YYYYmmdd-HHMMSS.zip  (only files that already exist)
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # Default ROOT = the project root, resolved as the parent of THIS script's folder
-# (the script lives in <project>/_deploy), so it works from any CWD.
+# (the script lives in <project>/deploy), so it works from any CWD.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${1:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 cd "$ROOT"
