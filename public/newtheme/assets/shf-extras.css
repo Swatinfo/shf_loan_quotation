@@ -1833,6 +1833,14 @@ body {
     color: #ff8a5b !important;
 }
 
+/* Current page inside a dropdown (Reports / Settings sub-items). */
+.nav-dd-item.active {
+    background: rgba(241, 90, 41, 0.22);
+    color: #ff8a5b !important;
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--accent, #f15a29);
+}
+
 /* ============ Date input — visible affordance ============ */
 .input[type="date"],
 .input[type="time"],

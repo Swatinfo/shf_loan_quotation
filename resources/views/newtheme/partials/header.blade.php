@@ -6,6 +6,8 @@
 @php
     $u = auth()->user();
     $is = fn (string $key) => ($pageKey ?? '') === $key;
+    // Active state for a dropdown sub-item, matched by the current route name.
+    $ddActive = fn (string ...$patterns) => request()->routeIs(...$patterns) ? 'active' : '';
 
     $first = strtok($u->name, ' ') ?: $u->name;
     $last = trim(substr($u->name, strlen($first)));
@@ -79,13 +81,13 @@
                     <svg class="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"/></svg>
                 </a>
                 <div class="nav-dd">
-                    <a class="nav-dd-item" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
-                    <a class="nav-dd-item" href="{{ route('reports.loans') }}">Loan Report</a>
-                    <a class="nav-dd-item" href="{{ route('payouts.runs') }}">Payout Runs</a>
-                    <a class="nav-dd-item" href="{{ route('payouts.report') }}">Payout Report</a>
-                    <a class="nav-dd-item" href="{{ route('payouts.reconcile') }}">Payout Reconciliation</a>
+                    <a class="nav-dd-item {{ $ddActive('reports.pipeline') }}" href="{{ route('reports.pipeline') }}">Loan Pipeline</a>
+                    <a class="nav-dd-item {{ $ddActive('reports.loans') }}" href="{{ route('reports.loans') }}">Loan Report</a>
+                    <a class="nav-dd-item {{ $ddActive('payouts.runs*') }}" href="{{ route('payouts.runs') }}">Payout Runs</a>
+                    <a class="nav-dd-item {{ $ddActive('payouts.report') }}" href="{{ route('payouts.report') }}">Payout Report</a>
+                    <a class="nav-dd-item {{ $ddActive('payouts.reconcile*') }}" href="{{ route('payouts.reconcile') }}">Payout Reconciliation</a>
                     @if ($u->hasAnyRole(['super_admin', 'admin', 'bdh']))
-                        <a class="nav-dd-item" href="{{ route('reports.management') }}">Management Summary</a>
+                        <a class="nav-dd-item {{ $ddActive('reports.management') }}" href="{{ route('reports.management') }}">Management Summary</a>
                     @endif
                 </div>
             </div>
@@ -100,22 +102,22 @@
                 </a>
                 <div class="nav-dd">
                     @if ($u->hasPermission('view_settings'))
-                        <a class="nav-dd-item" href="{{ route('settings.index') }}">Quotation Settings</a>
+                        <a class="nav-dd-item {{ $ddActive('settings.*', 'settings') }}" href="{{ route('settings.index') }}">Quotation Settings</a>
                     @endif
                     @if ($u->hasPermission('manage_workflow_config'))
-                        <a class="nav-dd-item" href="{{ route('loan-settings.index') }}">Loan Settings</a>
+                        <a class="nav-dd-item {{ $ddActive('loan-settings.*') }}" href="{{ route('loan-settings.index') }}">Loan Settings</a>
                     @endif
                     @if ($u->hasPermission('manage_permissions'))
-                        <a class="nav-dd-item" href="{{ route('permissions.index') }}">Permissions</a>
+                        <a class="nav-dd-item {{ $ddActive('permissions.*') }}" href="{{ route('permissions.index') }}">Permissions</a>
                     @endif
                     @if ($u->isSuperAdmin())
-                        <a class="nav-dd-item" href="{{ route('roles.index') }}">Roles</a>
+                        <a class="nav-dd-item {{ $ddActive('roles.*') }}" href="{{ route('roles.index') }}">Roles</a>
                     @endif
                     @if ($u->hasPermission('view_activity_log'))
-                        <a class="nav-dd-item" href="{{ route('activity-log') }}">Activity Log</a>
+                        <a class="nav-dd-item {{ $ddActive('activity-log') }}" href="{{ route('activity-log') }}">Activity Log</a>
                     @endif
                     @if ($u->isSuperAdmin())
-                        <a class="nav-dd-item" href="{{ route('loans.disbursement-data') }}">Disbursement Data</a>
+                        <a class="nav-dd-item {{ $ddActive('loans.disbursement-data*') }}" href="{{ route('loans.disbursement-data') }}">Disbursement Data</a>
                     @endif
                 </div>
             </div>
