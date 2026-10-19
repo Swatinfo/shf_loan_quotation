@@ -98,7 +98,7 @@ class PayoutController extends Controller
     public function reconcileTemplate(Request $request)
     {
         return app(XlsxExportService::class)->download(
-            'payout-reconciliation-template.xlsx',
+            'payout-reconciliation-template-'.now()->format('d-m-Y_H-i-s').'.xlsx',
             self::COLUMNS,
             [], // headers only — blank format
             [5 => XlsxExportService::TYPE_NUMBER, 6 => XlsxExportService::TYPE_NUMBER, 7 => XlsxExportService::TYPE_NUMBER, 8 => XlsxExportService::TYPE_NUMBER],
@@ -362,44 +362,46 @@ class PayoutController extends Controller
     }
 
     /**
-     * Identifier → loan-info index over ALL our active tranches for a bank (+ optional
-     * products), ANY date. Used to tell "truly not in our DB" apart from "exists but
-     * didn't match this period". Keyed (normalized) by A/c number + application number
-     * (→ 'acc') and by customer name (→ 'name').
+     * Identifier → loan-info index over ALL loans for a bank (+ optional products),
+     * ANY status, ANY date — including loans with no disbursement entries. Used to
+     * tell "truly not in our DB" apart from "exists but didn't match this period".
+     * Keyed (normalized) by A/c number + application number (→ 'acc') and by customer
+     * name (→ 'name').
      *
      * @param  array<int,int>  $productIds
      * @return array{acc: array<string, array<string,mixed>>, name: array<string, array<string,mixed>>}
      */
     private function dbIdentifierIndex(int $bankId, array $productIds): array
     {
-        // ALL entries (active or not) so a cancelled / on-hold loan — whose tranches
-        // may have been deactivated — is still recognised as "exists in our DB".
-        $entries = DisbursementEntry::query()
-            ->with(['loan:id,loan_number,application_number,customer_name,bank_id,product_id,status', 'loan.product:id,name'])
-            ->whereHas('loan', function ($q) use ($bankId, $productIds) {
-                $q->where('bank_id', $bankId);
-                if ($productIds) {
-                    $q->whereIn('product_id', $productIds);
-                }
-            })
-            ->get();
+        // Start from the LOANS themselves (bank + products, ANY status) so a loan with
+        // NO disbursement entries — e.g. an on-hold / cancelled loan the bank lists —
+        // is still recognised as "exists in our DB" by its application number / name.
+        $loans = LoanDetail::query()
+            ->where('bank_id', $bankId)
+            ->when($productIds, fn ($q) => $q->whereIn('product_id', $productIds))
+            ->with('product:id,name')
+            ->get(['id', 'loan_number', 'application_number', 'customer_name', 'product_id', 'status']);
 
         $byLoan = [];
+        foreach ($loans as $loan) {
+            $byLoan[$loan->id] = [
+                'loan_id' => $loan->id, 'loan_number' => $loan->loan_number, 'application_number' => $loan->application_number,
+                'customer_name' => $loan->customer_name, 'product_name' => $loan->product?->name, 'status' => $loan->status,
+                'accounts' => [], 'amount' => 0, 'settlement_dates' => [], 'pending' => false,
+            ];
+        }
+
+        // Enrich with tranche data: accounts from ANY tranche (so a loan is found by A/c
+        // even when deactivated); amounts/dates only from ACTIVE tranches.
+        $entries = DisbursementEntry::query()
+            ->whereIn('loan_id', array_keys($byLoan))
+            ->get(['id', 'loan_id', 'loan_account_number', 'amount', 'is_active', 'otc_handover_date']);
+
         foreach ($entries as $e) {
-            $loan = $e->loan;
-            if (! $loan) {
+            $lid = $e->loan_id;
+            if (! isset($byLoan[$lid])) {
                 continue;
             }
-            $lid = $loan->id;
-            if (! isset($byLoan[$lid])) {
-                $byLoan[$lid] = [
-                    'loan_id' => $lid, 'loan_number' => $loan->loan_number, 'application_number' => $loan->application_number,
-                    'customer_name' => $loan->customer_name, 'product_name' => $loan->product?->name, 'status' => $loan->status,
-                    'accounts' => [], 'amount' => 0, 'settlement_dates' => [], 'pending' => false,
-                ];
-            }
-            // Accounts come from any tranche (so the loan is found by A/c even when
-            // deactivated); amounts/dates only from ACTIVE tranches.
             $acc = trim((string) $e->loan_account_number);
             if ($acc !== '' && ! in_array($acc, $byLoan[$lid]['accounts'], true)) {
                 $byLoan[$lid]['accounts'][] = $acc;
@@ -707,7 +709,7 @@ class PayoutController extends Controller
         ]);
 
         return app(XlsxExportService::class)->download(
-            'payout-report-'.$from->format('Ymd').'-'.$to->format('Ymd').'.xlsx',
+            'payout-report-'.$from->format('Ymd').'-'.$to->format('Ymd').'-'.now()->format('His').'.xlsx',
             ['Date', 'Payout User', 'Loan #', 'App #', 'Bank', 'Product', 'Basis', 'Commission', 'Insurance', 'GST', 'TDS', 'Net Payout', 'Cycle'],
             $rows,
             array_fill_keys([6, 7, 8, 9, 10, 11], XlsxExportService::TYPE_NUMBER),

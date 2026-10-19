@@ -8,6 +8,13 @@ Patterns and corrections captured during development. Review at session start.
 
 - **Rule**: do NOT `git commit`/`git push` until the user explicitly asks, *each time*. A previous "commit and push" does not authorize the next task's commit. Finish the work, verify, summarize, then wait. Captured in `.claude/rules/coding-feedback.md` (Git section) + memory `never-commit-without-confirmation`.
 
+## Reconcile: find entry-less loans (on-hold/cancelled) by application number (2026-10-19)
+
+- **Bug**: on-hold/cancelled loans with an application number but **zero disbursement entries** showed as "not in DB". `dbIdentifierIndex` was built from `disbursement_entries`, so a loan with no entries was invisible to it (application_number lives on `loan_details`, not entries).
+- **Fix**: `dbIdentifierIndex` is now **loan-first** — list all loans for the bank(+products) of ANY status via `LoanDetail`, then enrich with tranche data (accounts from any tranche; amounts/settlement/pending from active tranches). So an entry-less on-hold loan is found by its application number and shown as `status` ("Loan is On Hold — not payable"), not "not in DB". Verified on the real file: the two app-numbered on-hold loans moved from excel_only → excel_in_db [status].
+- **Also**: excel download filenames carry a time stamp — reconcile template `payout-reconciliation-template-<d-m-Y_H-i-s>.xlsx`, payout report `payout-report-<Ymd>-<Ymd>-<His>.xlsx`.
+- **Perf note**: loan-first means loading all bank+product loans per reconcile (bounded; admin action). Entries fetched via `whereIn('loan_id', array_keys($byLoan))` rather than a per-row `whereHas`.
+
 ## Reconcile mismatch categories + payout status exclusion (2026-10-19)
 
 - **Mismatch "DB date" was misleading.** `dbIdentifierIndex` built the shown DB date from `transactionDate()` = `otc_handover ?? disbursement`, so a PENDING cheque (null handover) displayed its disbursement date (in range) while the real reason was "not cleared". Fixed: the index now carries the **real** `otc_handover` clearance dates + a `pending` flag + `loan_id` + `status`, computed from ACTIVE tranches, and scans **all** tranches (no `is_active` filter) so deactivated-tranche loans are still found.

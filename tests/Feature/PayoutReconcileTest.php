@@ -53,7 +53,9 @@ class PayoutReconcileTest extends TestCase
 
         $resp->assertOk();
         $resp->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        $this->assertStringContainsString('payout-reconciliation-template.xlsx', $resp->headers->get('content-disposition'));
+        $disposition = $resp->headers->get('content-disposition');
+        $this->assertStringContainsString('payout-reconciliation-template-', $disposition); // name carries a d-m-Y_H-i-s stamp
+        $this->assertMatchesRegularExpression('/payout-reconciliation-template-\d{2}-\d{2}-\d{4}_\d{2}-\d{2}-\d{2}\.xlsx/', $disposition);
     }
 
     public function test_reconciliation_matches_and_flags_discrepancies(): void
@@ -383,6 +385,31 @@ class PayoutReconcileTest extends TestCase
         $this->assertSame('status', $result['excel_in_db'][0]['category']);
         $this->assertSame('on_hold', $result['excel_in_db'][0]['loan']['status']);
         $this->assertStringContainsString('hold', strtolower($result['excel_in_db'][0]['reason']));
+    }
+
+    public function test_entryless_on_hold_loan_is_found_by_application_number(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        // Loan exists, on hold, with an application number but NO disbursement entries.
+        LoanDetail::create([
+            'loan_number' => 'L-'.uniqid(), 'application_number' => 'APP-NOENTRY', 'customer_name' => 'Cust', 'customer_type' => 'salaried',
+            'loan_amount' => 500000, 'status' => 'on_hold', 'current_stage' => 'docket',
+            'bank_id' => $bank->id, 'branch_id' => $branch->id, 'product_id' => $product->id,
+            'created_by' => $admin->id, 'payout_user_id' => $admin->id,
+        ]);
+
+        // The bank statement lists it by application number (the A/c won't exist in our DB).
+        $upload = $this->makeUpload([['SOMEACC', 'Cust', '', '20-08-2026', 500000, 0, 0, 0, 'APP-NOENTRY']]);
+        $resp = $this->actingAs($admin)->post(route('payouts.reconcile.run'), [
+            'bank_id' => $bank->id, 'product_ids' => [$product->id],
+            'from' => '2026-08-16', 'to' => '2026-09-15', 'file' => $upload,
+        ])->assertOk();
+
+        $result = $resp->viewData('result');
+        $this->assertCount(0, $result['excel_only']);          // NOT "not in DB"
+        $this->assertCount(1, $result['excel_in_db']);
+        $this->assertSame('status', $result['excel_in_db'][0]['category']);
+        $this->assertSame('on_hold', $result['excel_in_db'][0]['loan']['status']);
     }
 
     public function test_truly_unknown_account_is_not_in_db(): void

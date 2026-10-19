@@ -1,4 +1,15 @@
-# TODO — Reconcile mismatch categories + payout status exclusion  ← CURRENT (2026-10-19)
+# TODO — Entry-less on-hold loans by app# + download timestamps  ← CURRENT (2026-10-19)
+
+- [x] `dbIdentifierIndex` now loan-first (lists all bank+product loans ANY status, then enriches with tranches) → entry-less on-hold/cancelled loans found by application number, shown as [status] not "not in DB"
+- [x] Export filenames stamped: reconcile template `payout-reconciliation-template-<d-m-Y_H-i-s>.xlsx`; payout report `payout-report-<Ymd>-<Ymd>-<His>.xlsx`
+- [x] Tests: entryless-on-hold-by-app#, template-filename-timestamp regex. **Full suite 434/434**, Pint clean, view:clear
+- [x] Verified real file (upload8): 2 app-numbered on-hold loans → excel_in_db [status]; excel_only 4→2
+- [x] Docs: services-reference, settings, lessons
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Reconcile mismatch categories + payout status exclusion  (2026-10-19)
 
 - [x] Mismatch display fix: `dbIdentifierIndex` carries real otc_handover clearance dates + `pending` + `loan_id` + `status`, scans ALL tranches (amounts/dates from active only); blade shows "Pending (not cleared)" not disbursement fallback + a Reason column
 - [x] `mismatchReason()` → {category, reason}; categories difference / status / pending / outside / other; blade badge per category
