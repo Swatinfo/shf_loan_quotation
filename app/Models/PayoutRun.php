@@ -13,7 +13,7 @@ class PayoutRun extends Model
     const STATUS_FINALIZED = 'finalized';
 
     protected $fillable = [
-        'from_date', 'to_date', 'status', 'notes',
+        'from_date', 'to_date', 'bank_id', 'status', 'notes',
         'insurance_rate', 'tds_rate', 'gst_rate',
         'total_gross', 'total_tds', 'total_net',
         'finalized_by', 'finalized_at', 'created_by',
@@ -32,6 +32,11 @@ class PayoutRun extends Model
             'total_net' => 'integer',
             'finalized_at' => 'datetime',
         ];
+    }
+
+    public function bank(): BelongsTo
+    {
+        return $this->belongsTo(Bank::class, 'bank_id');
     }
 
     public function products(): HasMany

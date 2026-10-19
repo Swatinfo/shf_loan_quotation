@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\PayoutRun;
 use App\Models\User;
 use App\Services\PayoutRunService;
@@ -17,20 +18,22 @@ class PayoutRunController extends Controller
 
     public function index(Request $request)
     {
-        $input = $request->only(['from', 'to']);
+        $input = $request->only(['from', 'to', 'bank_id']);
         $preview = null;
-        if ($request->filled('from') && $request->filled('to')) {
+        if ($request->filled('from') && $request->filled('to') && $request->filled('bank_id')) {
             $data = $request->validate([
+                'bank_id' => 'required|exists:banks,id',
                 'from' => 'required|date',
                 'to' => 'required|date|after_or_equal:from',
             ]);
-            $preview = $this->enrich($this->service->previewRun($data['from'], $data['to']));
+            $preview = $this->enrich($this->service->previewRun($data['from'], $data['to'], (int) $data['bank_id']));
         }
 
         return view('newtheme.payouts.runs', [
             'preview' => $preview,
             'input' => $input,
-            'runs' => PayoutRun::with('finalizedBy')->latest('id')->limit(50)->get(),
+            'banks' => Bank::active()->orderBy('name')->get(['id', 'name']),
+            'runs' => PayoutRun::with(['finalizedBy', 'bank'])->latest('id')->limit(50)->get(),
             'canFinalize' => $request->user()->hasPermission('finalize_payout'),
             'pageKey' => 'reports',
         ]);
@@ -39,11 +42,12 @@ class PayoutRunController extends Controller
     public function finalize(Request $request)
     {
         $data = $request->validate([
+            'bank_id' => 'required|exists:banks,id',
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
         ]);
 
-        $run = $this->service->finalizeRun($data['from'], $data['to'], $request->user());
+        $run = $this->service->finalizeRun($data['from'], $data['to'], $request->user(), (int) $data['bank_id']);
 
         return redirect()->route('payouts.runs.show', $run)->with(
             'success',

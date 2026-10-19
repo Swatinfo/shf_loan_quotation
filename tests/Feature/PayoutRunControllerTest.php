@@ -72,9 +72,9 @@ class PayoutRunControllerTest extends TestCase
         $admin = $this->admin();
         $advisor = User::create(['name' => 'Adv', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
         $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
-        $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15'); // 60L @ 1% = 60,000
+        $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15'); // 60L @ 1% = 60,000
 
-        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['from' => '2026-10-01', 'to' => '2026-10-31']));
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loan->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
 
         $resp->assertOk();
         $preview = $resp->viewData('preview');
@@ -90,12 +90,13 @@ class PayoutRunControllerTest extends TestCase
         $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
         $loan = $this->loanWithEntry($advisor->fresh('roles'), 6000000, '2026-10-15');
 
-        $resp = $this->actingAs($admin)->post(route('payouts.runs.finalize'), ['from' => '2026-10-01', 'to' => '2026-10-31']);
+        $resp = $this->actingAs($admin)->post(route('payouts.runs.finalize'), ['bank_id' => $loan->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']);
 
         $run = PayoutRun::latest('id')->first();
         $this->assertNotNull($run);
         $resp->assertRedirect(route('payouts.runs.show', $run));
         $this->assertSame(PayoutRun::STATUS_FINALIZED, $run->status);
+        $this->assertSame((int) $loan->bank_id, (int) $run->bank_id);
         $this->assertSame(57000, (int) $run->total_net);
         // The tranche is stamped against the run.
         $this->assertSame($run->id, (int) $loan->disbursementEntries()->first()->payout_run_id);
@@ -107,9 +108,34 @@ class PayoutRunControllerTest extends TestCase
     public function test_preview_can_not_finalize_when_nothing_in_range(): void
     {
         $admin = $this->admin();
-        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['from' => '2026-10-01', 'to' => '2026-10-31']));
+        $bank = Bank::create(['name' => 'Bank-'.uniqid(), 'is_active' => true]);
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $bank->id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
 
         $resp->assertOk();
         $this->assertFalse($resp->viewData('preview')['can_finalize']);
+    }
+
+    public function test_finalize_requires_a_bank(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin)
+            ->post(route('payouts.runs.finalize'), ['from' => '2026-10-01', 'to' => '2026-10-31'])
+            ->assertSessionHasErrors('bank_id');
+    }
+
+    public function test_bank_filter_scopes_the_run_to_the_selected_bank(): void
+    {
+        $admin = $this->admin();
+        $advisor = User::create(['name' => 'Adv', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $advisor->roles()->sync(Role::where('slug', 'loan_advisor')->pluck('id'));
+        $advisor = $advisor->fresh('roles');
+
+        $loanA = $this->loanWithEntry($advisor, 6000000, '2026-10-15'); // bank A: 60L @ 1% = 60,000
+        $this->loanWithEntry($advisor, 9000000, '2026-10-15');          // bank B: must be excluded
+
+        $resp = $this->actingAs($admin)->get(route('payouts.runs', ['bank_id' => $loanA->bank_id, 'from' => '2026-10-01', 'to' => '2026-10-31']));
+
+        $preview = $resp->viewData('preview');
+        $this->assertSame(60000, $preview['totals']['gross']); // only bank A counted
     }
 }

@@ -34,23 +34,24 @@ class PayoutRunService
      *
      * @return array<string, mixed>
      */
-    public function previewRun(string $from, string $to): array
+    public function previewRun(string $from, string $to, ?int $bankId = null): array
     {
-        return $this->computeRun($from, $to);
+        return $this->computeRun($from, $to, $bankId);
     }
 
     /**
      * Finalize a run: persist the snapshot (run + products + lines + per-user totals)
      * and stamp coverage so the tranches / one-time PF+insurance are never paid twice.
      */
-    public function finalizeRun(string $from, string $to, User $actor): PayoutRun
+    public function finalizeRun(string $from, string $to, User $actor, ?int $bankId = null): PayoutRun
     {
-        return DB::transaction(function () use ($from, $to, $actor) {
-            $data = $this->computeRun($from, $to);
+        return DB::transaction(function () use ($from, $to, $actor, $bankId) {
+            $data = $this->computeRun($from, $to, $bankId);
 
             $run = PayoutRun::create([
                 'from_date' => $data['from'],
                 'to_date' => $data['to'],
+                'bank_id' => $data['bank_id'],
                 'status' => PayoutRun::STATUS_FINALIZED,
                 'insurance_rate' => $data['rates']['insurance'],
                 'tds_rate' => $data['rates']['tds'],
@@ -146,7 +147,7 @@ class PayoutRunService
      *
      * @return array<string, mixed>
      */
-    private function computeRun(string $from, string $to): array
+    private function computeRun(string $from, string $to, ?int $bankId = null): array
     {
         $fromDate = CarbonImmutable::parse($from)->startOfDay();
         $toDate = CarbonImmutable::parse($to)->endOfDay();
@@ -156,10 +157,12 @@ class PayoutRunService
         // Keyed on the SETTLEMENT date (otc_handover_date): NEFT = transfer date,
         // cheque = cleared date. Un-cleared cheque tranches have a null handover and
         // are excluded until cleared — payout is paid only on settled money.
+        // Scoped to one bank when $bankId is given (the loan's product's bank).
         $entries = DisbursementEntry::query()
             ->whereNull('payout_run_id')
             ->where('is_active', true)
             ->whereBetween('otc_handover_date', [$fromDate->toDateString(), $toDate->toDateString()])
+            ->when($bankId, fn ($q) => $q->whereHas('loan.product', fn ($q2) => $q2->where('bank_id', $bankId)))
             ->with(['loan.product.bank', 'loan.payoutUser.roles', 'loan.disbursement'])
             ->get();
 
@@ -337,6 +340,7 @@ class PayoutRunService
         return [
             'from' => $fromDate->toDateString(),
             'to' => $toDate->toDateString(),
+            'bank_id' => $bankId,
             'rates' => $rates,
             'products' => array_values($productOut),
             'lines' => $lines,

@@ -40,12 +40,21 @@
         <div class="card">
             <div class="card-bd">
                 <div class="po-hint">
-                    Pick a date range to calculate payouts. The product-wide disbursed volume in the range picks each
-                    product's slab tier; each user earns their disbursed volume × that rate (PF-based products pay on
-                    PF). Only tranches not yet covered by a run are counted. Then <strong>Finalize</strong> to lock the
-                    run (it stamps those tranches paid and snapshots the rates for the record).
+                    Pick a <strong>bank</strong> and a date range to calculate payouts. The bank's product-wide disbursed
+                    volume in the range picks each product's slab tier; each user earns their disbursed volume × that rate
+                    (PF-based products pay on PF). Only tranches not yet covered by a run are counted. Then
+                    <strong>Finalize</strong> to lock the run (it stamps those tranches paid and snapshots the rates for the record).
                 </div>
                 <form method="GET" action="{{ route('payouts.runs') }}" class="po-filters">
+                    <div class="field">
+                        <label class="lbl">Bank <span class="ld-req">*</span></label>
+                        <select name="bank_id" class="input" required>
+                            <option value="">Select bank…</option>
+                            @foreach ($banks as $bank)
+                                <option value="{{ $bank->id }}" @selected((string) ($input['bank_id'] ?? '') === (string) $bank->id)>{{ $bank->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="field">
                         <label class="lbl">From <span class="ld-req">*</span></label>
                         <input type="text" name="from" id="prFrom" class="input po-date"
@@ -83,6 +92,7 @@
                     data-confirm-title="Finalize Payout Run" data-confirm-ok="Yes, finalize"
                     data-confirm="Finalize this payout run ({{ $preview['from'] }} → {{ $preview['to'] }})? ₹ {{ inr($preview['totals']['net']) }} net will be locked and the covered tranches marked paid.">
                     @csrf
+                    <input type="hidden" name="bank_id" value="{{ $preview['bank_id'] }}">
                     <input type="hidden" name="from" value="{{ $preview['from'] }}">
                     <input type="hidden" name="to" value="{{ $preview['to'] }}">
                     <button type="submit" class="btn primary">Finalize Run</button>
@@ -153,11 +163,12 @@
             <div class="card-hd"><div class="t">Finalized runs</div></div>
             <div class="card-bd" style="overflow-x:auto;">
                 <table class="tbl" style="width:100%;">
-                    <thead><tr><th>#</th><th>Range</th><th class="text-end">Gross</th><th class="text-end">TDS</th><th class="text-end">Net</th><th>Finalized</th><th></th></tr></thead>
+                    <thead><tr><th>#</th><th>Bank</th><th>Range</th><th class="text-end">Gross</th><th class="text-end">TDS</th><th class="text-end">Net</th><th>Finalized</th><th></th></tr></thead>
                     <tbody>
                         @forelse ($runs as $run)
                             <tr>
                                 <td>{{ $run->id }}</td>
+                                <td>{{ $run->bank?->name ?? '—' }}</td>
                                 <td>{{ $run->from_date->format('d/m/Y') }} – {{ $run->to_date->format('d/m/Y') }}</td>
                                 <td class="text-end">₹ {{ inr($run->total_gross) }}</td>
                                 <td class="text-end">₹ {{ inr($run->total_tds) }}</td>
@@ -166,7 +177,7 @@
                                 <td class="text-end"><a class="btn btn-accent-sm" href="{{ route('payouts.runs.show', $run) }}">View</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="text-muted" style="padding:14px;">No finalized runs yet.</td></tr>
+                            <tr><td colspan="8" class="text-muted" style="padding:14px;">No finalized runs yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
