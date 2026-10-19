@@ -82,11 +82,19 @@ class PayoutRunControllerTest extends TestCase
         $this->assertSame(60000, $preview['totals']['gross']);
         $this->assertSame(57000, $preview['totals']['net']); // − 5% TDS
 
-        // Loan-level breakdown is surfaced (grouped by user → product in the view).
+        // Loan-level breakdown is surfaced (grouped by user → product in the view),
+        // with distinct loan amount / PF / insurance.
         $this->assertCount(1, $preview['loan_lines']);
         $this->assertSame($loan->loan_number, $preview['loan_lines'][0]['loan_number']);
-        $this->assertSame(6000000, $preview['loan_lines'][0]['base']);
-        $this->assertSame(60000, $preview['loan_lines'][0]['payout']); // 1% of 60L
+        $this->assertSame(6000000, $preview['loan_lines'][0]['volume']); // disbursed
+        $this->assertSame(0, $preview['loan_lines'][0]['pf_base']);      // amount-based
+        $this->assertSame(0, $preview['loan_lines'][0]['insurance_base']);
+        $this->assertSame(60000, $preview['loan_lines'][0]['payout']);   // 1% of 60L
+
+        // Per-user base totals are exposed alongside the payouts.
+        $this->assertSame(6000000, $preview['users'][0]['total_volume']);
+        $this->assertSame(0, $preview['users'][0]['total_pf_base']);
+        $this->assertSame(0, $preview['users'][0]['total_insurance_base']);
     }
 
     public function test_finalize_creates_run_stamps_entry_and_redirects(): void

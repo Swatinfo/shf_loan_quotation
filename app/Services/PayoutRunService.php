@@ -235,15 +235,17 @@ class PayoutRunService
 
             $coveredEntryCounts[$e->id] = 0;
 
-            // Per-loan breakdown row (grouped user → product in the UI).
+            // Per-loan breakdown row (grouped user → product in the UI). Tracks the
+            // disbursed amount, the PF (ex-GST) counted, and the insurance — all distinct.
             $loanKey = $pid.'|'.$uid.'|'.$loan->id;
             if (! isset($loanRows[$loanKey])) {
                 $loanRows[$loanKey] = [
                     'product_id' => $pid, 'payout_user_id' => $uid, 'loan_id' => $loan->id,
                     'loan_number' => $loan->loan_number, 'is_pf_based' => (bool) $product->is_pf_based,
-                    'base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
+                    'volume' => 0, 'pf_base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
                 ];
             }
+            $loanRows[$loanKey]['volume'] += (int) $e->amount; // disbursed (always)
             $sd = optional($e->otc_handover_date)->toDateString();
             if ($sd && ($loanRows[$loanKey]['settlement_date'] === null || $sd > $loanRows[$loanKey]['settlement_date'])) {
                 $loanRows[$loanKey]['settlement_date'] = $sd;
@@ -254,7 +256,6 @@ class PayoutRunService
                 $products[$pid]['volume'] += (int) $e->amount;
                 $userProd[$key]['user_volume'] += (int) $e->amount;
                 $coveredEntryCounts[$e->id] = (int) $e->amount;
-                $loanRows[$loanKey]['base'] += (int) $e->amount;
             } else {
                 // PF-based: the tranche amount is NOT volume; the loan's one-time PF (ex-GST)
                 // feeds the PF aggregate + the user's PF, counted once per loan.
@@ -265,7 +266,7 @@ class PayoutRunService
                         $userProd[$key]['user_pf'] += $pfBase;
                         $pfLoansSeen[$loan->id] = true;
                         $pfPaidDetailIds[] = $header->id;
-                        $loanRows[$loanKey]['base'] += $pfBase;
+                        $loanRows[$loanKey]['pf_base'] += $pfBase;
                     }
                 }
             }
@@ -338,6 +339,7 @@ class PayoutRunService
                 'payout_user_id' => $up['payout_user_id'],
                 'role_context' => $up['is_connector'] ? 'connector' : 'standard',
                 'base_amount' => $baseAmount,
+                'volume_base' => $pctx['is_pf_based'] ? 0 : $baseAmount, // disbursed amount (amount-based only)
                 'rate_applied' => (float) $rate['value'],
                 'commission' => $commission,
                 'pf_base' => $pfBase,
@@ -348,16 +350,21 @@ class PayoutRunService
             ];
         }
 
-        // Per-user roll-up + TDS.
+        // Per-user roll-up + TDS. total_volume/pf/insurance are the underlying
+        // BASE amounts (loan amount, PF ex-GST, insurance); the rest are payouts.
         $users = [];
         foreach ($lines as $l) {
             $uid = $l['payout_user_id'];
             if (! isset($users[$uid])) {
                 $users[$uid] = [
                     'payout_user_id' => $uid, 'role_context' => $l['role_context'],
+                    'total_volume' => 0, 'total_pf_base' => 0, 'total_insurance_base' => 0,
                     'total_commission' => 0, 'total_pf_payout' => 0, 'total_insurance_payout' => 0,
                 ];
             }
+            $users[$uid]['total_volume'] += $l['volume_base'];
+            $users[$uid]['total_pf_base'] += $l['pf_base'];
+            $users[$uid]['total_insurance_base'] += $l['insurance_base'];
             $users[$uid]['total_commission'] += $l['commission'];
             $users[$uid]['total_pf_payout'] += $l['pf_payout'];
             $users[$uid]['total_insurance_payout'] += $l['insurance_payout'];
@@ -386,9 +393,10 @@ class PayoutRunService
             $slab = $pctx['slab'] ?? null;
             $isConn = ($userProd[$lr['product_id'].'|'.$lr['payout_user_id']]['is_connector'] ?? false);
             $rate = $slab ? $slab->rateFor($isConn) : ['type' => 'percent', 'value' => 0.0];
+            $payoutBase = (int) ($lr['is_pf_based'] ? $lr['pf_base'] : $lr['volume']);
             $lr['product_name'] = $pctx['product_name'] ?? '';
             $lr['rate_applied'] = (float) $rate['value'];
-            $lr['payout'] = $this->applyRate($rate['type'], (float) $rate['value'], (int) $lr['base'], null)
+            $lr['payout'] = $this->applyRate($rate['type'], (float) $rate['value'], $payoutBase, null)
                 + (int) round($lr['insurance_base'] * $rates['insurance']);
         }
         unset($lr);

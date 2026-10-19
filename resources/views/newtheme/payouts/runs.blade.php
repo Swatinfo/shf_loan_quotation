@@ -137,9 +137,10 @@
                     <div class="card-bd" style="overflow-x:auto;">
                         <table class="tbl" style="width:100%;">
                             <thead><tr>
-                                <th>User</th><th class="text-end">Commission</th><th class="text-end">PF payout</th>
-                                <th class="text-end">Insurance</th><th class="text-end">Total</th>
-                                <th class="text-end">TDS</th><th class="text-end">Net</th>
+                                <th>User</th>
+                                <th class="text-end">Loan Amount</th><th class="text-end">PF Amount</th><th class="text-end">Insurance Amount</th>
+                                <th class="text-end">Commission</th><th class="text-end">PF payout</th><th class="text-end">Insurance payout</th>
+                                <th class="text-end">Total</th><th class="text-end">TDS</th><th class="text-end">Net</th>
                             </tr></thead>
                             <tbody>
                                 @foreach ($preview['users'] as $u)
@@ -147,6 +148,9 @@
                                         <td>{{ $preview['user_names'][$u['payout_user_id']] ?? ('#'.$u['payout_user_id']) }}
                                             @if ($u['role_context'] === 'connector') <span class="shf-badge shf-badge-purple shf-text-2xs">connector</span>@endif
                                         </td>
+                                        <td class="text-end">₹ {{ inr($u['total_volume']) }}</td>
+                                        <td class="text-end">₹ {{ inr($u['total_pf_base']) }}</td>
+                                        <td class="text-end">₹ {{ inr($u['total_insurance_base']) }}</td>
                                         <td class="text-end">₹ {{ inr($u['total_commission']) }}</td>
                                         <td class="text-end">₹ {{ inr($u['total_pf_payout']) }}</td>
                                         <td class="text-end">₹ {{ inr($u['total_insurance_payout']) }}</td>
@@ -167,20 +171,26 @@
                         <div class="card-hd"><div class="t">Loans considered ({{ collect($preview['loan_lines'])->count() }}) — grouped by user → product</div></div>
                         <div class="card-bd" style="overflow-x:auto;">
                             <table class="tbl" style="width:100%;">
-                                <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Base</th><th class="text-end">Payout*</th></tr></thead>
+                                <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Loan Amount</th><th class="text-end">PF</th><th class="text-end">Insurance</th><th class="text-end">Payout*</th></tr></thead>
                                 <tbody>
                                     @foreach ($loansByUser as $uid => $uLoans)
                                         <tr style="background:var(--bg-alt,#f5f6f7);">
-                                            <td colspan="4"><strong>{{ $preview['user_names'][$uid] ?? ('#'.$uid) }}</strong>
-                                                <span class="text-muted">· {{ $uLoans->count() }} loan(s) · payout ₹ {{ inr($uLoans->sum('payout')) }}</span></td>
+                                            <td colspan="2"><strong>{{ $preview['user_names'][$uid] ?? ('#'.$uid) }}</strong>
+                                                <span class="text-muted">· {{ $uLoans->count() }} loan(s)</span></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('volume')) }}</strong></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('pf_base')) }}</strong></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('insurance_base')) }}</strong></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('payout')) }}</strong></td>
                                         </tr>
                                         @foreach ($uLoans->groupBy('product_name') as $pname => $pLoans)
-                                            <tr><td colspan="4" class="text-muted" style="padding-left:16px;">↳ {{ $pname }} — base ₹ {{ inr($pLoans->sum('base')) }}</td></tr>
+                                            <tr><td colspan="6" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
                                             @foreach ($pLoans as $l)
                                                 <tr>
                                                     <td style="padding-left:32px;">{{ $l['loan_number'] }}</td>
                                                     <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
-                                                    <td class="text-end">₹ {{ inr($l['base']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['volume']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['pf_base']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['insurance_base']) }}</td>
                                                     <td class="text-end">₹ {{ inr($l['payout']) }}</td>
                                                 </tr>
                                             @endforeach

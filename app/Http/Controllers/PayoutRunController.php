@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\DisbursementDetail;
 use App\Models\DisbursementEntry;
 use App\Models\PayoutRun;
 use App\Models\Product;
@@ -76,14 +77,26 @@ class PayoutRunController extends Controller
         $linesByUser = $run->lines->groupBy('payout_user_id');
         $productName = $run->products->pluck('product_name', 'id');
 
+        // Per-user BASE totals (loan amount / PF / insurance) from the stored lines.
+        // base_amount = volume (amount-based) or PF (pf-based); pf_base = PF counted,
+        // so volume = Σ base_amount − Σ pf_base.
+        $userBases = $run->lines->groupBy('payout_user_id')->map(fn ($ls) => [
+            'volume' => (int) $ls->sum('base_amount') - (int) $ls->sum('pf_base'),
+            'pf' => (int) $ls->sum('pf_base'),
+            'insurance' => (int) $ls->sum('insurance_base'),
+        ]);
+
         // Loans considered in this run — derived from the tranches stamped with this
-        // run id, grouped by payout user → product. (One row per loan.)
+        // run id, grouped by payout user → product. (One row per loan, with PF/insurance.)
+        $pfBasedProductIds = $run->products->where('is_pf_based', true)->pluck('product_id')->all();
         $loansByUser = DisbursementEntry::where('payout_run_id', $run->id)
-            ->with(['loan:id,loan_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name'])
+            ->with(['loan:id,loan_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement'])
             ->get()
             ->groupBy('loan_id')
-            ->map(function ($entries) {
+            ->map(function ($entries) use ($run, $pfBasedProductIds) {
                 $loan = $entries->first()->loan;
+                $header = $loan?->disbursement;
+                $isPf = in_array($loan?->product_id, $pfBasedProductIds, true);
 
                 return [
                     'loan_number' => $loan?->loan_number ?? '—',
@@ -91,6 +104,8 @@ class PayoutRunController extends Controller
                     'payout_user' => $loan?->payoutUser?->name ?? '—',
                     'product_name' => $loan?->product?->name ?? '—',
                     'amount' => (int) $entries->sum('amount'),
+                    'pf' => ($isPf && $header) ? DisbursementDetail::exGst((int) $header->pf_amount, (float) $run->gst_rate) : 0,
+                    'insurance' => $header ? (int) $header->insurance_amount : 0,
                     'settlement_date' => optional($entries->max('otc_handover_date'))->toDateString(),
                 ];
             })
@@ -100,6 +115,7 @@ class PayoutRunController extends Controller
         return view('newtheme.payouts.run-show', [
             'run' => $run,
             'linesByUser' => $linesByUser,
+            'userBases' => $userBases,
             'productName' => $productName,
             'loansByUser' => $loansByUser,
             'pageKey' => 'reports',
