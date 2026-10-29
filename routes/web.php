@@ -273,6 +273,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payouts/reconcile', [PayoutController::class, 'reconcileForm'])->name('payouts.reconcile');
         Route::get('/payouts/reconcile/template', [PayoutController::class, 'reconcileTemplate'])->name('payouts.reconcile.template');
         Route::post('/payouts/reconcile', [PayoutController::class, 'reconcile'])->name('payouts.reconcile.run');
+        // One-click product correction from a reconcile row (bank says another product).
+        Route::post('/payouts/reconcile/loans/{loan}/product', [PayoutController::class, 'changeLoanProduct'])
+            ->middleware('permission:finalize_payout')->name('payouts.reconcile.change-product');
     });
 
     // Notifications

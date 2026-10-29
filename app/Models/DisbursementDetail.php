@@ -28,7 +28,7 @@ class DisbursementDetail extends Model
         'loan_id', 'disbursement_type', 'disbursement_date', 'amount_disbursed',
         'pf_amount', 'admin_charges', 'insurance_amount',
         'bank_account_number', 'cheques', 'entries', 'notes', 'completion_intent',
-        'pf_payout_run_id', 'insurance_payout_run_id',
+        'pf_payout_run_id', 'insurance_payout_run_id', 'charges_payout_run_id',
     ];
 
     protected function casts(): array

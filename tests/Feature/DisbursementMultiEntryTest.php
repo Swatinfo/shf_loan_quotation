@@ -167,7 +167,7 @@ class DisbursementMultiEntryTest extends TestCase
         return $e;
     }
 
-    public function test_partial_save_marks_loan_partial_disbursed_and_keeps_stage_open(): void
+    public function test_partial_neft_save_completes_stages_and_marks_loan_partial_completed(): void
     {
         $admin = $this->admin();
         [$loan, $product] = $this->makeLoanAtDisbursement($admin);
@@ -179,8 +179,11 @@ class DisbursementMultiEntryTest extends TestCase
             ->assertRedirect(route('loans.disbursement', $loan));
 
         $loan->refresh();
-        $this->assertSame('in_progress', $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status'));
-        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+        // Partial money still closes the disbursement stage; a NEFT is settled at
+        // once, so OTC closes too and the loan awaits the next tranche.
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status'));
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'otc_clearance')->value('status'));
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
         $this->assertSame(800000, $loan->disbursed_amount);
         $this->assertCount(1, $loan->disbursement->entries);
     }
@@ -439,7 +442,7 @@ class DisbursementMultiEntryTest extends TestCase
         ]);
 
         $loan->refresh();
-        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
         $this->assertSame(1800000, $loan->disbursed_amount);     // insurance excluded
         $this->assertSame(500000, $loan->disbursement->insuranceTotal());
     }
@@ -663,5 +666,211 @@ class DisbursementMultiEntryTest extends TestCase
         StageQuery::where('loan_id', $loan->id)->update(['status' => 'resolved']);
         app(DisbursementService::class)->syncDisbursementState($loan->fresh());
         $this->assertSame(LoanDetail::STATUS_COMPLETED, $loan->fresh()->status);
+    }
+
+    private function stageStatus(LoanDetail $loan, string $stageKey): ?string
+    {
+        return $loan->stageAssignments()->where('stage_key', $stageKey)->value('status');
+    }
+
+    /**
+     * The saved tranche as a form payload row (keeps it on re-save) with OTC cleared.
+     */
+    private function savedClearedRow(LoanDetail $loan, Product $product, int $amount): array
+    {
+        return ['row_id' => (string) $loan->disbursementEntries()->value('id')]
+            + $this->entry($product, $amount, 'cheque', 'cleared');
+    }
+
+    public function test_partial_cheque_save_completes_disbursement_and_opens_otc(): void
+    {
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin);
+
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'pending')],
+        ])->assertSessionHas('success');
+
+        $loan->refresh();
+        $this->assertSame('completed', $this->stageStatus($loan, 'disbursement'));
+        $this->assertSame('in_progress', $this->stageStatus($loan, 'otc_clearance'));
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+    }
+
+    public function test_clearing_partial_cheque_marks_loan_partial_completed(): void
+    {
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin);
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'pending')],
+        ]);
+
+        $entryId = $loan->disbursementEntries()->value('id');
+        $this->actingAs($admin)->post(route('loans.disbursement.entry.otc', ['loan' => $loan, 'entry' => $entryId]), [
+            'otc_status' => 'cleared',
+            'otc_handover_date' => now()->format('d/m/Y'),
+        ]);
+
+        $loan->refresh();
+        $this->assertSame('completed', $this->stageStatus($loan, 'otc_clearance'));
+        // The json tranche the stage cards render follows the row's OTC state.
+        $json = $loan->disbursement->fresh()->entries[0];
+        $this->assertSame('cleared', $json['otc_status']);
+        $this->assertNotNull($json['otc_handover_date']);
+        // Every stage is closed but the loan isn't finished → progress stays below 100%.
+        $progress = app(LoanStageService::class)->recalculateProgress($loan);
+        $this->assertSame($progress->total_stages - 1, $progress->completed_stages);
+        $this->assertLessThan(100, (float) $progress->overall_percentage);
+        // All OTC settled but still below the 2,000,000 target → not completed.
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
+    }
+
+    public function test_new_pending_cheque_reopens_otc_and_notifies_assignee(): void
+    {
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin);
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'cleared')],
+        ]);
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->fresh()->status);
+
+        $this->mock(NotificationService::class, function ($mock) use ($admin) {
+            $mock->shouldReceive('notifyStageAssignment')
+                ->once()
+                ->withArgs(fn ($l, $stageKey, $userId) => $stageKey === 'otc_clearance' && $userId === $admin->id);
+            $mock->shouldIgnoreMissing();
+        });
+
+        // Second tranche: a new cheque with OTC still pending.
+        $second = $this->entry($product, 500000, 'cheque', 'pending');
+        $second['loan_account_number'] = 'LA-2';
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->savedClearedRow($loan, $product, 800000), $second],
+        ]);
+
+        $loan->refresh();
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+        $this->assertSame('in_progress', $this->stageStatus($loan, 'otc_clearance'));
+        $this->assertSame('otc_clearance', $loan->current_stage);
+        $this->assertSame('completed', $this->stageStatus($loan, 'disbursement'));
+
+        // Clearing it → back to partially completed (1,300,000 < 2,000,000).
+        $newId = $loan->disbursementEntries()->where('loan_account_number', 'LA-2')->value('id');
+        $this->actingAs($admin)->post(route('loans.disbursement.entry.otc', ['loan' => $loan, 'entry' => $newId]), [
+            'otc_status' => 'cleared',
+            'otc_handover_date' => now()->format('d/m/Y'),
+        ]);
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->fresh()->status);
+        $this->assertSame('completed', $this->stageStatus($loan, 'otc_clearance'));
+    }
+
+    public function test_new_neft_keeps_partial_completed_until_target_then_completes(): void
+    {
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin);
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'cleared')],
+        ]);
+
+        // + NEFT 500,000 → 1,300,000, still below target: stays partially completed.
+        $neft = $this->entry($product, 500000);
+        $neft['loan_account_number'] = 'LA-2';
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->savedClearedRow($loan, $product, 800000), $neft],
+        ]);
+        $loan->refresh();
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
+        $this->assertSame('completed', $this->stageStatus($loan, 'otc_clearance'));
+
+        // + NEFT 700,000 → 2,000,000 = target, all settled → completed.
+        $rows = $loan->disbursementEntries()->orderBy('id')->get();
+        $neft2 = $this->entry($product, 700000);
+        $neft2['loan_account_number'] = 'LA-3';
+        $keepNeft = ['row_id' => (string) $rows[1]->id] + $neft;
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->savedClearedRow($loan, $product, 800000), $keepNeft, $neft2],
+        ]);
+        $this->assertSame(LoanDetail::STATUS_COMPLETED, $loan->fresh()->status);
+        // Fully disbursed → OTC counts again → 100%.
+        $progress = app(LoanStageService::class)->recalculateProgress($loan->fresh());
+        $this->assertSame($progress->total_stages, $progress->completed_stages);
+    }
+
+    public function test_mark_full_sets_loan_amount_to_gross_and_keeps_original(): void
+    {
+        $admin = $this->admin();
+        // loan_amount 1,000,000 with no original captured yet (legacy shape).
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin);
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'cleared')],
+            'pf_amount' => '11800',
+            'admin_charges' => '2360',
+        ]);
+        $this->assertSame(1000000, $loan->fresh()->loan_amount); // a normal save never changes it
+
+        $this->actingAs($admin)->post(route('loans.disbursement.complete', $loan))
+            ->assertRedirect(route('loans.show', $loan));
+
+        $loan->refresh();
+        $this->assertSame(LoanDetail::STATUS_COMPLETED, $loan->status);
+        $this->assertSame(814160, $loan->loan_amount);            // 800,000 + 11,800 + 2,360
+        $this->assertSame(1000000, $loan->original_loan_amount);  // as-applied preserved
+        $this->assertDatabaseHas('activity_log', [
+            'description' => 'change_loan_amount', 'subject_type' => LoanDetail::class, 'subject_id' => $loan->id,
+        ]);
+    }
+
+    public function test_mark_full_keeps_existing_original_amount(): void
+    {
+        $admin = $this->admin();
+        [$loan, $product] = $this->makeLoanAtDisbursement($admin, ['original_loan_amount' => 950000]);
+        $this->actingAs($admin)->post(route('loans.disbursement.store', $loan), [
+            'entries' => [$this->entry($product, 800000, 'cheque', 'pending')],
+        ]);
+
+        $this->actingAs($admin)->post(route('loans.disbursement.complete', $loan));
+
+        $loan->refresh();
+        $this->assertSame(800000, $loan->loan_amount);
+        $this->assertSame(950000, $loan->original_loan_amount);
+        // Declared full, but the cheque OTC is pending → not completed yet.
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+    }
+
+    public function test_mark_full_without_entries_is_rejected_and_amount_unchanged(): void
+    {
+        $admin = $this->admin();
+        [$loan] = $this->makeLoanAtDisbursement($admin);
+
+        $this->actingAs($admin)->post(route('loans.disbursement.complete', $loan))
+            ->assertRedirect(route('loans.disbursement', $loan))
+            ->assertSessionHas('error');
+
+        $loan->refresh();
+        $this->assertSame(1000000, $loan->loan_amount);
+        $this->assertSame(LoanDetail::STATUS_ACTIVE, $loan->status);
+    }
+
+    public function test_save_without_entries_returns_entries_error(): void
+    {
+        $admin = $this->admin();
+        [$loan] = $this->makeLoanAtDisbursement($admin);
+
+        $this->actingAs($admin)->from(route('loans.disbursement', $loan))
+            ->post(route('loans.disbursement.store', $loan), ['entries' => []])
+            ->assertSessionHasErrors('entries');
+
+        $this->assertNull($loan->fresh()->disbursement);
+    }
+
+    public function test_mark_full_button_is_offered_before_any_entry_is_saved(): void
+    {
+        $admin = $this->admin();
+        [$loan] = $this->makeLoanAtDisbursement($admin);
+
+        $this->actingAs($admin)->get(route('loans.disbursement', $loan))
+            ->assertOk()
+            ->assertSee('id="ldMarkComplete"', false)
+            ->assertSee('"savedEntryCount":0', false);
     }
 }

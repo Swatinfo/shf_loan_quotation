@@ -13,10 +13,12 @@ use App\Models\ProductPayoutSlab;
 use App\Models\ProductPayoutVersion;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PayoutRunService;
 use App\Services\XlsxExportService;
 use App\Services\XlsxImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -27,6 +29,13 @@ use Tests\TestCase;
 class PayoutReconcileTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Reconcile keeps each upload for re-runs — keep test uploads off the real disk.
+        Storage::fake('local');
+    }
 
     private function samplePath(): string
     {
@@ -477,17 +486,17 @@ class PayoutReconcileTest extends TestCase
      *
      * @return array{0: User, 1: Bank, 2: Branch, 3: Product}
      */
-    private function scaffold(): array
+    private function scaffold(bool $pfBased = false): array
     {
         $admin = User::create(['name' => 'SA', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
         $admin->roles()->sync(Role::where('slug', 'super_admin')->pluck('id'));
 
         $bank = Bank::create(['name' => 'ICICI', 'is_active' => true]);
         $branch = Branch::create(['name' => 'Br', 'is_active' => true]);
-        $product = Product::create(['name' => 'HL-'.uniqid(), 'bank_id' => $bank->id, 'is_active' => true]);
+        $product = Product::create(['name' => 'HL-'.uniqid(), 'bank_id' => $bank->id, 'is_active' => true, 'is_pf_based' => $pfBased]);
         $version = ProductPayoutVersion::create([
             'product_id' => $product->id, 'effective_from' => '2000-01-01',
-            'is_pf_based' => false, 'payout_cycle_start_day' => 1, 'payout_cycle_end_day' => 31,
+            'is_pf_based' => $pfBased, 'payout_cycle_start_day' => 1, 'payout_cycle_end_day' => 31,
         ]);
         $product->update(['current_payout_version_id' => $version->id]);
         ProductPayoutSlab::create([
@@ -564,6 +573,7 @@ class PayoutReconcileTest extends TestCase
      */
     private function makeUpload(array $rows): UploadedFile
     {
+        // Old-format header (admin_charges + the pre-rename loan_amount) — admin is ignored, loan_amount is read as disbursed_amount.
         $headers = ['application_number', 'loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
         $mapped = array_map(function (array $r) {
             [$acc, $cust, $cheque, $date, $amt, $pf, $admin, $ins] = array_pad(array_slice($r, 0, 8), 8, '');
@@ -576,5 +586,180 @@ class PayoutReconcileTest extends TestCase
         copy($resp->getFile()->getPathname(), $tmp);
 
         return new UploadedFile($tmp, 'bank.xlsx', null, null, true);
+    }
+
+    /**
+     * Current-format upload (no admin column): rows are
+     * [acc, customer, date, loan_amount, pf_amount, insurance].
+     *
+     * @param  array<int, array<int, mixed>>  $rows
+     */
+    private function makeCurrentUpload(array $rows): UploadedFile
+    {
+        $headers = ['application_number', 'loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'disbursed_amount', 'pf_amount', 'insurance_amount'];
+        $mapped = array_map(fn (array $r) => ['', $r[0], $r[1], '', $r[2], $r[3], $r[4], $r[5] ?? ''], $rows);
+
+        $resp = app(XlsxExportService::class)->download('u.xlsx', $headers, $mapped);
+        $tmp = tempnam(sys_get_temp_dir(), 'rcn').'.xlsx';
+        copy($resp->getFile()->getPathname(), $tmp);
+
+        return new UploadedFile($tmp, 'bank.xlsx', null, null, true);
+    }
+
+    /**
+     * A loan with one-time charges and settled NEFT tranches [amount, date].
+     *
+     * @param  array<int, array{0:int, 1:string}>  $tranches
+     */
+    private function makeChargedLoan(Bank $bank, Branch $branch, Product $product, User $admin, string $acc, array $tranches, int $pf, int $adminCharges, int $insurance = 0): LoanDetail
+    {
+        $loan = LoanDetail::create([
+            'loan_number' => 'L-'.uniqid(), 'application_number' => 'APP-'.uniqid(), 'customer_name' => 'Cust', 'customer_type' => 'salaried',
+            'loan_amount' => 1000000, 'status' => 'partial_completed', 'current_stage' => 'otc_clearance',
+            'bank_id' => $bank->id, 'branch_id' => $branch->id, 'product_id' => $product->id,
+            'created_by' => $admin->id, 'payout_user_id' => $admin->id,
+        ]);
+        $disb = DisbursementDetail::create([
+            'loan_id' => $loan->id, 'disbursement_type' => 'fund_transfer', 'amount_disbursed' => 0,
+            'pf_amount' => $pf, 'admin_charges' => $adminCharges, 'insurance_amount' => $insurance,
+        ]);
+        foreach ($tranches as [$amount, $date]) {
+            DisbursementEntry::create([
+                'loan_id' => $loan->id, 'disbursement_detail_id' => $disb->id, 'method' => 'fund_transfer',
+                'loan_account_number' => $acc, 'amount' => $amount, 'disbursement_date' => $date, 'transfer_date' => $date,
+                'otc_status' => 'skipped', 'otc_handover_date' => $date, 'is_active' => true,
+            ]);
+        }
+
+        return $loan;
+    }
+
+    private function reconcile(User $admin, Bank $bank, Product $product, string $from, string $to, UploadedFile $file): array
+    {
+        return $this->actingAs($admin)->post(route('payouts.reconcile.run'), [
+            'bank_id' => $bank->id, 'product_ids' => [$product->id],
+            'from' => $from, 'to' => $to, 'file' => $file,
+        ])->assertOk()->viewData('result');
+    }
+
+    public function test_template_has_no_admin_charges_column(): void
+    {
+        [$admin] = $this->scaffold();
+
+        $resp = $this->actingAs($admin)->get(route('payouts.reconcile.template'))->assertOk();
+        $headerRow = app(XlsxImportService::class)->readGrid($resp->baseResponse->getFile()->getPathname())[0] ?? [];
+
+        $this->assertNotContains('admin_charges', $headerRow);
+        $this->assertContains('disbursed_amount', $headerRow);
+        $this->assertNotContains('loan_amount', $headerRow); // renamed; old files still read
+        $this->assertContains('pf_amount', $headerRow);
+    }
+
+    public function test_normal_product_compares_entries_plus_pf_plus_admin_with_loan_amount(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-N', [[500000, '2026-10-10']], pf: 11800, adminCharges: 2360, insurance: 5000);
+
+        $result = $this->reconcile($admin, $bank, $product, '2026-10-01', '2026-10-31',
+            $this->makeCurrentUpload([['ACC-N', 'Cust', '10-10-2026', 514160, 0, 5000]]));
+
+        $m = $result['matched'][0];
+        $this->assertSame(514160, $m['our']['amount']);       // 5,00,000 + 11,800 + 2,360
+        $this->assertFalse($m['flags']['amount']);
+        // Commission on the same figure, no GST maths; insurance shown only.
+        $this->assertSame(514160, $m['calc']['base']);
+        $this->assertSame(5142, $m['calc']['commission']);
+        $this->assertSame(5142, $m['calc']['gross']);
+        $this->assertSame(100, $m['calc']['insurance_payout']); // 5,000 × 2%
+        $this->assertSame(257, $m['calc']['tds']);
+        $this->assertSame(4885, $m['calc']['net']);
+    }
+
+    public function test_normal_product_without_charges_in_bank_figure_is_flagged(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-F', [[500000, '2026-10-10']], pf: 11800, adminCharges: 2360);
+
+        $result = $this->reconcile($admin, $bank, $product, '2026-10-01', '2026-10-31',
+            $this->makeCurrentUpload([['ACC-F', 'Cust', '10-10-2026', 500000, 0]]));
+
+        $this->assertTrue($result['matched'][0]['flags']['amount']);
+        $this->assertSame(1, $result['discrepancy_count']);
+    }
+
+    public function test_second_period_tranche_compares_without_one_time_charges(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        // First tranche settled in September (carries PF + admin), second in October.
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-2P',
+            [[500000, '2026-09-10'], [300000, '2026-10-05']], pf: 11800, adminCharges: 2360);
+
+        $result = $this->reconcile($admin, $bank, $product, '2026-10-01', '2026-10-31',
+            $this->makeCurrentUpload([['ACC-2P', 'Cust', '05-10-2026', 300000, 0]]));
+
+        $m = $result['matched'][0];
+        $this->assertSame(300000, $m['our']['amount']);
+        $this->assertFalse($m['flags']['amount']);
+        $this->assertSame(300000, $m['calc']['base']);
+        $this->assertSame(0, $m['calc']['admin']);
+    }
+
+    public function test_pf_based_product_compares_pf_excluding_gst_within_one_rupee(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold(pfBased: true);
+        // PF 11,800 incl. GST → 10,000 excl. GST (seeded PF GST 18%).
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-P1', [[500000, '2026-10-10']], pf: 11800, adminCharges: 2360);
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-P2', [[500000, '2026-10-10']], pf: 11800, adminCharges: 0);
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-P3', [[500000, '2026-10-10']], pf: 11800, adminCharges: 0);
+
+        $result = $this->reconcile($admin, $bank, $product, '2026-10-01', '2026-10-31', $this->makeCurrentUpload([
+            ['ACC-P1', 'Cust', '10-10-2026', 999999, 10000], // loan_amount ignored for PF-based
+            ['ACC-P2', 'Cust', '10-10-2026', 0, 10001],      // ±₹1 → still a match
+            ['ACC-P3', 'Cust', '10-10-2026', 0, 10002],      // ₹2 off → flagged
+        ]));
+
+        $byAcc = collect($result['matched'])->keyBy(fn ($m) => $m['our']['accounts'][0]);
+        $this->assertSame(10000, $byAcc['ACC-P1']['our']['amount']);
+        $this->assertFalse($byAcc['ACC-P1']['flags']['amount']);
+        $this->assertFalse($byAcc['ACC-P2']['flags']['amount']);
+        $this->assertTrue($byAcc['ACC-P3']['flags']['amount']);
+        // Commission on PF excl. GST only; admin never counted.
+        $this->assertSame(10000, $byAcc['ACC-P1']['calc']['base']);
+        $this->assertSame(0, $byAcc['ACC-P1']['calc']['admin']);
+        $this->assertSame(100, $byAcc['ACC-P1']['calc']['commission']); // 1% slab
+    }
+
+    public function test_commission_uses_the_product_wide_tier_like_payout_runs(): void
+    {
+        [$admin, $bank, $branch, $product] = $this->scaffold();
+        // Two slabs: up to 1 Cr → 0.3%, above → 0.5%. Each loan alone is below 1 Cr,
+        // but together (all users) they cross it → both earn 0.5%.
+        $version = ProductPayoutVersion::where('product_id', $product->id)->first();
+        ProductPayoutSlab::where('version_id', $version->id)->delete();
+        foreach ([[0, 10000000, 0.3], [10000001, 1000000000, 0.5]] as [$low, $high, $rate]) {
+            ProductPayoutSlab::create([
+                'product_id' => $product->id, 'version_id' => $version->id, 'low_amount' => $low, 'high_amount' => $high,
+                'payout_type' => 'percent', 'payout_value' => $rate, 'connector_payout_type' => 'percent', 'connector_payout_value' => $rate,
+            ]);
+        }
+        $other = User::create(['name' => 'U2', 'email' => uniqid().'@t', 'password' => bcrypt('x'), 'is_active' => true]);
+        $this->makeChargedLoan($bank, $branch, $product, $admin, 'ACC-T1', [[6000000, '2026-10-10']], pf: 11800, adminCharges: 2360);
+        $this->makeChargedLoan($bank, $branch, $product, $other, 'ACC-T2', [[5000000, '2026-10-12']], pf: 0, adminCharges: 0);
+
+        // Only loan 1 is in the bank file — loan 2 still counts toward the tier.
+        $result = $this->reconcile($admin, $bank, $product, '2026-10-01', '2026-10-31',
+            $this->makeCurrentUpload([['ACC-T1', 'Cust', '10-10-2026', 6014160, 0]]));
+
+        $tier = $result['tiers'][0];
+        $this->assertSame(11014160, $tier['aggregate']); // 60,14,160 + 50,00,000
+        $this->assertSame(0.5, $tier['rate_value']);
+        $m = $result['matched'][0];
+        $this->assertSame(6014160, $m['calc']['base']);
+        $this->assertSame(30071, $m['calc']['commission']); // 0.5% of 60,14,160
+
+        // Identical to the Payout Run's per-loan figure for the same period.
+        $run = app(PayoutRunService::class)->previewRun('2026-10-01', '2026-10-31', $bank->id, [$product->id]);
+        $runLoan = collect($run['loan_lines'])->firstWhere('account_numbers', ['ACC-T1']);
+        $this->assertSame($m['calc']['commission'], $runLoan['payout']);
     }
 }

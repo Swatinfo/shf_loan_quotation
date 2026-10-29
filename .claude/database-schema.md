@@ -173,6 +173,7 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | bank_id | FK banks.id | CASCADE |
 | name | string | |
 | code | string | nullable |
+| bank_aliases | json | nullable (array cast) — other names the bank uses for the product on statements; reconcile checks the Excel `product` column against name + code + these (2026-10-28) |
 | is_pf_based | boolean | default false — how payout slabs will be interpreted (future payout feature; storage only) |
 | max_payout_amount | decimal(14,2) | nullable — optional payout cap, 2 decimal places (changed from unsignedBigInt 2026-07-04) |
 | is_active | boolean | default true |
@@ -365,7 +366,7 @@ Per-bank rate/charge row per quotation. FK `quotation_id` CASCADE. Fields: bank_
 | original_loan_amount | unsignedBigInt | nullable — as-applied amount snapshotted at loan creation; preserved when `loan_amount` is edited at KFS |
 | sanctioned_amount | unsignedBigInt | nullable — mirrored from docket-login notes (sanction stage = legacy fallback) |
 | disbursed_amount | unsignedBigInt | nullable — mirrored from `disbursement_details.amount_disbursed` |
-| status | string | INDEX — active / **partial_disbursed** / on_hold / completed / rejected / cancelled. `partial_disbursed` (2026-10-05) = disbursement started but loan not fully disbursed + OTC-settled; monotonic in-flight (counts as "active" in `scopeActive`/listings/dashboards). System-managed (not user-settable). |
+| status | string | INDEX — active / **partial_disbursed** / **partial_completed** / on_hold / completed / rejected / cancelled. `partial_completed` (2026-10-28) = every tranche OTC-settled but gross below target and not declared full; stored + system-managed, in-flight. Since 2026-10-28 `partial_disbursed` means a cheque OTC is still pending. `partial_disbursed` (2026-10-05) = disbursement started but loan not fully disbursed + OTC-settled; monotonic in-flight (counts as "active" in `scopeActive`/listings/dashboards). System-managed (not user-settable). |
 | is_sanctioned | boolean | default false |
 | current_stage | string | INDEX — default `inquiry` |
 | bank_name | string | denormalized from bank |
@@ -507,6 +508,8 @@ Normalized mirror of `disbursement_details.entries` — one row per tranche, syn
 > **Effective-dated payout config (2026-10-06, migrations `2026_10_06_134433/134434`).** `payout_rate_versions` (`rate_key` ∈ admin_gst|pf_gst|user_tds|user_insurance, `value`, `calc`, `effective_from`, `created_by`; unique rate_key+effective_from) versions the 4 global rates. `product_payout_versions` (`product_id`, `effective_from`, `is_pf_based`, `max_payout_amount`, `payout_cycle_start_day`/`end_day`, `created_by`; unique product_id+effective_from) versions each product's payout config and OWNS its slabs — `product_payout_slabs.version_id` FK. `products.current_payout_version_id` points at today's active version (the `Product::payoutSlabs` relation resolves the current slab set through it); `products.*` + `app_config.payoutConfig` stay as denormalized "today" mirrors. The version in force for date D = greatest `effective_from ≤ D`; a finalize resolves per tranche's disbursement date (`PayoutConfigService`), splitting a straddling increment into one `loan_payouts` row per period. Backfill seeded one version per rate/product from the current values.
 
 > **Disbursement charges (2026-10-06, migration `2026_10_06_104758`).** Each tranche carries `pf_amount`, `admin_charges`, `insurance_amount` (also summed onto `disbursement_details.pf_amount`/`admin_charges`/`insurance_amount`). **Gross disbursed = Σ amount + Σ pf_amount + Σ admin_charges** (insurance excluded); this gross is what `amount_disbursed` / `loan.disbursed_amount` mirror and what the fully-disbursed check compares to the sanctioned target. `DisbursementDetail::grossTotal()/pfTotal()/adminTotal()/insuranceTotal()`. Legacy rows carry 0 → gross == net, so completed loans are unaffected. Payout base = `is_pf_based ? Σ pf_amount : Σ amount` (unpaid tranches), via `DisbursementEntry::payoutBase()`.
+
+> **One-time charges coverage (2026-10-28, migration `2026_10_28_184553`).** `disbursement_details.charges_payout_run_id` (unsignedBigInt, nullable, no FK) — the payout run that counted a NORMAL product's one-time PF + admin in its commission base (once per loan). Cleared by `payout:purge-runs` along with `pf_payout_run_id`/`insurance_payout_run_id`/`payout_run_id`/`paid_amount_counted`/`loan_payout_id`.
 
 > **Aggregate payout runs (2026-10-07, migrations `2026_10_07_100000/100100`).** Payouts are now computed **product-wide over a date range** (not per-loan) by `PayoutRunService`. Four tables:
 > - **`payout_runs`** — `from_date`, `to_date`, **`bank_id`** (nullable; a run is scoped to one bank — migration `2026_10_19_130412`), `status` (draft|finalized), `notes`, rate snapshots `insurance_rate`/`tds_rate`/`gst_rate` (decimal 8,4), totals `total_gross`/`total_tds`/`total_net` (unsignedBigInt), `finalized_by`/`finalized_at`, `created_by`, timestamps.

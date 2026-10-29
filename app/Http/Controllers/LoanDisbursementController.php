@@ -20,6 +20,7 @@ class LoanDisbursementController extends Controller
     private const EDITABLE_STATUSES = [
         LoanDetail::STATUS_ACTIVE,
         LoanDetail::STATUS_PARTIAL_DISBURSED,
+        LoanDetail::STATUS_PARTIAL_COMPLETED,
         LoanDetail::STATUS_ON_HOLD,
     ];
 
@@ -154,9 +155,12 @@ class LoanDisbursementController extends Controller
         $remaining = max(0, $service->disbursementTarget($loan) - $disbursement->grossTotal());
         $pendingOtc = $disbursement->entryRows()->whereNotIn('otc_status', DisbursementEntry::OTC_SETTLED)->count();
 
+        $otcNote = $pendingOtc > 0
+            ? $pendingOtc.' '.str('entry')->plural($pendingOtc).' awaiting OTC handover.'
+            : 'All OTC settled.';
         $msg = $remaining > 0
-            ? 'Disbursement entries saved — remaining ₹ '.inr($remaining).'.'
-            : 'Fully disbursed — '.$pendingOtc.' '.str('entry')->plural($pendingOtc).' awaiting OTC handover.';
+            ? 'Partial disbursement saved — remaining ₹ '.inr($remaining).'. '.$otcNote.' More entries can be added later.'
+            : 'Fully disbursed — '.$otcNote;
 
         return redirect()->route('loans.disbursement', $loan)->with('success', $msg);
     }

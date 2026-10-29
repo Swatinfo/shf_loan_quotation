@@ -26,7 +26,7 @@ Shreenathji Home Finance (SHF) -- a bilingual (English/Gujarati) loan management
 - **Stage model**: `Stage` with `stage_key`, `stage_name_en`/`stage_name_gu`, `sequence_order`, `is_parallel`, `parent_stage_key`, `stage_type` (including 'decision'), `default_role` (JSON array), `sub_actions` (JSON array). Scopes: `enabled()`, `mainStages()`, `subStagesOf()`
 - **33 Eloquent models** across core, quotation, loan, workflow, task, DVR, and config domains
 - **14 services** + **24 controllers** (21 web + 3 API)
-- **Loan statuses**: active, completed, rejected, cancelled, on_hold (with color labels)
+- **Loan statuses**: active, partial_disbursed (cheque OTC pending), partial_completed (all OTC settled, below target — awaiting next tranche), completed, rejected, cancelled, on_hold (with color labels). Partial statuses are system-managed by `DisbursementService::syncDisbursementState` and count as in-flight.
 - Auto-assignment by role/bank/branch/product (priority-based), manual transfer with history via `StageTransfer` model
 - Two-way query system (`StageQuery` + `QueryResponse`) blocks stage completion until resolved
 - In-app notifications (`ShfNotification`) with bell badge and 60-second polling

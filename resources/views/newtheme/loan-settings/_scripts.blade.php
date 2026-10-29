@@ -256,6 +256,7 @@
                     $('#productBankInput').val('');
                     $('#productNameInput').val('');
                     $('#productCodeInput').val('');
+                    $('#productAliasesInput').val('');
                     $('#productFormTitle').text('+ Add Product');
                     $('#productSubmitText').text('Add Product');
                 };
@@ -267,6 +268,7 @@
                     $('#productBankInput').val($(this).data('bank-id'));
                     $('#productNameInput').val($(this).data('name'));
                     $('#productCodeInput').val($(this).data('code'));
+                    $('#productAliasesInput').val($(this).data('aliases'));
                     $('#productFormTitle').text('Edit Product');
                     $('#productSubmitText').text('Update Product');
                     var $collapse = $('#productFormCollapse');

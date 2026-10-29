@@ -20,8 +20,10 @@ use Tests\TestCase;
 
 /**
  * Aggregate payout engine: product-wide disbursed volume picks the slab tier,
- * each user earns their volume × tier rate; PF-based pays PF(ex-GST) × rate and is
- * excluded from volume; insurance per loan; TDS per user; caps + idempotency.
+ * each user earns their volume × tier rate (volume includes a normal product's
+ * one-time PF + admin as entered, once per loan); PF-based pays PF(ex-GST) × rate,
+ * no admin, excluded from volume; insurance per loan shown for information only;
+ * TDS per user on the final total; caps + idempotency.
  */
 class PayoutRunServiceTest extends TestCase
 {
@@ -81,7 +83,7 @@ class PayoutRunServiceTest extends TestCase
     /**
      * @param  array<int, array{0:int,1?:string}>  $entries  [amount, date?]
      */
-    private function loan(Product $product, User $payoutUser, array $entries, int $pf = 0, int $insurance = 0): LoanDetail
+    private function loan(Product $product, User $payoutUser, array $entries, int $pf = 0, int $insurance = 0, int $admin = 0): LoanDetail
     {
         $branch = Branch::create(['name' => 'Branch-'.uniqid(), 'is_active' => true]);
         $loan = LoanDetail::create([
@@ -92,7 +94,7 @@ class PayoutRunServiceTest extends TestCase
         ]);
         $detail = DisbursementDetail::create([
             'loan_id' => $loan->id, 'disbursement_type' => 'fund_transfer',
-            'pf_amount' => $pf, 'insurance_amount' => $insurance, 'amount_disbursed' => 0,
+            'pf_amount' => $pf, 'admin_charges' => $admin, 'insurance_amount' => $insurance, 'amount_disbursed' => 0,
         ]);
         foreach ($entries as $e) {
             DisbursementEntry::create([
@@ -187,21 +189,69 @@ class PayoutRunServiceTest extends TestCase
         $this->assertSame(0, $line['commission']); // disbursed is not a commission base
     }
 
-    public function test_insurance_paid_to_loan_user_and_tds_applied(): void
+    public function test_insurance_is_info_only_and_tds_on_commission_total(): void
     {
         $product = $this->product(false, [$this->pct(0, 100000000, 1.0)]);
         $a = $this->user();
-        // 60L × 1% = 60,000 commission; insurance 25,000 × 2% = 500.
+        // 60L × 1% = 60,000 commission; insurance 25,000 × 2% = 500 (shown only).
         $this->loan($product, $a, [[6000000]], insurance: 25000);
 
         $r = $this->svc->previewRun('2026-10-01', '2026-10-31');
         $u = $r['users'][0];
         $this->assertSame(60000, $u['total_commission']);
         $this->assertSame(500, $u['total_insurance_payout']);
-        // total 60,500; TDS 5% = 3,025; net 57,475.
-        $this->assertSame(60500, $u['total_payout']);
-        $this->assertSame(3025, $u['tds_amount']);
-        $this->assertSame(57475, $u['net_payout']);
+        // Insurance not added: total 60,000; TDS 5% = 3,000; net 57,000.
+        $this->assertSame(60000, $u['total_payout']);
+        $this->assertSame(3000, $u['tds_amount']);
+        $this->assertSame(57000, $u['net_payout']);
+        $this->assertSame(500, $r['loan_lines'][0]['insurance_payout']);
+        $this->assertSame(60000, $r['loan_lines'][0]['payout']);
+    }
+
+    public function test_normal_product_adds_pf_and_admin_as_entered_to_base_once_per_loan(): void
+    {
+        $product = $this->product(false, [$this->pct(0, 100000000, 1.0)]);
+        $a = $this->user();
+        // Tranche 5,00,000 + PF 11,800 + admin 2,360 (as entered) = 5,14,160 base.
+        $loan = $this->loan($product, $a, [[500000, '2026-10-10']], pf: 11800, admin: 2360);
+        $actor = $this->user('super_admin');
+
+        $r = $this->svc->previewRun('2026-10-01', '2026-10-31');
+        $this->assertSame(514160, $r['products'][0]['aggregate_base']);
+        $this->assertSame(5142, $r['users'][0]['total_commission']); // 1% of 5,14,160
+        $this->assertSame(14160, $r['loan_lines'][0]['charges']);
+        $this->assertSame(500000, $r['loan_lines'][0]['volume']);
+
+        $run = $this->svc->finalizeRun('2026-10-01', '2026-10-31', $actor);
+        $this->assertSame($run->id, $loan->disbursement->fresh()->charges_payout_run_id);
+        $this->assertSame(514160, $loan->disbursementEntries()->first()->paid_amount_counted);
+
+        // Next month's tranche: tranche only — PF + admin never re-counted.
+        $detail = $loan->disbursement;
+        DisbursementEntry::create([
+            'loan_id' => $loan->id, 'disbursement_detail_id' => $detail->id, 'method' => 'fund_transfer',
+            'amount' => 300000, 'disbursement_date' => '2026-11-05', 'transfer_date' => '2026-11-05',
+            'otc_status' => 'skipped', 'otc_handover_date' => '2026-11-05', 'is_active' => true,
+        ]);
+        $r2 = $this->svc->previewRun('2026-11-01', '2026-11-30');
+        $this->assertSame(300000, $r2['products'][0]['aggregate_base']);
+        $this->assertSame(3000, $r2['users'][0]['total_commission']);
+        $this->assertSame(0, $r2['loan_lines'][0]['charges']);
+    }
+
+    public function test_pf_based_product_gets_no_admin(): void
+    {
+        $product = $this->product(true, [$this->pct(0, 100000000, 20.0)]);
+        $a = $this->user();
+        // PF 11,800 incl GST → 10,000 excl GST × 20% = 2,000. Admin is ignored.
+        $this->loan($product, $a, [[500000]], pf: 11800, admin: 2360);
+
+        $r = $this->svc->previewRun('2026-10-01', '2026-10-31');
+        $this->assertSame(10000, $r['products'][0]['aggregate_base']);
+        $this->assertSame(2000, $r['users'][0]['total_pf_payout']);
+        $this->assertSame(2000, $r['users'][0]['total_payout']);
+        $this->assertSame(0, $r['loan_lines'][0]['charges']);
+        $this->assertEmpty($r['charges_paid_detail_ids']);
     }
 
     public function test_max_payout_caps_each_user_product_payout(): void
@@ -235,7 +285,7 @@ class PayoutRunServiceTest extends TestCase
 
         $run = $this->svc->finalizeRun('2026-10-01', '2026-10-31', $actor);
 
-        $this->assertSame(60500, (int) $run->total_gross);
+        $this->assertSame(60000, (int) $run->total_gross); // insurance is info only
         $this->assertCount(1, $run->userTotals);
         // Tranche + insurance stamped paid.
         $entry = $loan->disbursementEntries()->first();

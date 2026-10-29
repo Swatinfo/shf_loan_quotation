@@ -308,7 +308,12 @@
                                             'warning' => 'orange',
                                             default => 'gray',
                                         } }} shf-text-xs">
-                                        {{ \App\Models\StageAssignment::STATUS_LABELS[$assignment->status]['label'] }}
+                                        {{-- OTC done for the tranches so far, but the loan awaits more disbursement --}}
+                                        @if ($assignment->stage_key === 'otc_clearance' && $assignment->status === 'completed' && $loan->status === \App\Models\LoanDetail::STATUS_PARTIAL_COMPLETED)
+                                            Partially Completed
+                                        @else
+                                            {{ \App\Models\StageAssignment::STATUS_LABELS[$assignment->status]['label'] }}
+                                        @endif
                                     </span>
                                     <strong>{{ $assignment->stage?->stage_name_en }}</strong>
                                     @if ($assignment->stage?->stage_name_gu)
@@ -2994,6 +2999,24 @@ $canSkipLegalBank =
                                                         KFS Complete
                                                     </button>
                                                 </div>
+                                            @elseif ($assignment->status === 'completed')
+                                                {{-- Completed: loan amount as finalised at KFS --}}
+                                                <div class="mt-2 border-top pt-2 shf-stage-saved-data">
+                                                    <div class="row g-2">
+                                                        <div class="col-sm-6">
+                                                            <div class="small"><span class="text-muted">Loan Amount:</span>
+                                                                <strong>{{ $loan->formatted_amount }}</strong>
+                                                            </div>
+                                                        </div>
+                                                        @if ($loan->original_loan_amount !== null && (int) $loan->original_loan_amount !== (int) $loan->loan_amount)
+                                                            <div class="col-sm-6">
+                                                                <div class="small"><span class="text-muted">Original Applied:</span>
+                                                                    <strong>{{ $loan->formatted_original_amount }}</strong>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
                                             @endif
                                         @break
 
@@ -3169,7 +3192,8 @@ $canSkipLegalBank =
                                                                 stroke-width="2"
                                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
-                                                        View Details
+                                                        {{-- Partial loans stay editable: further tranches are added from the same form --}}
+                                                        {{ in_array($loan->status, \App\Models\LoanDetail::PARTIAL_STATUSES, true) ? 'Add / Manage Disbursement Entries' : 'View Details' }}
                                                     </a>
                                                 </div>
                                             @else
@@ -3215,6 +3239,7 @@ $canSkipLegalBank =
                                                     in_array($loan->status, [
                                                         \App\Models\LoanDetail::STATUS_ACTIVE,
                                                         \App\Models\LoanDetail::STATUS_PARTIAL_DISBURSED,
+                                                        \App\Models\LoanDetail::STATUS_PARTIAL_COMPLETED,
                                                         \App\Models\LoanDetail::STATUS_ON_HOLD,
                                                     ]);
                                                 $otcPending = $otcCheques

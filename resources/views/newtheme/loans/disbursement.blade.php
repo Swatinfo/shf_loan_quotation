@@ -24,7 +24,8 @@
         }
         $entryRows = array_values($entryRows);
         $remaining = max(0, $target - $disbursedSoFar);
-        $canMarkComplete = ! $isLocked && $disbursement && ! empty($entries) && $disbursedSoFar < $target;
+        $canMarkComplete = ! $isLocked && $disbursedSoFar < $target
+            && $disbursement?->completion_intent !== \App\Models\DisbursementDetail::INTENT_FULL;
     @endphp
 
     <header class="page-header">
@@ -163,10 +164,11 @@
                                 Each entry is one tranche — cheque or fund transfer — with its own OTC handover.
                                 PF &amp; Admin charges are entered once below (section 2) and add to the disbursed
                                 total; insurance is recorded but excluded. Add cheque and NEFT entries together.
-                                Partial totals can be saved now and more entries added later. The loan completes once
-                                the gross total (transfers + PF + admin) reaches <strong>₹ {{ inr($target) }}</strong>
-                                (or you mark it fully disbursed) <strong>and</strong> every entry's OTC is cleared or
-                                skipped.
+                                Partial totals can be saved now: saving completes this stage and opens OTC
+                                Clearance, and the loan stays <em>Partially Disbursed / Partially Completed</em> so more
+                                entries can be added later. The loan completes once the gross total (transfers + PF +
+                                admin) reaches <strong>₹ {{ inr($target) }}</strong> (or you mark it fully disbursed)
+                                <strong>and</strong> every entry's OTC is cleared or skipped.
                             </div>
                         @endif
 
@@ -295,6 +297,11 @@
         'entryDateMax' => now()->addDays(3)->format('d/m/Y'),
         'chequeDateMin' => $loan->created_at->format('d/m/Y'),
         'chequeDateMax' => now()->addDays(90)->format('d/m/Y'),
+        'savedEntryCount' => count($entries),
+        // Rows re-rendered from a failed submit are unsaved by definition.
+        'hasUnsavedInput' => is_array(old('entries')),
+        'savedGross' => (int) $disbursedSoFar,
+        'loanAmount' => (int) $loan->loan_amount,
         'pfGst' => (float) ($rates['pf_gst'] ?? 0),
         'adminGst' => (float) ($rates['admin_gst'] ?? 0),
     ];
@@ -565,6 +572,13 @@ $(function() {
     $(document).on('input', '.entry-amount-display, #pfDisplay, #adminDisplay, #insuranceDisplay', updateTotal);
     updateTotal();
 
+    // Gross on screen = entries + PF + admin (insurance excluded) — same as updateTotal().
+    function currentGross() {
+        return sumClass('.entry-amount') + (parseFloat($('#pfAmount').val()) || 0) + (parseFloat($('#adminAmount').val()) || 0);
+    }
+    var partialConfirmed = false;
+    var savedFormState = $('#ldForm').serialize();
+
     $(document).on('input change', '.is-invalid', function() { $(this).removeClass('is-invalid'); });
 
     $('#ldForm').on('submit', function(e) {
@@ -614,17 +628,64 @@ $(function() {
 
         if (!valid) {
             e.preventDefault();
+            if (!$rows.length) {
+                Swal.fire('No disbursement entries', 'Please add at least one disbursement entry.', 'error');
+            }
             if ($first && $first.length) {
                 $first[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 $first.trigger('focus');
             }
+            return;
+        }
+
+        // Partial total → confirm that this closes the stage but keeps the loan open.
+        var total = currentGross();
+        if (!partialConfirmed && total < CFG.target) {
+            e.preventDefault();
+            var form = this;
+            Swal.fire({
+                title: 'Full amount not disbursed',
+                html: 'Saving <strong>₹ ' + total.toLocaleString('en-IN') + '</strong> of <strong>₹ ' +
+                    CFG.target.toLocaleString('en-IN') + '</strong> (remaining <strong>₹ ' +
+                    (CFG.target - total).toLocaleString('en-IN') + '</strong>).<br>' +
+                    'The disbursement stage will be completed and OTC Clearance opened. ' +
+                    'The loan stays partially disbursed — you can add more entries later.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Save',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#f15a29',
+                cancelButtonColor: '#6c757d'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    partialConfirmed = true;
+                    form.submit();
+                }
+            });
         }
     });
 
     $('#ldMarkComplete').on('click', function() {
+        // Mark Full only uses SAVED entries — refuse when there are none, or when
+        // the form has unsaved changes that would otherwise be silently ignored.
+        if (!CFG.savedEntryCount) {
+            Swal.fire('No disbursement entries',
+                'Add and save at least one disbursement entry before marking it fully disbursed.', 'error');
+            return;
+        }
+        if (CFG.hasUnsavedInput || $('#ldForm').serialize() !== savedFormState) {
+            Swal.fire('Unsaved changes',
+                'Save the disbursement first — Mark as Fully Disbursed uses only saved entries.', 'error');
+            return;
+        }
+        var amountLine = CFG.savedGross !== CFG.loanAmount
+            ? '<br>Loan amount will change from <strong>₹ ' + CFG.loanAmount.toLocaleString('en-IN') +
+                '</strong> to <strong>₹ ' + CFG.savedGross.toLocaleString('en-IN') + '</strong> (total disbursed).'
+            : '';
         Swal.fire({
             title: 'Mark as Fully Disbursed?',
-            html: 'The saved total is below <strong>₹ ' + CFG.target.toLocaleString('en-IN') + '</strong>.<br>' +
+            html: 'The saved total <strong>₹ ' + CFG.savedGross.toLocaleString('en-IN') + '</strong> is below <strong>₹ ' +
+                CFG.target.toLocaleString('en-IN') + '</strong>.' + amountLine + '<br>' +
                 'This declares disbursement finished. The loan completes once every entry\'s OTC is cleared or skipped.',
             icon: 'warning',
             showCancelButton: true,

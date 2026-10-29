@@ -7,11 +7,13 @@ use App\Models\ProductPayoutSlab;
 use Carbon\CarbonImmutable;
 
 /**
- * Payout helpers shared by the disbursement form (current GST rates) and the
- * bank-statement reconciliation (per-entry verification breakdown). The actual
- * payout computation + finalization now lives in {@see PayoutRunService}
- * (aggregate, product-wide, date-range runs); this class holds only the small
- * rate/breakdown utilities those two screens still need.
+ * Payout helpers shared by the Payout Run engine ({@see PayoutRunService}), the
+ * bank-statement reconciliation and the disbursement form (current GST rates).
+ * Both payout screens use the same base rules from here:
+ *   - normal product: commission on tranche + one-time PF + admin (as entered)
+ *   - PF-based:       commission on PF excluding GST only (no admin)
+ *   - insurance:      shown at the configured rate, never added to the payout
+ *   - TDS:            on the final total
  */
 class PayoutService
 {
@@ -31,47 +33,49 @@ class PayoutService
     }
 
     /**
-     * Net payout breakdown. PF + Admin are ONE-TIME, GST-INCLUSIVE charges; the
-     * included GST (back-calculated) is deducted. Insurance (no GST) is paid out
-     * at the insurance rate. Pass the one-time amounts only on the finalize that
-     * carries them (first finalize); 0 otherwise.
-     *   gst_pf    = pf_incl − pf_incl/(1+pf_gst)           pf_base = pf_incl/(1+pf_gst)
-     *   gst_admin = admin_incl − admin_incl/(1+admin_gst)
-     *   gst       = gst_pf + gst_admin                     (deducted)
-     *   insurance = insurance × insurance_rate             (added)
-     *   gross     = commission + insurance − gst
-     *   tds       = gross × tds_rate                       (deducted, on positive gross)
-     *   net       = max(0, gross − tds)
+     * One-time charges that join a NORMAL (amount-based) product's commission
+     * base: PF + admin exactly as entered (GST-inclusive, no back-calculation) —
+     * the bank's `loan_amount` already includes them. PF-based products never
+     * add these (they earn on PF only, see pfBase()).
+     */
+    public static function oneTimeChargesBase(DisbursementDetail $disbursement): int
+    {
+        return (int) $disbursement->pf_amount + (int) $disbursement->admin_charges;
+    }
+
+    /**
+     * A PF-based product's commission base: the PF entered (GST-inclusive)
+     * brought back to its GST-exclusive figure at the configured PF GST rate —
+     * the same figure the bank reports in its `pf_amount` column.
+     */
+    public static function pfBase(DisbursementDetail $disbursement, float $pfGstRate): int
+    {
+        return DisbursementDetail::exGst((int) $disbursement->pf_amount, $pfGstRate);
+    }
+
+    /**
+     * Payout breakdown on a computed commission. No GST maths anywhere:
+     *   total     = commission                       (insurance is NOT added)
+     *   tds       = total × tds_rate
+     *   net       = max(0, total − tds)
+     *   insurance = insurance × insurance_rate       (shown for information only)
      *
      * @param  array{pf_gst:float, admin_gst:float, tds:float, insurance:float}|null  $rates
-     * @return array{commission:int, pf_incl:int, pf_base:int, admin_incl:int, gst:int, gst_pf:int, gst_admin:int, insurance_base:int, insurance_payout:int, gross:int, tds:int, net:int, rates:array}
+     * @return array{commission:int, insurance_base:int, insurance_payout:int, gross:int, tds:int, net:int, rates:array}
      */
-    public function breakdown(int $commission, int $pfIncl, int $adminIncl, int $insurance, ?array $rates = null): array
+    public function breakdown(int $commission, int $insurance, ?array $rates = null): array
     {
         $r = $rates ?? $this->payoutRates();
-        $pfBase = DisbursementDetail::exGst($pfIncl, $r['pf_gst']);
-        $gstPf = $pfIncl - $pfBase;
-        $gstAdmin = DisbursementDetail::gstPortion($adminIncl, $r['admin_gst'] ?? 0);
-        $gst = $gstPf + $gstAdmin;
-        $insurancePayout = (int) round($insurance * $r['insurance']);
-        $gross = $commission + $insurancePayout - $gst;
-        // TDS applies only to a positive total; a payout is never negative.
-        $tds = (int) round(max(0, $gross) * $r['tds']);
-        $net = max(0, $gross - $tds);
+        $gross = max(0, $commission);
+        $tds = (int) round($gross * $r['tds']);
 
         return [
             'commission' => $commission,
-            'pf_incl' => $pfIncl,
-            'pf_base' => $pfBase,
-            'admin_incl' => $adminIncl,
-            'gst' => $gst,
-            'gst_pf' => $gstPf,
-            'gst_admin' => $gstAdmin,
             'insurance_base' => $insurance,
-            'insurance_payout' => $insurancePayout,
+            'insurance_payout' => (int) round($insurance * $r['insurance']),
             'gross' => $gross,
             'tds' => $tds,
-            'net' => $net,
+            'net' => max(0, $gross - $tds),
             'rates' => $r,
         ];
     }

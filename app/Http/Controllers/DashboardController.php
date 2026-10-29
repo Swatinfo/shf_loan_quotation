@@ -418,7 +418,7 @@ class DashboardController extends Controller
 
             $actions = '<div class="d-flex gap-1">';
             $actions .= '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">'.$viewIcon.' View</a>';
-            if (in_array($loan->status, ['active', 'partial_disbursed', 'on_hold'])) {
+            if (in_array($loan->status, [...LoanDetail::IN_FLIGHT_STATUSES, LoanDetail::STATUS_ON_HOLD], true)) {
                 $actions .= '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm" style="background:linear-gradient(135deg,#2563eb,#3b82f6);">'.$stagesIcon.' Stages</a>';
             }
             $actions .= '</div>';

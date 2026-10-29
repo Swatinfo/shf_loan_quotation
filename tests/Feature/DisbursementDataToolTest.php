@@ -114,7 +114,8 @@ class DisbursementDataToolTest extends TestCase
     {
         [$loan, $owner] = $this->disbursingLoan();
         $sa = $this->user('super_admin');
-        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
+        // A settled (fund transfer) tranche below target → partially completed.
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
 
         $entry = $loan->disbursementEntries()->where('is_active', true)->first();
 
@@ -389,7 +390,9 @@ class DisbursementDataToolTest extends TestCase
         app(DisbursementDataService::class)->apply($rows, $sa);
 
         $loan->refresh();
-        $this->assertSame(LoanDetail::STATUS_PARTIAL_DISBURSED, $loan->status);
-        $this->assertSame('in_progress', $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status'));
+        // Settled but below target: the stages stay closed, the loan awaits more money.
+        $this->assertSame(LoanDetail::STATUS_PARTIAL_COMPLETED, $loan->status);
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'disbursement')->value('status'));
+        $this->assertSame('completed', $loan->stageAssignments()->where('stage_key', 'otc_clearance')->value('status'));
     }
 }

@@ -26,9 +26,12 @@ class LoanDetail extends Model
 
     const STATUS_PARTIAL_DISBURSED = 'partial_disbursed';
 
+    const STATUS_PARTIAL_COMPLETED = 'partial_completed';
+
     const STATUSES = [
         self::STATUS_ACTIVE,
         self::STATUS_PARTIAL_DISBURSED,
+        self::STATUS_PARTIAL_COMPLETED,
         self::STATUS_COMPLETED,
         self::STATUS_REJECTED,
         self::STATUS_CANCELLED,
@@ -37,15 +40,28 @@ class LoanDetail extends Model
 
     /**
      * Statuses for loans still actively being worked (not paused, not closed).
-     * `partial_disbursed` is a monotonic in-flight state: disbursement has
-     * started but the loan is not yet fully disbursed + OTC-settled. Treated as
-     * active work everywhere (listings, dashboards, "my work").
+     * `partial_disbursed`: disbursement has started and at least one cheque's
+     * OTC is still pending. `partial_completed`: every tranche so far is
+     * OTC-settled but the loan is below its target and not declared full —
+     * awaiting the next disbursement. Both are treated as active work
+     * everywhere (listings, dashboards, "my work").
      *
      * @var array<int, string>
      */
     const IN_FLIGHT_STATUSES = [
         self::STATUS_ACTIVE,
         self::STATUS_PARTIAL_DISBURSED,
+        self::STATUS_PARTIAL_COMPLETED,
+    ];
+
+    /**
+     * Loans that have started disbursing but are not yet completed.
+     *
+     * @var array<int, string>
+     */
+    const PARTIAL_STATUSES = [
+        self::STATUS_PARTIAL_DISBURSED,
+        self::STATUS_PARTIAL_COMPLETED,
     ];
 
     /**
@@ -77,6 +93,7 @@ class LoanDetail extends Model
     const STATUS_LABELS = [
         'active' => ['label' => 'Active', 'color' => 'primary'],
         'partial_disbursed' => ['label' => 'Partially Disbursed', 'color' => 'info'],
+        'partial_completed' => ['label' => 'Partially Completed', 'color' => 'success'],
         'completed' => ['label' => 'Completed', 'color' => 'success'],
         'rejected' => ['label' => 'Rejected', 'color' => 'danger'],
         'cancelled' => ['label' => 'Cancelled', 'color' => 'secondary'],
@@ -459,25 +476,6 @@ class LoanDetail extends Model
     public function getStatusColorAttribute(): string
     {
         return self::STATUS_LABELS[$this->status]['color'] ?? 'secondary';
-    }
-
-    /**
-     * "Partially Completed" — a derived sub-state of `partial_disbursed`: the loan
-     * is not fully disbursed (gross < sanctioned target) yet every active tranche's
-     * OTC is already settled (cheques cleared/skipped; fund transfers auto-settle),
-     * so nothing is pending until the next disbursement. Not a stored status.
-     */
-    public function isPartiallyCompleted(): bool
-    {
-        if ($this->status !== self::STATUS_PARTIAL_DISBURSED) {
-            return false;
-        }
-
-        $entries = $this->relationLoaded('disbursementEntries')
-            ? $this->disbursementEntries->where('is_active', true)
-            : $this->disbursementEntries()->where('is_active', true)->get();
-
-        return $entries->isNotEmpty() && $entries->every(fn ($e) => $e->isOtcSettled());
     }
 
     public function getCustomerTypeLabelAttribute(): string

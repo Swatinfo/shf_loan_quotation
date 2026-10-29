@@ -58,7 +58,8 @@ The DataTable endpoint (`/loans/data`) applies this scope before filtering/pagin
 Statuses (from `LoanDetail::STATUS_*` constants):
 
 - `active` — default; workflow stages actionable
-- `partial_disbursed` — **(2026-10-05)** disbursement started but loan not yet fully disbursed + OTC-settled. Monotonic in-flight state, system-managed by `DisbursementService::syncDisbursementState` (never set via the manual status endpoint). Counts as "active" everywhere (`scopeActive`, listings, dashboards, reports). Stages/disbursement remain actionable.
+- `partial_completed` — **(2026-10-28)** every tranche so far is OTC-settled but the gross is below the target and the loan was not marked fully disbursed — awaiting the next disbursement. System-managed, in-flight (in `IN_FLIGHT_STATUSES`), stored (was a derived label before). A one-time status-only migration (`2026_10_28_184008`) moved existing settled-but-short `partial_disbursed` loans here.
+- `partial_disbursed` — **(2026-10-05)** disbursement started but loan not yet fully disbursed + OTC-settled; since 2026-10-28 specifically: at least one cheque OTC is still pending. Monotonic in-flight state, system-managed by `DisbursementService::syncDisbursementState` (never set via the manual status endpoint). Counts as "active" everywhere (`scopeActive`, listings, dashboards, reports). Stages/disbursement remain actionable.
 - `on_hold` — paused; stages read-only, basic info read-only
 - `cancelled` — terminal (soft); can be reactivated by super_admin / admin / branch_manager / bdh
 - `rejected` — terminal (from `sanction_decision` or explicit stage rejection); includes `rejected_stage` + `rejection_reason`
@@ -72,7 +73,7 @@ Statuses (from `LoanDetail::STATUS_*` constants):
 - `cancelled` → `active` (reactivate, same elevated permission set)
 - `rejected` → `active` (reactivate — clears `rejected_*` fields, restores rejected stages to in_progress, recalculates progress)
 
-Manual status change is limited to `active` / `on_hold` / `cancelled` (`LoanValidationRules::statusChange`); `partial_disbursed` and `completed` are never user-set. Reactivating a loan that had already started disbursing re-runs `syncDisbursementState`, so it resumes `partial_disbursed` (or `completed`) rather than plain `active`.
+Manual status change is limited to `active` / `on_hold` / `cancelled` (`LoanValidationRules::statusChange`); `partial_disbursed`, `partial_completed` and `completed` are never user-set. Reactivating a loan that had already started disbursing re-runs `syncDisbursementState`, so it resumes `partial_disbursed` (or `completed`) rather than plain `active`.
 
 Every status change sets `status_reason`, `status_changed_at`, `status_changed_by` and is logged to `activity_logs`.
 
@@ -150,6 +151,7 @@ The **KFS stage owner** (its `stage_assignments.assigned_to`) or an **admin/supe
 - Endpoint: `POST /loans/{loan}/kfs/loan-amount` (`loans.kfs.amount.update`, `LoanStageController::updateKfsLoanAmount`, `permission:manage_loan_stages` + server-side assignee/admin check). Validates `loan_amount` numeric ≥1 ≤1e12 (no cap vs `sanctioned_amount`). Logs `change_loan_amount` (old→new). Returns `{success, formatted_amount, formatted_original_amount}`.
 - UI: an editable amount input + "Save Amount" on the KFS stage card (`_stages-body.blade.php` `@case('kfs')`, inside the `$stageEditable` gate so only the assignee/admin see it), with the original shown read-only. JS handler `.shf-kfs-amount-save` in `_stages-scripts.blade.php`.
 - **Completion also saves + validates the amount.** The "KFS Complete" button (`.shf-kfs-complete`) first POSTs the current amount to `loans.kfs.amount.update` (server-validates) and only completes the stage on success. Server-authoritative too: `updateStatus` blocks kfs completion when `loan_amount` is not a valid positive figure (≥1, ≤1e12), regardless of client path. Test: `tests/Feature/KfsLoanAmountTest.php`.
+- **Completed KFS card shows the amount.** Once KFS is `completed`, the card shows "Loan Amount" (`formatted_amount`) and, only when it differs, "Original Applied" (`formatted_original_amount`). Rendered for the assignee/admin in `_stages-body.blade.php` (`@case('kfs')` `@elseif completed`) and for other viewers in `_stage-readonly-detail.blade.php` (`@case('kfs')`).
 
 ## Timeline
 
@@ -207,7 +209,13 @@ Computes: `land_valuation = land_area × land_rate`, same for construction, `fin
 
 - `GET /loans/{id}/disbursement` — form (shows Sanctioned / Disbursed-so-far / Remaining strip)
 - `POST /loans/{id}/disbursement` — save entries; total mirrored to `loan_details.disbursed_amount` on every save
-- `POST /loans/{id}/disbursement/complete` — "Mark as Fully Disbursed" (manual completion when the final total is intentionally below the target)
+- `POST /loans/{id}/disbursement/complete` — "Mark as Fully Disbursed" (manual completion when the final total is intentionally below the target). **Sets `loan_amount` = saved gross (entries + PF + admin)** — `original_loan_amount` keeps the as-applied figure (backfilled if null), logged as `change_loan_amount` (source `mark_fully_disbursed`). A normal Save never changes `loan_amount`.
+
+**Partial disbursement lifecycle (2026-10-28).** Any saved money **completes the disbursement stage** (partial or full) and opens OTC Clearance — the form warns first when the gross total is below target ("Full amount not disbursed …"). Loan status then follows the tranches: a cheque OTC pending → `partial_disbursed` (OTC Clearance in progress); every tranche settled but gross below target and not declared full → **`partial_completed`** "Partially Completed" (OTC Clearance completed, card badge "Partially Completed"); settled AND (gross ≥ target OR Mark Full) → `completed`. A new **pending cheque** on a partial loan **reopens OTC Clearance** (assignee re-notified) and sets `partial_disbursed`; a new NEFT / already-cleared cheque keeps `partial_completed` (or completes at target). The form stays editable for both partial statuses, so tranches can be added any number of times.
+
+**Progress (2026-10-28):** while the loan is `partial_disbursed`/`partial_completed`, `LoanStageService::recalculateProgress` does not count OTC Clearance as done, so progress stays below 100% until the loan is fully disbursed (migration `2026_10_28_193918` recalculated existing partial loans).
+
+**Form guards (2026-10-28):** Save with no entries → error popup (plus the server `entries` error listed on the page). Mark as Fully Disbursed is shown whenever the form is editable and below target — even before anything is saved — and refuses (error popup) when no entries are saved or the form has unsaved changes (it only uses saved entries). Its confirmation shows the loan-amount change.
 
 ### Entries (per tranche)
 

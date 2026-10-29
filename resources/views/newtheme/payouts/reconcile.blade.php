@@ -52,7 +52,11 @@
                     date range here and upload the filled file to reconcile against our settled (cleared) entries. Each
                     loan matches on its <strong>loan A/c number</strong> OR <strong>application number</strong> (fill whichever
                     the statement carries — both is best), with customer name as a fallback. Amount &amp; date are then compared
-                    and any difference is highlighted.
+                    and any difference is highlighted. The bank's <strong>disbursed_amount</strong> already includes PF + admin, so it is
+                    compared with our entries + PF + admin; for a <strong>PF-based</strong> product the bank's
+                    <strong>pf_amount</strong> (excluding GST) is compared with our PF excluding GST (±₹1). The
+                    <strong>product</strong> column is checked against the loan's product (name, code or the bank
+                    names set under Settings → Products); a loan logged under the wrong product can be moved with one click.
                 </div>
                 <form method="POST" action="{{ route('payouts.reconcile.run') }}" enctype="multipart/form-data"
                     id="reconcileForm" class="po-filters">
@@ -116,6 +120,12 @@
                     <div class="k">Not in DB at all</div>
                     <div class="v">{{ count($result['excel_only']) }}</div>
                 </div>
+                @if (($result['product_issue_count'] ?? 0) > 0)
+                    <div class="ld-summary-box" style="border-left:4px solid var(--accent,#f15a29);">
+                        <div class="k">Product mismatch / unknown</div>
+                        <div class="v">{{ $result['product_issue_count'] }}</div>
+                    </div>
+                @endif
                 @if (($result['date_error_count'] ?? 0) > 0)
                     <div class="ld-summary-box" style="border-left:4px solid var(--red,#c0392b);">
                         <div class="k">Unreadable dates</div>
@@ -123,6 +133,17 @@
                     </div>
                 @endif
             </div>
+
+            <form method="POST" action="{{ route('payouts.reconcile.run') }}" id="rcRerunForm" class="d-none">
+                @csrf
+                <input type="hidden" name="bank_id" value="{{ $input['bank_id'] ?? '' }}">
+                <input type="hidden" name="from" value="{{ $input['from'] ?? '' }}">
+                <input type="hidden" name="to" value="{{ $input['to'] ?? '' }}">
+                @foreach ((array) ($input['product_ids'] ?? []) as $pid)
+                    <input type="hidden" name="product_ids[]" value="{{ $pid }}">
+                @endforeach
+                <input type="hidden" name="upload_token" value="{{ $result['upload_token'] ?? '' }}">
+            </form>
 
             @if ($canFinalizePayout)
                 {{-- Verification only — the figures above reconcile our disbursed entries
@@ -138,8 +159,38 @@
                 </form>
             @endif
 
+            {{-- Product tiers — same method as Payout Runs: the slab comes from the
+                 total of ALL in-window loans of the product (every user), and that one
+                 rate applies to each loan's payout base. --}}
+            @if (!empty($result['tiers']))
+                <div class="card">
+                    <div class="card-bd po-scroll">
+                        <h3 class="po-sub">Product tiers (total of all loans → slab → rate)
+                            <span class="ls-muted" style="font-weight:400;">· same as Payout Runs: every in-window loan of the product (all users) is added up to pick the slab; that rate applies to each loan's entries + PF + admin (PF-based: PF excl. GST).</span>
+                        </h3>
+                        <table class="tbl">
+                            <thead><tr><th>Product</th><th>Type</th><th class="po-num">Loans</th><th class="po-num">Aggregate base</th><th>Slab</th><th class="po-num">Rate</th><th class="po-num">Max payout</th></tr></thead>
+                            <tbody>
+                                @foreach ($result['tiers'] as $t)
+                                    <tr>
+                                        <td>{{ $t['product_name'] }}</td>
+                                        <td>{{ $t['is_pf_based'] ? 'PF-based' : 'Volume' }}</td>
+                                        <td class="po-num">{{ $t['loans'] }}</td>
+                                        <td class="po-num">₹ {{ inr($t['aggregate']) }}</td>
+                                        <td>{{ $t['slab_low'] !== null ? '₹ '.inr($t['slab_low']).' – ₹ '.inr($t['slab_high']) : '— no slab' }}</td>
+                                        <td class="po-num">{{ $t['rate_type'] === 'percent' ? rtrim(rtrim(number_format($t['rate_value'], 2), '0'), '.').'%' : '₹ '.inr($t['rate_value']) }}</td>
+                                        <td class="po-num">{{ $t['max_payout'] === null || $t['max_payout'] < 0 ? '—' : '₹ '.inr($t['max_payout']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        <div class="ls-muted" style="font-size:11.5px;margin-top:6px;">Per-loan commission below is before the max-payout cap, which Payout Runs applies per user × product.</div>
+                    </div>
+                </div>
+            @endif
+
             {{-- Matched — one row per loan; matched on identifier (A/c → App # → name).
-                 Loan Amount / Date / Insurance show the Excel value with our DB value on
+                 Disbursed Amount / Date / Insurance show the Excel value with our DB value on
                  a second line in the same cell; a mismatch highlights the cell + row. --}}
             @php
                 $fmtDate = fn ($d) => $d ? \Illuminate\Support\Carbon::parse($d)->format('d/m/Y') : '—';
@@ -153,12 +204,12 @@
                         <thead>
                             <tr>
                                 <th>User</th><th>Product</th><th>Loan A/c · Loan # · App #</th><th>Customer</th>
-                                <th class="po-num">Loan Amount<br><span class="ls-muted">Excel / DB</span></th>
+                                <th class="po-num">Disbursed Amount<br><span class="ls-muted">Excel / DB</span></th>
                                 <th>Date<br><span class="ls-muted">Excel / DB</span></th>
                                 <th class="po-num">PF</th><th class="po-num">Admin</th>
                                 <th class="po-num">Base</th><th class="po-num">Commission</th>
                                 <th class="po-num">Insurance<br><span class="ls-muted">Excel / DB</span></th>
-                                <th class="po-num">Ins. Payout</th><th class="po-num">− GST</th>
+                                <th class="po-num">Ins. Payout<br><span class="ls-muted">(info only)</span></th>
                                 <th class="po-num">Total</th><th class="po-num">− TDS</th><th class="po-num">Net Payout</th>
                             </tr>
                         </thead>
@@ -167,17 +218,26 @@
                                 @php $c = $m['calc']; $our = $m['our']; $ex = $m['excel']; $f = $m['flags']; @endphp
                                 <tr @if ($m['has_discrepancy']) style="background:#fff8ec;" @endif>
                                     <td>{{ $m['loan']?->payoutUser?->name ?? '—' }}</td>
-                                    <td>{{ $m['loan']?->product?->name ?? '—' }}</td>
+                                    <td @if ($f['product'] ?? false) style="{{ $diffCell }}" @endif>
+                                        @include('newtheme.payouts._product-check', [
+                                            'ourName' => $m['loan']?->product?->name,
+                                            'check' => $m['product'] ?? [],
+                                            'loanId' => $m['loan']?->id,
+                                            'loanNumber' => $m['loan']?->loan_number,
+                                            'canChange' => $canFinalizePayout,
+                                        ])
+                                    </td>
                                     <td>
-                                        {{ !empty($our['accounts']) ? implode(', ', $our['accounts']) : '—' }}
+                                        @include('newtheme.payouts._acc-link', ['accounts' => $our['accounts'], 'loanId' => $m['loan']?->id])
                                         <div style="{{ $dbLine }}">
-                                            Loan #: {{ $m['loan']?->loan_number ?? '—' }}<br>
+                                            Loan #: @include('newtheme.payouts._acc-link', ['accounts' => array_filter([$m['loan']?->loan_number]), 'loanId' => $m['loan']?->id, 'isLoanNumber' => true])<br>
                                             App #: {{ $m['loan']?->application_number ?: '—' }}
                                         </div>
                                     </td>
                                     <td>{{ $m['loan']?->customer_name ?? '—' }}</td>
                                     <td class="po-num" @if ($f['amount']) style="{{ $diffCell }}" @endif>
-                                        ₹ {{ inr($ex['_amount']) }}
+                                        @if ($our['is_pf_based'])<span class="shf-badge shf-badge-purple shf-text-2xs" title="PF-based product: the bank's pf_amount is compared with our PF excluding GST (±₹1)">PF</span>@endif
+                                        ₹ {{ inr($ex['_compare']) }}
                                         <br><span style="{{ $dbLine }}">DB: ₹ {{ inr($our['amount']) }}@if ($our['tranche_count'] > 1) ({{ $our['tranche_count'] }} tr.)@endif</span>
                                     </td>
                                     <td @if ($f['date']) style="{{ $diffCell }}" @endif>
@@ -197,13 +257,12 @@
                                         <br><span style="{{ $dbLine }}">DB: ₹ {{ inr($our['insurance']) }}</span>
                                     </td>
                                     <td class="po-num">₹ {{ inr($c['insurance_payout']) }}</td>
-                                    <td class="po-num">₹ {{ inr($c['gst']) }}</td>
                                     <td class="po-num">₹ {{ inr($c['gross']) }}</td>
                                     <td class="po-num">₹ {{ inr($c['tds']) }}</td>
                                     <td class="po-num"><strong>₹ {{ inr($c['net']) }}</strong></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="16" class="po-empty">No matches.</td></tr>
+                                <tr><td colspan="15" class="po-empty">No matches.</td></tr>
                             @endforelse
                         </tbody>
                         @if (count($result['matched']))
@@ -212,7 +271,7 @@
                                 <tr style="font-weight:600;background:var(--bg-alt,#f5f6f7);">
                                     <td colspan="4" class="text-end">Totals ({{ $M->count() }} loans)</td>
                                     <td class="po-num">
-                                        ₹ {{ inr($M->sum(fn ($m) => $m['excel']['_amount'])) }}
+                                        ₹ {{ inr($M->sum(fn ($m) => $m['excel']['_compare'])) }}
                                         <br><span style="{{ $dbLine }}">DB: ₹ {{ inr($M->sum(fn ($m) => $m['our']['amount'])) }}</span>
                                     </td>
                                     <td></td>
@@ -225,7 +284,6 @@
                                         <br><span style="{{ $dbLine }}">DB: ₹ {{ inr($M->sum(fn ($m) => $m['our']['insurance'])) }}</span>
                                     </td>
                                     <td class="po-num">₹ {{ inr($M->sum(fn ($m) => $m['calc']['insurance_payout'])) }}</td>
-                                    <td class="po-num">₹ {{ inr($M->sum(fn ($m) => $m['calc']['gst'])) }}</td>
                                     <td class="po-num">₹ {{ inr($M->sum(fn ($m) => $m['calc']['gross'])) }}</td>
                                     <td class="po-num">₹ {{ inr($M->sum(fn ($m) => $m['calc']['tds'])) }}</td>
                                     <td class="po-num"><strong>₹ {{ inr($M->sum(fn ($m) => $m['calc']['net'])) }}</strong></td>
@@ -241,14 +299,14 @@
                 <div class="card-bd po-scroll">
                     <h3 class="po-sub">🟡 In our DB, not in Excel ({{ count($result['db_only']) }})</h3>
                     <table class="tbl">
-                        <thead><tr><th>Loan A/c · Loan # · App #</th><th>Product</th><th>Customer</th><th>Settlement date(s)</th><th class="po-num">Our Disbursed</th></tr></thead>
+                        <thead><tr><th>Loan A/c · Loan # · App #</th><th>Product</th><th>Customer</th><th>Settlement date(s)</th><th class="po-num">Our Amount<br><span class="ls-muted">entries + PF + admin · PF-based: PF excl. GST</span></th></tr></thead>
                         <tbody>
                             @forelse ($result['db_only'] as $g)
                                 <tr class="po-row-db-only">
                                     <td>
-                                        {{ !empty($g['accounts']) ? implode(', ', $g['accounts']) : '—' }}
+                                        @include('newtheme.payouts._acc-link', ['accounts' => $g['accounts'], 'loanId' => $g['loan']?->id])
                                         <div style="{{ $dbLine }}">
-                                            Loan #: {{ $g['loan']?->loan_number ?? '—' }}<br>
+                                            Loan #: @include('newtheme.payouts._acc-link', ['accounts' => array_filter([$g['loan']?->loan_number]), 'loanId' => $g['loan']?->id, 'isLoanNumber' => true])<br>
                                             App #: {{ $g['loan']?->application_number ?: '—' }}
                                         </div>
                                     </td>
@@ -278,7 +336,7 @@
                                 <th>Product</th>
                                 <th>Customer</th>
                                 <th>Date (bank)<br><span class="ls-muted">Excel / DB cleared</span></th>
-                                <th class="po-num">Loan Amount<br><span class="ls-muted">Excel / DB</span></th>
+                                <th class="po-num">Disbursed Amount<br><span class="ls-muted">Excel / DB</span></th>
                                 <th>Reason</th>
                             </tr></thead>
                             <tbody>
@@ -286,13 +344,28 @@
                                     @php $r = $m['excel']; $g = $m['loan']; @endphp
                                     <tr style="background:#fff8ec;">
                                         <td>
-                                            {{ $r['loan_acc_no'] ?: '—' }}@if (!empty($r['application_number'])) · App {{ $r['application_number'] }}@endif
+                                            {{-- The loan is known here, so the bank's identifier and our loan # both
+                                                 open its Stages page (also for entry-less loans with no A/c). --}}
+                                            @php $stagesUrl = !empty($g['loan_id']) ? route('loans.stages', $g['loan_id']) : null; @endphp
+                                            @if ($stagesUrl)
+                                                <a href="{{ $stagesUrl }}" target="_blank" rel="noopener" title="Open loan stages">{{ $r['loan_acc_no'] ?: '—' }}@if (!empty($r['application_number'])) · App {{ $r['application_number'] }}@endif</a>
+                                            @else
+                                                {{ $r['loan_acc_no'] ?: '—' }}@if (!empty($r['application_number'])) · App {{ $r['application_number'] }}@endif
+                                            @endif
                                             <div style="{{ $dbLine }}">
-                                                DB: {{ $g['loan_number'] ?? '—' }} · {{ $g['application_number'] ?: '—' }}<br>
-                                                A/c: {{ !empty($g['accounts']) ? implode(', ', $g['accounts']) : '—' }}
+                                                DB: @include('newtheme.payouts._acc-link', ['accounts' => array_filter([$g['loan_number'] ?? null]), 'loanId' => $g['loan_id'] ?? null, 'isLoanNumber' => true]) · {{ $g['application_number'] ?: '—' }}<br>
+                                                A/c: @include('newtheme.payouts._acc-link', ['accounts' => $g['accounts'] ?? [], 'loanId' => $g['loan_id'] ?? null])
                                             </div>
                                         </td>
-                                        <td>{{ $g['product_name'] ?? '—' }}</td>
+                                        <td @if (in_array($m['product']['status'] ?? 'blank', ['mismatch', 'unknown'], true)) style="{{ $diffCell }}" @endif>
+                                            @include('newtheme.payouts._product-check', [
+                                                'ourName' => $g['product_name'] ?? null,
+                                                'check' => $m['product'] ?? [],
+                                                'loanId' => $g['loan_id'] ?? null,
+                                                'loanNumber' => $g['loan_number'] ?? null,
+                                                'canChange' => $canFinalizePayout,
+                                            ])
+                                        </td>
                                         <td>{{ $r['customer_name'] ?? ($g['customer_name'] ?? '—') }}</td>
                                         <td>
                                             @if ($r['_date_error'])
@@ -309,7 +382,8 @@
                                             </span>
                                         </td>
                                         <td class="po-num">
-                                            ₹ {{ inr($r['_amount'] ?? 0) }}
+                                            @if (!empty($g['is_pf_based']))<span class="shf-badge shf-badge-purple shf-text-2xs">PF</span>@endif
+                                            ₹ {{ inr(!empty($g['is_pf_based']) ? ($r['_pf'] ?? 0) : ($r['_amount'] ?? 0)) }}
                                             <br><span style="{{ $dbLine }}">DB: ₹ {{ inr($g['amount'] ?? 0) }}</span>
                                         </td>
                                         <td style="font-size:12px;">
@@ -319,6 +393,7 @@
                                                     'status' => [\App\Models\LoanDetail::STATUS_LABELS[$g['status'] ?? '']['label'] ?? 'Loan status', 'shf-badge-red'],
                                                     'pending' => ['Pending', 'shf-badge-red'],
                                                     'outside' => ['Out of period', 'shf-badge-blue'],
+                                                    'other_product' => ['Other product', 'shf-badge-purple'],
                                                     default => ['Mismatch', 'shf-badge-gray'],
                                                 };
                                             @endphp
@@ -340,7 +415,7 @@
                         <span class="ls-muted" style="font-weight:400;">· the account/application number appears nowhere in our records for this bank.</span>
                     </h3>
                     <table class="tbl">
-                        <thead><tr><th>Identifier (A/c · App #)</th><th>Customer</th><th>Date</th><th class="po-num">Loan Amount</th></tr></thead>
+                        <thead><tr><th>Identifier (A/c · App #)</th><th>Customer</th><th>Date</th><th class="po-num">Disbursed Amount</th></tr></thead>
                         <tbody>
                             @forelse ($result['excel_only'] as $r)
                                 <tr class="po-row-excel-only">
@@ -370,7 +445,7 @@
             @php
                 $prod = collect($result['by_product']);
                 $usr = collect($result['by_user']);
-                $sumCols = ['loan', 'pf', 'admin', 'commission', 'insurance', 'insurance_payout', 'gst', 'gross', 'tds', 'total'];
+                $sumCols = ['loan', 'pf', 'admin', 'commission', 'insurance', 'insurance_payout', 'gross', 'tds', 'total'];
             @endphp
             <div class="card">
                 <div class="card-bd po-scroll">
@@ -380,7 +455,7 @@
                             <tr>
                                 <th>Bank</th><th>Product</th><th class="po-num">Matched</th><th class="po-num">Total Loan</th>
                                 <th class="po-num">Total PF</th><th class="po-num">Total Admin</th><th class="po-num">Commission</th><th class="po-num">Insurance</th>
-                                <th class="po-num">Ins. Payout</th><th class="po-num">− GST</th><th class="po-num">Total</th>
+                                <th class="po-num">Ins. Payout<br><span class="ls-muted">(info only)</span></th><th class="po-num">Total</th>
                                 <th class="po-num">− TDS</th><th class="po-num">Net Payout</th>
                             </tr>
                         </thead>
@@ -391,12 +466,12 @@
                                     <td class="po-num">₹ {{ inr($r['loan']) }}</td><td class="po-num">₹ {{ inr($r['pf']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['admin']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['commission']) }}</td><td class="po-num">₹ {{ inr($r['insurance']) }}</td>
-                                    <td class="po-num">₹ {{ inr($r['insurance_payout']) }}</td><td class="po-num">₹ {{ inr($r['gst']) }}</td>
+                                    <td class="po-num">₹ {{ inr($r['insurance_payout']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['gross']) }}</td><td class="po-num">₹ {{ inr($r['tds']) }}</td>
                                     <td class="po-num"><strong>₹ {{ inr($r['total']) }}</strong></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="13" class="po-empty">No matched entries.</td></tr>
+                                <tr><td colspan="12" class="po-empty">No matched entries.</td></tr>
                             @endforelse
                         </tbody>
                         @if ($prod->count())
@@ -417,7 +492,7 @@
                             <tr>
                                 <th>Payout User</th><th class="po-num">Matched</th><th class="po-num">Total Loan</th>
                                 <th class="po-num">Total PF</th><th class="po-num">Total Admin</th><th class="po-num">Commission</th><th class="po-num">Insurance</th>
-                                <th class="po-num">Ins. Payout</th><th class="po-num">− GST</th><th class="po-num">Total</th>
+                                <th class="po-num">Ins. Payout<br><span class="ls-muted">(info only)</span></th><th class="po-num">Total</th>
                                 <th class="po-num">− TDS</th><th class="po-num">Net Payout</th>
                             </tr>
                         </thead>
@@ -428,12 +503,12 @@
                                     <td class="po-num">₹ {{ inr($r['loan']) }}</td><td class="po-num">₹ {{ inr($r['pf']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['admin']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['commission']) }}</td><td class="po-num">₹ {{ inr($r['insurance']) }}</td>
-                                    <td class="po-num">₹ {{ inr($r['insurance_payout']) }}</td><td class="po-num">₹ {{ inr($r['gst']) }}</td>
+                                    <td class="po-num">₹ {{ inr($r['insurance_payout']) }}</td>
                                     <td class="po-num">₹ {{ inr($r['gross']) }}</td><td class="po-num">₹ {{ inr($r['tds']) }}</td>
                                     <td class="po-num"><strong>₹ {{ inr($r['total']) }}</strong></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="12" class="po-empty">No matched entries.</td></tr>
+                                <tr><td colspan="11" class="po-empty">No matched entries.</td></tr>
                             @endforelse
                         </tbody>
                         @if ($usr->count())
@@ -462,6 +537,32 @@
                     d.setMonth(d.getMonth() + 1);
                     d.setDate(d.getDate() - 1);
                     $('#rcTo').datepicker('setDate', d);
+                });
+
+                // One-click product correction: move the loan to the product the bank
+                // names, then re-run the reconciliation on the same (kept) file so the
+                // product tiers and payouts refresh.
+                $(document).on('click', '.rc-change-product', function () {
+                    var $btn = $(this);
+                    SHF.confirm({
+                        title: 'Change loan product?',
+                        html: 'Loan <strong>#' + $('<div>').text($btn.data('loan-number')).html() + '</strong> will move from <strong>' +
+                            $('<div>').text($btn.data('our-name')).html() + '</strong> to <strong>' +
+                            $('<div>').text($btn.data('product-name')).html() + '</strong>.<br>' +
+                            '<small style="color:#6b7280;">Its disbursement entries move too. The reconciliation re-runs on the same file.</small>',
+                        icon: 'question',
+                        confirmText: 'Yes, change product',
+                    }).then(function (ok) {
+                        if (!ok) { return; }
+                        $.post($btn.data('url'), {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            product_id: $btn.data('product-id'),
+                        }).done(function () {
+                            $('#rcRerunForm').trigger('submit');
+                        }).fail(function (xhr) {
+                            SHF.alert({ icon: 'error', text: (xhr.responseJSON && xhr.responseJSON.message) || 'Could not change the product.' });
+                        });
+                    });
                 });
             });
         </script>

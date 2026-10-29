@@ -15,13 +15,14 @@ class Product extends Model
     use HasAuditColumns, SoftDeletes;
 
     protected $fillable = [
-        'bank_id', 'name', 'code', 'is_active', 'is_pf_based', 'max_payout_amount',
+        'bank_id', 'name', 'code', 'bank_aliases', 'is_active', 'is_pf_based', 'max_payout_amount',
         'payout_cycle_start_day', 'payout_cycle_end_day', 'current_payout_version_id',
     ];
 
     protected function casts(): array
     {
         return [
+            'bank_aliases' => 'array',
             'is_active' => 'boolean',
             'is_pf_based' => 'boolean',
             'max_payout_amount' => 'decimal:2',
@@ -74,6 +75,39 @@ class Product extends Model
     public function locations(): BelongsToMany
     {
         return $this->belongsToMany(Location::class, 'location_product')->withTimestamps();
+    }
+
+    /**
+     * Normalize a product name for comparison with a bank statement: upper-cased,
+     * letters and digits only ("Home-Loan", "home loan" → "HOMELOAN").
+     */
+    public static function normalizeBankName(?string $name): string
+    {
+        return preg_replace('/[^A-Z0-9]/', '', strtoupper((string) $name)) ?? '';
+    }
+
+    /**
+     * Every normalized name the bank may use for this product: our name, our code
+     * and the configured bank aliases.
+     *
+     * @return array<int, string>
+     */
+    public function bankNameKeys(): array
+    {
+        return collect([$this->name, $this->code, ...($this->bank_aliases ?? [])])
+            ->map(fn ($n) => self::normalizeBankName($n))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** Whether a product name from a bank statement refers to this product. */
+    public function matchesBankName(?string $name): bool
+    {
+        $key = self::normalizeBankName($name);
+
+        return $key !== '' && in_array($key, $this->bankNameKeys(), true);
     }
 
     // Scopes

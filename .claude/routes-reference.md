@@ -236,7 +236,7 @@ CheckPermission is variadic: `permission:a,b` passes if the user holds EITHER. T
 | POST | `/loans/{loan}/disbursement` | `loans.disbursement.store` | LoanDisbursementController@store | manage_loan_stages |
 | POST | `/loans/{loan}/disbursement/complete` | `loans.disbursement.complete` | LoanDisbursementController@complete | manage_loan_stages |
 
-`store` saves tranche entries (partial totals allowed; stage auto-completes at the disbursement target). `complete` = manual "Mark as Fully Disbursed" for intentional under-disbursement.
+`store` saves tranche entries (partial totals allowed — any saved money completes the disbursement stage and opens OTC Clearance, 2026-10-28). `complete` = manual "Mark as Fully Disbursed" for intentional under-disbursement; also sets `loan_amount` = saved gross (entries + PF + admin).
 
 ### Disbursement Data correction tool (super_admin only)
 | Method | URI | Name | Controller |
@@ -397,6 +397,7 @@ All under the `permission:view_reports` group.
 | GET | `/payouts/reconcile` | `payouts.reconcile` | PayoutController@reconcileForm | view_reports |
 | GET | `/payouts/reconcile/template` | `payouts.reconcile.template` | PayoutController@reconcileTemplate | view_reports |
 | POST | `/payouts/reconcile` | `payouts.reconcile.run` | PayoutController@reconcile | view_reports |
+| POST | `/payouts/reconcile/loans/{loan}/product` | `payouts.reconcile.change-product` | PayoutController@changeLoanProduct (JSON) | view_reports + finalize_payout |
 
 **Payout Runs** is the payout system of record (aggregate, product-wide, date-range): pick a from/to → preview per-product tiers + per-user net → **Finalize Run** (snapshots rates/slabs onto the `payout_run_*` tables, stamps the covered tranches). See `PayoutRunService` in `.claude/services-reference.md`.
 

@@ -60,10 +60,6 @@
                     @if ($loan->bank_name) · {{ $loan->bank_name }}@endif
                     @if ($loan->product?->name) / {{ $loan->product->name }}@endif
                     <span class="badge {{ $statusTone }}" style="margin-left:8px;vertical-align:middle;">{{ $loan->status_label }}</span>
-                    @if ($loan->isPartiallyCompleted())
-                        <span class="badge badge-success" style="margin-left:6px;vertical-align:middle;"
-                            title="Partially disbursed — all current OTC settled, awaiting the next disbursement">Partially Completed</span>
-                    @endif
                 </div>
             </div>
             <div class="head-actions">

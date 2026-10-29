@@ -18,13 +18,17 @@ use Illuminate\Support\Facades\DB;
  * UpdateExcelDataAdmin::checkDatabaseData model on the current flat-product schema.
  *
  * For a date range, over tranches not yet covered by a run and dated in range:
- *  - AMOUNT-BASED product: product-wide disbursed volume picks the slab tier; each
- *    payout user earns their disbursed × that tier rate (capped by max_payout).
- *  - PF-BASED product: excluded from volume; aggregate PF (ex-GST) picks the slab
- *    tier; each user earns their PF × that rate (capped). One-time per loan.
- *  - INSURANCE: per loan, insurance × insurance rate, to the loan's payout user.
- *  - Per user: total = Σcommission + Σpf + Σinsurance; net = total − total×tds.
- * No GST deduction; admin charges never contribute. max_payout = -1 → uncapped.
+ *  - AMOUNT-BASED product: product-wide volume picks the slab tier; each payout
+ *    user earns their volume × that tier rate (capped by max_payout). Volume =
+ *    settled tranche amounts + the loan's one-time PF + admin AS ENTERED (once per
+ *    loan, with its first paid tranche) — matching the bank's loan_amount.
+ *  - PF-BASED product: excluded from volume; aggregate PF (excluding GST) picks the
+ *    slab tier; each user earns their PF × that rate (capped). One-time per loan.
+ *    No admin.
+ *  - INSURANCE: per loan, insurance × insurance rate — shown for information
+ *    only, never added to the payout.
+ *  - Per user: total = Σcommission + Σpf payout; net = total − total×tds.
+ * max_payout = -1 → uncapped.
  */
 class PayoutRunService
 {
@@ -123,7 +127,8 @@ class PayoutRunService
                 ]);
             }
 
-            // Stamp coverage: tranches (volume) + one-time PF/insurance (per loan).
+            // Stamp coverage: tranches (volume) + one-time PF / insurance / normal-product
+            // PF+admin charges (per loan).
             if (! empty($data['covered_entry_ids'])) {
                 foreach ($data['covered_entry_counts'] as $entryId => $counted) {
                     DisbursementEntry::whereKey($entryId)->update([
@@ -137,6 +142,9 @@ class PayoutRunService
             }
             if (! empty($data['insurance_paid_detail_ids'])) {
                 DisbursementDetail::whereIn('id', $data['insurance_paid_detail_ids'])->update(['insurance_payout_run_id' => $run->id]);
+            }
+            if (! empty($data['charges_paid_detail_ids'])) {
+                DisbursementDetail::whereIn('id', $data['charges_paid_detail_ids'])->update(['charges_payout_run_id' => $run->id]);
             }
 
             ActivityLog::log('finalize_payout_run', $run, [
@@ -191,6 +199,9 @@ class PayoutRunService
                 });
             })
             ->with(['loan.product.bank', 'loan.payoutUser.roles', 'loan.disbursement'])
+            // Earliest first, so a loan's one-time charges ride its first paid tranche.
+            ->orderByRaw(DisbursementEntry::TXN_DATE_SQL)
+            ->orderBy('id')
             ->get();
 
         $errors = [];
@@ -200,8 +211,10 @@ class PayoutRunService
         $coveredEntryCounts = []; // entry_id => amount counted (volume) or 0
         $pfLoansSeen = [];   // loan_id => true (PF counted once)
         $insLoansSeen = [];  // loan_id => true (insurance counted once)
+        $chargesLoansSeen = []; // loan_id => true (normal product PF + admin counted once)
         $pfPaidDetailIds = [];
         $insPaidDetailIds = [];
+        $chargesPaidDetailIds = [];
         $loanRows = [];      // "pid|uid|loan_id" => per-loan breakdown row
 
         foreach ($entries as $e) {
@@ -248,7 +261,7 @@ class PayoutRunService
                     'product_id' => $pid, 'payout_user_id' => $uid, 'loan_id' => $loan->id,
                     'loan_number' => $loan->loan_number, 'application_number' => $loan->application_number,
                     'account_numbers' => [], 'is_pf_based' => (bool) $product->is_pf_based,
-                    'volume' => 0, 'pf_base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
+                    'volume' => 0, 'charges' => 0, 'pf_base' => 0, 'insurance_base' => 0, 'settlement_date' => null,
                 ];
             }
             $loanRows[$loanKey]['volume'] += (int) $e->amount; // disbursed (always)
@@ -263,14 +276,26 @@ class PayoutRunService
 
             if (! $product->is_pf_based) {
                 // Amount-based: tranche amount feeds the product volume + the user's volume.
-                $products[$pid]['volume'] += (int) $e->amount;
-                $userProd[$key]['user_volume'] += (int) $e->amount;
-                $coveredEntryCounts[$e->id] = (int) $e->amount;
+                // The loan's one-time PF + admin (as entered) join it once, on the first
+                // paid tranche — the bank's loan_amount already includes them.
+                $counted = (int) $e->amount;
+                if ($header && empty($chargesLoansSeen[$loan->id]) && $header->charges_payout_run_id === null) {
+                    $chargesLoansSeen[$loan->id] = true;
+                    $charges = PayoutService::oneTimeChargesBase($header);
+                    if ($charges > 0) {
+                        $counted += $charges;
+                        $chargesPaidDetailIds[] = $header->id;
+                        $loanRows[$loanKey]['charges'] += $charges;
+                    }
+                }
+                $products[$pid]['volume'] += $counted;
+                $userProd[$key]['user_volume'] += $counted;
+                $coveredEntryCounts[$e->id] = $counted;
             } else {
                 // PF-based: the tranche amount is NOT volume; the loan's one-time PF (ex-GST)
                 // feeds the PF aggregate + the user's PF, counted once per loan.
                 if ($header && empty($pfLoansSeen[$loan->id]) && $header->pf_payout_run_id === null) {
-                    $pfBase = DisbursementDetail::exGst((int) $header->pf_amount, $rates['pf_gst']);
+                    $pfBase = PayoutService::pfBase($header, $rates['pf_gst']);
                     if ($pfBase > 0) {
                         $products[$pid]['pf_aggregate'] += $pfBase;
                         $userProd[$key]['user_pf'] += $pfBase;
@@ -281,7 +306,7 @@ class PayoutRunService
                 }
             }
 
-            // Insurance (any product), one-time per loan, to the loan's payout user.
+            // Insurance (any product), one-time per loan — information only.
             if ($header && empty($insLoansSeen[$loan->id]) && $header->insurance_payout_run_id === null && (int) $header->insurance_amount > 0) {
                 $userProd[$key]['insurance_base'] += (int) $header->insurance_amount;
                 $insLoansSeen[$loan->id] = true;
@@ -341,8 +366,9 @@ class PayoutRunService
                 $baseAmount = $pfBase;
                 $pfPayout = $this->applyRate($rate['type'], (float) $rate['value'], $pfBase, $cap);
             }
+            // Insurance payout is shown for information only — not part of the total.
             $insurancePayout = (int) round($up['insurance_base'] * $rates['insurance']);
-            $lineTotal = $commission + $pfPayout + $insurancePayout;
+            $lineTotal = $commission + $pfPayout;
 
             $lines[] = [
                 'product_id' => $pid,
@@ -383,7 +409,7 @@ class PayoutRunService
         $tdsTotal = 0;
         $netTotal = 0;
         foreach ($users as $uid => &$u) {
-            $total = $u['total_commission'] + $u['total_pf_payout'] + $u['total_insurance_payout'];
+            $total = $u['total_commission'] + $u['total_pf_payout'];
             $tds = (int) round($total * $rates['tds']);
             $u['total_payout'] = $total;
             $u['tds_amount'] = $tds;
@@ -395,19 +421,20 @@ class PayoutRunService
         unset($u);
 
         // Enrich the per-loan rows with the product name + each loan's payout share
-        // (base × the user's rate for that product + insurance). These are gross,
-        // pre-cap contributions — the max_payout cap is applied at the user×product
-        // line level, not per loan.
+        // (base × the user's rate for that product; insurance shown separately, info
+        // only). These are gross, pre-cap contributions — the max_payout cap is
+        // applied at the user×product line level, not per loan.
         foreach ($loanRows as &$lr) {
             $pctx = $productOut[$lr['product_id']] ?? null;
             $slab = $pctx['slab'] ?? null;
             $isConn = ($userProd[$lr['product_id'].'|'.$lr['payout_user_id']]['is_connector'] ?? false);
             $rate = $slab ? $slab->rateFor($isConn) : ['type' => 'percent', 'value' => 0.0];
-            $payoutBase = (int) ($lr['is_pf_based'] ? $lr['pf_base'] : $lr['volume']);
+            $payoutBase = (int) ($lr['is_pf_based'] ? $lr['pf_base'] : $lr['volume'] + $lr['charges']);
             $lr['product_name'] = $pctx['product_name'] ?? '';
             $lr['rate_applied'] = (float) $rate['value'];
-            $lr['payout'] = $this->applyRate($rate['type'], (float) $rate['value'], $payoutBase, null)
-                + (int) round($lr['insurance_base'] * $rates['insurance']);
+            $lr['payout_base'] = $payoutBase;
+            $lr['payout'] = $this->applyRate($rate['type'], (float) $rate['value'], $payoutBase, null);
+            $lr['insurance_payout'] = (int) round($lr['insurance_base'] * $rates['insurance']);
         }
         unset($lr);
 
@@ -427,6 +454,7 @@ class PayoutRunService
             'covered_entry_counts' => $coveredEntryCounts,
             'pf_paid_detail_ids' => array_values(array_unique($pfPaidDetailIds)),
             'insurance_paid_detail_ids' => array_values(array_unique($insPaidDetailIds)),
+            'charges_paid_detail_ids' => array_values(array_unique($chargesPaidDetailIds)),
             'can_finalize' => ! empty($lines),
         ];
     }
@@ -434,8 +462,9 @@ class PayoutRunService
     /**
      * First slab whose high_amount covers the base (smallest such), falling back to
      * the top slab when the base exceeds every bracket — matches the legacy engine.
+     * Public so bank reconciliation picks the tier exactly like a payout run.
      */
-    private function matchSlab($version, int $base): ?ProductPayoutSlab
+    public function matchSlab($version, int $base): ?ProductPayoutSlab
     {
         $slabs = $version->payoutSlabs;
         if ($slabs->isEmpty()) {

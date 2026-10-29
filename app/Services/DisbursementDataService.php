@@ -492,7 +492,11 @@ class DisbursementDataService
         $gross = $net + (int) $charges['pf_amount'] + (int) $charges['admin_charges'];
         $allSettled = collect($payload)->every(fn ($e) => in_array($e['otc_status'] ?? 'pending', ['cleared', 'skipped'], true));
 
-        return ($gross >= $target && $allSettled) ? 'completed' : 'partial_disbursed';
+        if (! $allSettled) {
+            return 'partial_disbursed';
+        }
+
+        return $gross >= $target ? 'completed' : 'partial_completed';
     }
 
     private function money(mixed $v): string

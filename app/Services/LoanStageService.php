@@ -1721,6 +1721,13 @@ class LoanStageService
         $mainAssignments = $loan->stageAssignments()->mainStages()->get();
         $total = $mainAssignments->count();
         $completed = $mainAssignments->whereIn('status', ['completed', 'skipped'])->count();
+        // A partially disbursed / partially completed loan is not finished even when
+        // every stage is closed (OTC Clearance reopens with the next cheque) — don't
+        // count OTC Clearance as done, so progress stays below 100% until fully disbursed.
+        if (in_array($loan->status, LoanDetail::PARTIAL_STATUSES, true)
+            && in_array($mainAssignments->firstWhere('stage_key', 'otc_clearance')?->status, ['completed', 'skipped'], true)) {
+            $completed--;
+        }
         $percentage = $total > 0 ? round(($completed / $total) * 100, 2) : 0;
 
         $snapshot = $loan->stageAssignments()->get()->map(fn ($sa) => [

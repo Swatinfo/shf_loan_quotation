@@ -39,10 +39,12 @@ How loans move through the 12-stage workflow. Written for users (BDH, BM, adviso
 > **Parallel Rate & PF mode** — if the site has `OPEN_RATE_PF_PARALLEL=1`, Rate & PF opens immediately after BSM/OSV alongside Legal / Technical / Sanction Decision instead of waiting for them to finish. Sanction Letter then waits for both the parallel group and Rate & PF to complete (whichever finishes second triggers it).
 6. **KFS** — bank issues the Key Facts Statement. Single-phase.
 7. **E-Sign & eNACH** — four phases coordinating bank → customer → office → owner.
-8. **Disbursement** — funds released.
-   - If **fund transfer (NEFT/RTGS)**: loan is marked completed immediately; OTC is skipped.
-   - If **cheque**: OTC Clearance opens for tracking cheque handover.
-9. **OTC Clearance** — office staff logs the cheque handover; loan completes.
+8. **Disbursement** — funds released, in one or more entries (cheque and/or NEFT).
+   - Saving any amount completes this stage and opens OTC Clearance. If the total is below the sanctioned amount the form warns first ("Full amount not disbursed").
+   - **NEFT/RTGS** entries need no handover (settled at once); **cheque** entries wait for their OTC handover.
+   - More entries can be added later from the same form (the stage card shows **Add / Manage Disbursement Entries**). A new pending cheque reopens OTC Clearance.
+   - **Mark as Fully Disbursed** closes a loan that will intentionally stay below the sanctioned amount; it also updates the loan amount to the total disbursed (entries + PF + admin).
+9. **OTC Clearance** — office staff log each cheque handover. When every entry is settled: the loan **completes** if the full amount is disbursed (or it was marked fully disbursed); otherwise it becomes **Partially Completed** and waits for the next disbursement.
 
 ## What you see on the loan page
 
@@ -100,7 +102,9 @@ All status changes are logged and require a reason (except reactivation).
 
 ## Completion outcomes
 
-- **Completed** — loan reached final stage (OTC Clearance for cheque; Disbursement for fund transfer).
+- **Completed** — fully disbursed (or marked fully disbursed) and every cheque handed over.
+- **Partially Disbursed** — some money disbursed; at least one cheque handover still pending.
+- **Partially Completed** — every handover done, but the loan is below its sanctioned amount and awaits the next disbursement.
 - **Rejected** — rejected from any stage with a reason. Rejected at Sanction Decision is most common.
 - **Cancelled** — admin-cancelled for non-rejection reasons (customer withdrew, etc.).
 - **On Hold** — temporarily paused; can resume.

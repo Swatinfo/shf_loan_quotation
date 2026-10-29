@@ -2,20 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Bank;
-use App\Models\DisbursementDetail;
 use App\Models\DisbursementEntry;
 use App\Models\LoanDetail;
 use App\Models\LoanPayout;
 use App\Models\Product;
 use App\Services\PayoutConfigService;
+use App\Services\PayoutRunService;
 use App\Services\PayoutService;
 use App\Services\XlsxExportService;
 use App\Services\XlsxImportService;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PayoutController extends Controller
 {
@@ -23,9 +29,27 @@ class PayoutController extends Controller
      * The bank-statement columns we export/import for reconciliation. `loan_acc_no`
      * and `application_number` are BOTH identifiers — a row matches our loan on
      * either one (plus a customer-name fallback), so the bank can fill whichever
-     * their statement carries (or both).
+     * their statement carries (or both). There is no admin column: the bank's
+     * `disbursed_amount` already includes PF + admin. `pf_amount` (excluding GST) is
+     * what a PF-based product is reconciled on. An old file that still carries an
+     * `admin_charges` column is read fine — the column is simply ignored — and an
+     * old `loan_amount` header is read as `disbursed_amount`.
+     * `product` is a CHECK, not a match key: the bank's product name is compared
+     * with our loan's product (name, code or a configured bank alias).
      */
-    private const COLUMNS = ['application_number', 'loan_acc_no', 'customer_name', 'cheque_number', 'disbursement_date', 'loan_amount', 'pf_amount', 'admin_charges', 'insurance_amount'];
+    private const COLUMNS = ['application_number', 'loan_acc_no', 'customer_name', 'product', 'cheque_number', 'disbursement_date', 'disbursed_amount', 'pf_amount', 'insurance_amount'];
+
+    /** Where an uploaded statement is kept so the page can re-run without re-uploading. */
+    private const UPLOAD_DIR = 'reconcile-uploads';
+
+    /** Kept uploads older than this (hours) are deleted on the next upload. */
+    private const UPLOAD_TTL_HOURS = 24;
+
+    /**
+     * PF-based reconciliation tolerance (₹): our PF excluding GST is back-calculated
+     * and rounded, so a difference of ₹1 or less still counts as a match.
+     */
+    private const PF_TOLERANCE = 1;
 
     /**
      * D6 — user-wise payout report (finalized loan_payouts), grouped by cycle.
@@ -101,7 +125,7 @@ class PayoutController extends Controller
             'payout-reconciliation-template-'.now()->format('d-m-Y_H-i-s').'.xlsx',
             self::COLUMNS,
             [], // headers only — blank format
-            [5 => XlsxExportService::TYPE_NUMBER, 6 => XlsxExportService::TYPE_NUMBER, 7 => XlsxExportService::TYPE_NUMBER, 8 => XlsxExportService::TYPE_NUMBER],
+            [6 => XlsxExportService::TYPE_NUMBER, 7 => XlsxExportService::TYPE_NUMBER, 8 => XlsxExportService::TYPE_NUMBER],
         );
     }
 
@@ -113,13 +137,26 @@ class PayoutController extends Controller
             'to' => 'required|date',
             'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'integer|exists:products,id',
-            'file' => 'required|file|mimes:xlsx|max:10240',
+            'file' => 'required_without:upload_token|file|mimes:xlsx|max:10240',
+            'upload_token' => 'nullable|uuid',
         ]);
 
+        // A fresh upload is kept (per user) so the result page can re-run on the same
+        // file — e.g. right after a product correction — without uploading it again.
+        [$uploadToken, $uploadPath] = $request->hasFile('file')
+            ? $this->keepUpload($request->file('file'), $request->user()->id)
+            : [$request->upload_token, $this->keptUploadPath($request->upload_token, $request->user()->id)];
+        if ($uploadPath === null) {
+            return redirect()->route('payouts.reconcile')
+                ->with('error', 'The uploaded statement has expired — please upload the file again.');
+        }
+
         $productIds = array_map('intval', $request->input('product_ids', []));
-        $excelRows = app(XlsxImportService::class)->readAssoc($request->file('file')->getRealPath());
+        $excelRows = app(XlsxImportService::class)->readAssoc($uploadPath);
         $our = $this->ourEntries((int) $request->bank_id, $request->from, $request->to, $productIds);
         $payoutService = app(PayoutService::class);
+        // Every product of the bank — the Excel `product` column may name any of them.
+        $bankProducts = Product::where('bank_id', $request->bank_id)->get()->keyBy('id');
 
         // ---- Uploaded rows: the bank files ONE row per loan. Index each by its
         // identifier (A/c or application number) and by customer name. Dates may
@@ -136,7 +173,9 @@ class PayoutController extends Controller
                 '_date' => $date?->toDateString(),
                 '_date_error' => $dateError,
                 '_raw_date' => (string) ($r['disbursement_date'] ?? ''),
-                '_amount' => (int) round((float) ($r['loan_amount'] ?? 0)),
+                // `loan_amount` = the column's name in files made before the rename.
+                '_amount' => (int) round((float) ($r['disbursed_amount'] ?? $r['loan_amount'] ?? 0)),
+                '_pf' => (int) round((float) ($r['pf_amount'] ?? 0)),
                 '_insurance' => ($ins !== null && $ins !== '' && is_numeric($ins)) ? (int) round((float) $ins) : null,
             ];
             // Index the row under BOTH its A/c number and its application number, so
@@ -166,6 +205,25 @@ class PayoutController extends Controller
                 $groups[$lid]['accounts'][] = $acc;
             }
         }
+
+        // The one-time PF / admin / insurance belong to each loan's FIRST settled
+        // tranche overall — so a later period's tranche never re-counts them.
+        $carriers = $this->carrierEntryIds(array_keys($groups));
+        foreach ($groups as $lid => $g) {
+            $groups[$lid]['carrier_id'] = $carriers[$lid] ?? null;
+        }
+
+        // Same method as Payout Runs: rates + product version as of the window END
+        // date, and each product's slab picked from the TOTAL of all its loans in the
+        // window (every user), summing each loan's payout base (entries + PF + admin,
+        // or PF excluding GST for a PF-based product). That one tier rate then applies
+        // to every loan of the product.
+        $toDate = CarbonImmutable::parse($request->to)->endOfDay();
+        $rates = app(PayoutConfigService::class)->ratesAsOf($toDate);
+        foreach ($groups as $lid => $g) {
+            $groups[$lid]['side'] = $this->loanSide($groups[$lid], $rates['pf_gst']);
+        }
+        $tiers = $this->productTiers($groups, $toDate);
 
         // ---- Match each loan to an uploaded row by IDENTIFIER ONLY:
         // A/c # → application # → customer name. Amount/date are compared after
@@ -197,7 +255,7 @@ class PayoutController extends Controller
             }
 
             if ($idx === null) {
-                $dbOnly[] = $this->loanSide($g);
+                $dbOnly[] = $g['side'];
 
                 continue;
             }
@@ -212,16 +270,23 @@ class PayoutController extends Controller
         foreach ($matched as $i => $m) {
             $g = $m['group'];
             $ex = $excel[$m['excel_idx']];
-            $ourSide = $this->loanSide($g);
-            $calc = $this->loanCalc($g['entries'], $payoutService, $ex['_insurance']);
+            $ourSide = $g['side'];
+            $calc = $this->loanCalc($ourSide, $tiers[$g['loan']?->product_id] ?? null, $g['loan'], $ex['_insurance'], $rates, $payoutService);
 
-            $amountFlag = $ourSide['amount'] !== $ex['_amount'];
+            // Normal product: our entries + PF + admin vs the bank's disbursed_amount.
+            // PF-based: our PF excluding GST vs the bank's pf_amount (±₹1).
+            $ex['_compare'] = $ourSide['is_pf_based'] ? $ex['_pf'] : $ex['_amount'];
+            $amountFlag = $ourSide['is_pf_based']
+                ? abs($ourSide['amount'] - $ex['_pf']) > self::PF_TOLERANCE
+                : $ourSide['amount'] !== $ex['_amount'];
             // Date mismatch when unreadable, or the bank's date is not one of our
             // tranche settlement dates.
             $dateFlag = $ex['_date_error']
                 || ($ex['_date'] !== null && ! in_array($ex['_date'], $ourSide['settlement_dates'], true));
             $insFlag = $ex['_insurance'] !== null && $ex['_insurance'] !== $ourSide['insurance'];
-            $hasDisc = $amountFlag || $dateFlag || $insFlag;
+            $product = $this->productCheck($ex['product'] ?? null, $g['loan']?->product, $bankProducts);
+            $productFlag = in_array($product['status'], ['mismatch', 'unknown'], true);
+            $hasDisc = $amountFlag || $dateFlag || $insFlag || $productFlag;
 
             if ($hasDisc) {
                 $discrepancyCount++;
@@ -236,7 +301,8 @@ class PayoutController extends Controller
                 'our' => $ourSide,
                 'excel' => $ex,
                 'calc' => $calc,
-                'flags' => ['amount' => $amountFlag, 'date' => $dateFlag, 'insurance' => $insFlag],
+                'product' => $product,
+                'flags' => ['amount' => $amountFlag, 'date' => $dateFlag, 'insurance' => $insFlag, 'product' => $productFlag],
                 'has_discrepancy' => $hasDisc,
             ];
         }
@@ -245,10 +311,11 @@ class PayoutController extends Controller
 
         // "In Excel, not in DB" must mean the record truly does NOT exist. A bank
         // row that didn't match an in-window loan but whose identifier DOES exist in
-        // our DB (same bank + products, any date) is a data/period mismatch — e.g.
-        // settled outside the selected window, or different amount/date — so we can't
-        // pay it, but it is NOT "missing". Surface those separately.
-        $dbIndex = $this->dbIdentifierIndex((int) $request->bank_id, $productIds);
+        // our DB (same bank, ANY product, any date) is a data/period mismatch — e.g.
+        // settled outside the selected window, logged under another product, or
+        // different amount/date — so we can't pay it, but it is NOT "missing".
+        // Surface those separately.
+        $dbIndex = $this->dbIdentifierIndex((int) $request->bank_id);
         $matchedLoanIds = collect($matched)->map(fn ($m) => $m['loan']?->id)->filter()->all();
         $fromStr = Carbon::parse($request->from)->toDateString();
         $toStr = Carbon::parse($request->to)->toDateString();
@@ -263,8 +330,11 @@ class PayoutController extends Controller
                 : (($app !== '' && isset($dbIndex['acc'][$app])) ? $dbIndex['acc'][$app]
                 : (($nm !== '' && isset($dbIndex['name'][$nm])) ? $dbIndex['name'][$nm] : null));
             if ($hit) {
-                $rc = $this->mismatchReason($hit, $matchedLoanIds, $fromStr, $toStr);
-                $excelInDb[] = ['excel' => $r, 'loan' => $hit, 'reason' => $rc['reason'], 'category' => $rc['category']];
+                $rc = $this->mismatchReason($hit, $matchedLoanIds, $fromStr, $toStr, $productIds);
+                $excelInDb[] = [
+                    'excel' => $r, 'loan' => $hit, 'reason' => $rc['reason'], 'category' => $rc['category'],
+                    'product' => $this->productCheck($r['product'] ?? null, $bankProducts->get($hit['product_id']), $bankProducts),
+                ];
             } else {
                 $excelOnly[] = $r;
             }
@@ -289,7 +359,6 @@ class PayoutController extends Controller
                 'commission' => $sumCalc($g, 'commission'),
                 'insurance' => $sumCalc($g, 'insurance'),
                 'insurance_payout' => $sumCalc($g, 'insurance_payout'),
-                'gst' => $sumCalc($g, 'gst'),
                 'gross' => $sumCalc($g, 'gross'),
                 'tds' => $sumCalc($g, 'tds'),
                 'total' => $sumCalc($g, 'net'),
@@ -305,7 +374,6 @@ class PayoutController extends Controller
                 'commission' => $sumCalc($g, 'commission'),
                 'insurance' => $sumCalc($g, 'insurance'),
                 'insurance_payout' => $sumCalc($g, 'insurance_payout'),
-                'gst' => $sumCalc($g, 'gst'),
                 'gross' => $sumCalc($g, 'gross'),
                 'tds' => $sumCalc($g, 'tds'),
                 'total' => $sumCalc($g, 'net'),
@@ -321,10 +389,14 @@ class PayoutController extends Controller
                 'excel_only' => $excelOnly,
                 'excel_in_db' => $excelInDb,
                 'total_payout' => $totalPayout,
+                'tiers' => array_values($tiers),
                 'by_product' => $byProduct,
                 'by_user' => $byUser,
                 'discrepancy_count' => $discrepancyCount,
                 'date_error_count' => $dateErrorCount,
+                'product_issue_count' => collect($matched)->where('flags.product', true)->count()
+                    + collect($excelInDb)->whereIn('product.status', ['mismatch', 'unknown'])->count(),
+                'upload_token' => $uploadToken,
             ],
             'canFinalizePayout' => $request->user()->hasPermission('finalize_payout'),
             'pageKey' => 'reports',
@@ -342,7 +414,7 @@ class PayoutController extends Controller
         return DisbursementEntry::query()
             ->with([
                 'loan:id,loan_number,application_number,customer_name,bank_id,product_id,payout_user_id',
-                'loan.bank:id,name', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement',
+                'loan.bank:id,name', 'loan.product', 'loan.payoutUser.roles', 'loan.disbursement',
             ])
             ->whereHas('loan', function ($q) use ($bankId, $productIds) {
                 $q->where('bank_id', $bankId)
@@ -362,33 +434,35 @@ class PayoutController extends Controller
     }
 
     /**
-     * Identifier → loan-info index over ALL loans for a bank (+ optional products),
-     * ANY status, ANY date — including loans with no disbursement entries. Used to
+     * Identifier → loan-info index over ALL loans for a bank (every product — a loan
+     * logged under the wrong product is still found), ANY status, ANY date —
+     * including loans with no disbursement entries. Used to
      * tell "truly not in our DB" apart from "exists but didn't match this period".
      * Keyed (normalized) by A/c number + application number (→ 'acc') and by customer
      * name (→ 'name').
      *
-     * @param  array<int,int>  $productIds
      * @return array{acc: array<string, array<string,mixed>>, name: array<string, array<string,mixed>>}
      */
-    private function dbIdentifierIndex(int $bankId, array $productIds): array
+    private function dbIdentifierIndex(int $bankId): array
     {
-        // Start from the LOANS themselves (bank + products, ANY status) so a loan with
+        // Start from the LOANS themselves (bank, ANY product/status) so a loan with
         // NO disbursement entries — e.g. an on-hold / cancelled loan the bank lists —
         // is still recognised as "exists in our DB" by its application number / name.
         $loans = LoanDetail::query()
             ->where('bank_id', $bankId)
-            ->when($productIds, fn ($q) => $q->whereIn('product_id', $productIds))
-            ->with('product:id,name')
+            ->with(['product:id,name,is_pf_based', 'disbursement'])
             ->get(['id', 'loan_number', 'application_number', 'customer_name', 'product_id', 'status']);
 
         $byLoan = [];
+        $headers = [];
         foreach ($loans as $loan) {
             $byLoan[$loan->id] = [
                 'loan_id' => $loan->id, 'loan_number' => $loan->loan_number, 'application_number' => $loan->application_number,
-                'customer_name' => $loan->customer_name, 'product_name' => $loan->product?->name, 'status' => $loan->status,
+                'customer_name' => $loan->customer_name, 'product_id' => $loan->product_id, 'product_name' => $loan->product?->name, 'status' => $loan->status,
+                'is_pf_based' => (bool) $loan->product?->is_pf_based,
                 'accounts' => [], 'amount' => 0, 'settlement_dates' => [], 'pending' => false,
             ];
+            $headers[$loan->id] = $loan->disbursement;
         }
 
         // Enrich with tranche data: accounts from ANY tranche (so a loan is found by A/c
@@ -422,6 +496,19 @@ class PayoutController extends Controller
             }
         }
 
+        // Same compared figure as the matched table: entries + PF + admin (normal),
+        // or PF excluding GST (PF-based).
+        $pfGst = app(PayoutConfigService::class)->ratesAsOf(CarbonImmutable::now())['pf_gst'];
+        foreach ($byLoan as $lid => $info) {
+            $header = $headers[$lid] ?? null;
+            if (! $header) {
+                continue;
+            }
+            $byLoan[$lid]['amount'] = $info['is_pf_based']
+                ? PayoutService::pfBase($header, $pfGst)
+                : $info['amount'] + PayoutService::oneTimeChargesBase($header);
+        }
+
         $accIndex = [];
         $nameIndex = [];
         foreach ($byLoan as $info) {
@@ -453,9 +540,10 @@ class PayoutController extends Controller
      *
      * @param  array<string,mixed>  $loan  from dbIdentifierIndex()
      * @param  array<int,int>  $matchedLoanIds
+     * @param  array<int,int>  $productIds  the products picked for this reconciliation
      * @return array{category:string, reason:string}
      */
-    private function mismatchReason(array $loan, array $matchedLoanIds, string $from, string $to): array
+    private function mismatchReason(array $loan, array $matchedLoanIds, string $from, string $to, array $productIds = []): array
     {
         if (in_array($loan['loan_id'] ?? null, $matchedLoanIds, true)) {
             return ['category' => 'difference', 'reason' => 'Already reconciled under another account number of the same loan'];
@@ -465,6 +553,10 @@ class PayoutController extends Controller
             $label = LoanDetail::STATUS_LABELS[$loan['status']]['label'] ?? ucfirst((string) $loan['status']);
 
             return ['category' => 'status', 'reason' => 'Loan is '.$label.' — not payable'];
+        }
+        // Logged under a product that isn't part of this reconciliation.
+        if ($productIds && ! in_array($loan['product_id'] ?? null, $productIds, true)) {
+            return ['category' => 'other_product', 'reason' => 'Logged under '.($loan['product_name'] ?? 'another product').' — not one of the selected products'];
         }
         if (empty($loan['settlement_dates'])) {
             return $loan['pending']
@@ -480,6 +572,131 @@ class PayoutController extends Controller
         }
 
         return ['category' => 'other', 'reason' => 'Exists in our DB but did not match this period'];
+    }
+
+    /**
+     * One-click product correction from the reconciliation screen: the bank's
+     * statement names a different product than the one the loan was logged under.
+     * Moves the loan (and its active tranches, incl. the entries JSON) to that
+     * product of the SAME bank. Refused once any of the loan's money is in a payout
+     * run (or a legacy finalized payout) — a paid run must stay consistent.
+     */
+    public function changeLoanProduct(Request $request, LoanDetail $loan): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|integer|exists:products,id',
+        ]);
+
+        $product = Product::findOrFail($validated['product_id']);
+        if ((int) $product->bank_id !== (int) $loan->bank_id) {
+            return response()->json(['success' => false, 'message' => 'That product belongs to another bank.'], 422);
+        }
+        if ((int) $product->id === (int) $loan->product_id) {
+            return response()->json(['success' => false, 'message' => 'The loan is already under '.$product->name.'.'], 422);
+        }
+
+        $header = $loan->disbursement;
+        $paid = DisbursementEntry::where('loan_id', $loan->id)
+            ->where(fn ($q) => $q->whereNotNull('payout_run_id')->orWhereNotNull('loan_payout_id'))
+            ->exists()
+            || LoanPayout::where('loan_id', $loan->id)->exists()
+            || ($header && ($header->pf_payout_run_id || $header->insurance_payout_run_id || $header->charges_payout_run_id));
+        if ($paid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Loan #'.$loan->loan_number.' is already in a payout run — its product can\'t be changed here.',
+            ], 422);
+        }
+
+        $oldProduct = $loan->product;
+        DB::transaction(function () use ($loan, $product, $header) {
+            $loan->update(['product_id' => $product->id]);
+
+            DisbursementEntry::where('loan_id', $loan->id)->where('is_active', true)
+                ->update(['product_id' => $product->id, 'product_name' => $product->name]);
+
+            if ($header && ! empty($header->entries)) {
+                $header->update(['entries' => array_map(
+                    fn (array $e) => array_merge($e, ['product_id' => $product->id, 'product_name' => $product->name]),
+                    $header->entries,
+                )]);
+            }
+        });
+
+        ActivityLog::log('change_loan_product', $loan, [
+            'loan_number' => $loan->loan_number,
+            'source' => 'reconcile',
+            'old_product_id' => $oldProduct?->id,
+            'old_product' => $oldProduct?->name,
+            'new_product_id' => $product->id,
+            'new_product' => $product->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Loan #'.$loan->loan_number.' moved from '.($oldProduct?->name ?? '—').' to '.$product->name.'.',
+        ]);
+    }
+
+    /**
+     * Compare the bank's product name (Excel `product` column) with our loan's
+     * product, within the bank's products (name, code or a configured bank alias).
+     *
+     *   ok       — the bank's name is our product
+     *   mismatch — the bank's name is ANOTHER product of the bank (`target` = it)
+     *   unknown  — the name is none of the bank's products (add it as an alias)
+     *   blank    — no product in the file (old format / empty cell): not checked
+     *
+     * @param  Collection<int, Product>  $bankProducts
+     * @return array{status:string, excel:string, target_id:?int, target_name:?string}
+     */
+    private function productCheck(mixed $excelName, ?Product $ours, Collection $bankProducts): array
+    {
+        $excel = trim((string) $excelName);
+        $check = ['status' => 'blank', 'excel' => $excel, 'target_id' => null, 'target_name' => null];
+        if (Product::normalizeBankName($excel) === '') {
+            return $check;
+        }
+        if ($ours?->matchesBankName($excel)) {
+            return ['status' => 'ok'] + $check;
+        }
+
+        $targets = $bankProducts->filter(fn (Product $p) => $p->matchesBankName($excel));
+        if ($targets->count() !== 1) {
+            return ['status' => 'unknown'] + $check;
+        }
+
+        return ['status' => 'mismatch', 'target_id' => $targets->first()->id, 'target_name' => $targets->first()->name] + $check;
+    }
+
+    /**
+     * Keep an uploaded statement for this user and return [token, absolute path].
+     * Older kept files (past the TTL) are cleared at the same time.
+     *
+     * @return array{0:string, 1:string}
+     */
+    private function keepUpload(UploadedFile $file, int $userId): array
+    {
+        $disk = Storage::disk('local');
+        $cutoff = now()->subHours(self::UPLOAD_TTL_HOURS)->getTimestamp();
+        foreach ($disk->files(self::UPLOAD_DIR) as $old) {
+            if ($disk->lastModified($old) < $cutoff) {
+                $disk->delete($old);
+            }
+        }
+
+        $token = (string) Str::uuid();
+        $disk->putFileAs(self::UPLOAD_DIR, $file, $userId.'_'.$token.'.xlsx');
+
+        return [$token, $disk->path(self::UPLOAD_DIR.'/'.$userId.'_'.$token.'.xlsx')];
+    }
+
+    /** Absolute path of this user's kept upload, or null when it no longer exists. */
+    private function keptUploadPath(?string $token, int $userId): ?string
+    {
+        $relative = self::UPLOAD_DIR.'/'.$userId.'_'.$token.'.xlsx';
+
+        return $token && Storage::disk('local')->exists($relative) ? Storage::disk('local')->path($relative) : null;
     }
 
     /**
@@ -507,22 +724,68 @@ class PayoutController extends Controller
     }
 
     /**
-     * The loan side of a reconciliation group: distinct A/c numbers, total
-     * disbursed (Σ tranches), the tranche count/amounts, the distinct settlement
-     * dates, and the loan's one-time insurance (header).
+     * Each loan's carrier tranche: its FIRST settled active tranche overall
+     * (earliest transaction date, tie = lowest id), regardless of the selected
+     * window. The one-time PF / admin / insurance ride only this tranche.
      *
-     * @param  array{loan: ?LoanDetail, entries: Collection, accounts: array<int, string>}  $g
-     * @return array{loan: ?LoanDetail, accounts: array<int,string>, amount:int, tranche_count:int, tranche_amounts:array<int,int>, settlement_dates:array<int,string>, insurance:int}
+     * @param  array<int,int>  $loanIds
+     * @return array<int,int> loan_id => carrier entry id
      */
-    private function loanSide(array $g): array
+    private function carrierEntryIds(array $loanIds): array
+    {
+        if (! $loanIds) {
+            return [];
+        }
+
+        $carriers = [];
+        DisbursementEntry::query()
+            ->whereIn('loan_id', $loanIds)
+            ->where('is_active', true)
+            ->whereNotNull('otc_handover_date')
+            ->orderByRaw(DisbursementEntry::TXN_DATE_SQL)
+            ->orderBy('id')
+            ->get(['id', 'loan_id'])
+            ->each(function (DisbursementEntry $e) use (&$carriers) {
+                $carriers[$e->loan_id] ??= $e->id;
+            });
+
+        return $carriers;
+    }
+
+    /**
+     * The loan side of a reconciliation group: distinct A/c numbers, the figure
+     * compared with the bank (also the loan's payout base), the tranche
+     * count/amounts, the distinct settlement dates, and the loan's one-time
+     * insurance (header).
+     *
+     * Compared figure (`amount`) — the one-time parts count only when the loan's
+     * carrier tranche is in this group:
+     *   - normal product: Σ tranches + PF + admin (as entered) vs Excel disbursed_amount
+     *   - PF-based:       PF excluding GST                      vs Excel pf_amount
+     *
+     * @param  array{loan: ?LoanDetail, entries: Collection, accounts: array<int, string>, carrier_id?: ?int}  $g
+     * @return array{loan: ?LoanDetail, accounts: array<int,string>, is_pf_based:bool, carries_one_time:bool, amount:int, disbursed:int, charges:int, pf_ex_gst:int, tranche_count:int, tranche_amounts:array<int,int>, settlement_dates:array<int,string>, insurance:int}
+     */
+    private function loanSide(array $g, float $pfGst): array
     {
         $entries = $g['entries'];
         $header = $g['loan']?->disbursement;
+        $isPf = (bool) $g['loan']?->product?->is_pf_based;
+        $carries = $header && $entries->contains('id', $g['carrier_id'] ?? null);
+        $disbursed = (int) $entries->sum('amount');
+
+        $charges = ($carries && ! $isPf) ? PayoutService::oneTimeChargesBase($header) : 0;
+        $pfExGst = ($carries && $isPf) ? PayoutService::pfBase($header, $pfGst) : 0;
 
         return [
             'loan' => $g['loan'],
             'accounts' => $g['accounts'],
-            'amount' => (int) $entries->sum('amount'),
+            'is_pf_based' => $isPf,
+            'carries_one_time' => $carries,
+            'amount' => $isPf ? $pfExGst : $disbursed + $charges,
+            'disbursed' => $disbursed,
+            'charges' => $charges,
+            'pf_ex_gst' => $pfExGst,
             'tranche_count' => $entries->count(),
             'tranche_amounts' => $entries->map(fn ($e) => (int) $e->amount)->values()->all(),
             'settlement_dates' => $entries->map(fn ($e) => optional($e->transactionDate())->toDateString())
@@ -532,122 +795,81 @@ class PayoutController extends Controller
     }
 
     /**
-     * Loan-level payout: sum the per-tranche {@see entryCalc} breakdowns. The
-     * one-time PF/Admin/Insurance ride the loan's carrier tranche (earliest
-     * settled, tie = lowest id); the uploaded insurance overrides the DB header
-     * on that carrier (null = keep DB).
+     * Each product's payout tier for the window, exactly like a payout run: the
+     * aggregate is the sum of every in-window loan's payout base (all users,
+     * matched or not), and the slab is the one covering that aggregate in the
+     * product version in force on the window end date.
      *
-     * @param  Collection<int, DisbursementEntry>  $entries
-     * @return array{ok:bool, base:int, commission:int, pf:int, admin:int, insurance:int, insurance_payout:int, gst:int, gross:int, tds:int, net:int}
+     * @param  array<int, array<string, mixed>>  $groups  keyed by loan id, each with 'side'
+     * @return array<int, array<string, mixed>> keyed by product id
      */
-    private function loanCalc($entries, PayoutService $svc, ?int $excelInsurance): array
+    private function productTiers(array $groups, CarbonImmutable $toDate): array
     {
-        $carrier = $entries->sortBy(fn ($e) => (optional($e->transactionDate())->format('Ymd') ?? '99999999')
-            .str_pad((string) $e->id, 10, '0', STR_PAD_LEFT))->first();
-
-        $agg = ['ok' => true, 'base' => 0, 'commission' => 0, 'pf' => 0, 'admin' => 0,
-            'insurance' => 0, 'insurance_payout' => 0, 'gst' => 0, 'gross' => 0, 'tds' => 0, 'net' => 0];
-
-        foreach ($entries as $e) {
-            $carry = $carrier && $e->id === $carrier->id;
-            $c = $this->entryCalc($e, [], $svc, $carry, $carry ? $excelInsurance : null);
-            if (! $c['ok']) {
-                $agg['ok'] = false;
+        $tiers = [];
+        foreach ($groups as $g) {
+            $product = $g['loan']?->product;
+            if (! $product) {
+                continue;
             }
-            foreach (['base', 'commission', 'pf', 'admin', 'insurance', 'insurance_payout', 'gst', 'gross', 'tds', 'net'] as $k) {
-                $agg[$k] += $c[$k];
-            }
+            $tiers[$product->id] ??= ['product' => $product, 'aggregate' => 0, 'loans' => 0];
+            $tiers[$product->id]['aggregate'] += $g['side']['amount'];
+            $tiers[$product->id]['loans']++;
         }
 
-        return $agg;
-    }
-
-    /**
-     * Full payout breakdown for one matched entry (for the reconcile table +
-     * summaries). Commission is the slab rate on the tranche's disbursed amount
-     * (or, for a PF-based product, on the loan's one-time PF base). The one-time
-     * PF/Admin/Insurance only ride the loan's carrier tranche ($carryOneTime).
-     * Insurance is taken from the uploaded sheet ($excelInsurance) when provided,
-     * else from our DB header. Zeros + ok=false when no product/version/slab resolves.
-     *
-     * @param  array<string, mixed>  $excel
-     * @return array{ok:bool, base:int, rate_type:?string, rate_value:float, cap:?int, commission:int, pf:int, admin:int, insurance:int, insurance_payout:int, gst:int, gross:int, tds:int, net:int}
-     */
-    private function entryCalc(DisbursementEntry $e, array $excel, PayoutService $svc, bool $carryOneTime, ?int $excelInsurance = null): array
-    {
-        $loan = $e->loan;
-        $header = $loan?->disbursement;
-        $pfIncl = $carryOneTime ? (int) ($header->pf_amount ?? 0) : 0;
-        $adminIncl = $carryOneTime ? (int) ($header->admin_charges ?? 0) : 0;
-        $insurance = $carryOneTime ? ($excelInsurance ?? (int) ($header->insurance_amount ?? 0)) : 0;
-
-        $zero = [
-            'ok' => false, 'base' => 0, 'rate_type' => null, 'rate_value' => 0.0, 'cap' => null,
-            'commission' => 0, 'pf' => $pfIncl, 'admin' => $adminIncl,
-            'insurance' => $insurance, 'insurance_payout' => 0, 'gst' => 0,
-            'gross' => 0, 'tds' => 0, 'net' => 0,
-        ];
-
-        $product = $loan?->product ?? ($e->product_id ? Product::find($e->product_id) : null);
-        if (! $product) {
-            return $zero;
-        }
-
-        // Resolve the config version + rates in force on this tranche's transaction
-        // date (NEFT transfer / disbursement date).
-        $date = $e->transactionDate() ? CarbonImmutable::parse($e->transactionDate()) : CarbonImmutable::now();
         $cfg = app(PayoutConfigService::class);
-        $version = $cfg->productVersionAsOf($product, $date);
-        if (! $version) {
-            return $zero;
-        }
-        $rates = $cfg->ratesAsOf($date);
-
-        // PF-based → commission on the loan's one-time PF base (carrier row only);
-        // otherwise on this tranche's disbursed amount.
-        $base = $version->is_pf_based
-            ? ($carryOneTime ? DisbursementDetail::exGst($pfIncl, $rates['pf_gst']) : 0)
-            : (int) $e->amount;
-
-        if ($base <= 0) {
-            // No commission base for this row; one-time parts (if carried) still apply.
-            $bd = $svc->breakdown(0, $pfIncl, $adminIncl, $insurance, $rates);
-
-            return [
-                'ok' => true, 'base' => 0, 'rate_type' => null, 'rate_value' => 0.0, 'cap' => null,
-                'commission' => 0, 'pf' => $pfIncl, 'admin' => $adminIncl,
-                'insurance' => $bd['insurance_base'], 'insurance_payout' => $bd['insurance_payout'],
-                'gst' => $bd['gst'], 'gross' => $bd['gross'], 'tds' => $bd['tds'], 'net' => $bd['net'],
+        $runs = app(PayoutRunService::class);
+        foreach ($tiers as $pid => $t) {
+            $version = $cfg->productVersionAsOf($t['product'], $toDate);
+            $slab = $version ? $runs->matchSlab($version, $t['aggregate']) : null;
+            $tiers[$pid] += [
+                'product_name' => $t['product']->name,
+                'is_pf_based' => (bool) $t['product']->is_pf_based,
+                'slab' => $slab,
+                'slab_low' => $slab ? (int) $slab->low_amount : null,
+                'slab_high' => $slab ? (int) $slab->high_amount : null,
+                'rate_type' => $slab ? $slab->payout_type : 'percent',
+                'rate_value' => $slab ? (float) $slab->payout_value : 0.0,
+                'max_payout' => $version && $version->max_payout_amount !== null ? (int) $version->max_payout_amount : null,
             ];
         }
 
-        $slab = $version->payoutSlabs->first(
-            fn ($s) => $base >= (int) $s->low_amount && $base <= (int) $s->high_amount
-        );
-        if (! $slab) {
-            return $zero;
-        }
+        return $tiers;
+    }
 
-        $payoutUser = $loan?->payoutUser()->with('roles')->first();
-        $isConnector = $payoutUser?->hasRole('connector') ?? false;
-        $rate = $slab->rateFor($isConnector);
-        $cap = $version->max_payout_amount ? (int) $version->max_payout_amount : null;
+    /**
+     * Loan-level payout on the product's tier (see productTiers) — the same per-loan
+     * figure a payout run shows: tier rate × the loan's payout base (pre-cap; the
+     * max-payout cap applies per user × product in the run). Insurance payout is
+     * information only; TDS on the commission. The uploaded insurance overrides the
+     * DB header (null = keep DB) when the loan's carrier tranche is in the window.
+     *
+     * @param  array<string, mixed>  $side  from loanSide()
+     * @param  array<string, mixed>|null  $tier  from productTiers()
+     * @return array{ok:bool, base:int, rate_type:?string, rate_value:float, commission:int, pf:int, admin:int, insurance:int, insurance_payout:int, gross:int, tds:int, net:int}
+     */
+    private function loanCalc(array $side, ?array $tier, ?LoanDetail $loan, ?int $excelInsurance, array $rates, PayoutService $svc): array
+    {
+        $header = $loan?->disbursement;
+        $insurance = $side['carries_one_time'] ? ($excelInsurance ?? (int) ($header->insurance_amount ?? 0)) : 0;
+        // PF column: PF excl. GST for PF-based; PF + admin as entered for a normal product.
+        $pf = $side['is_pf_based'] ? $side['pf_ex_gst'] : ($side['charges'] > 0 ? (int) $header->pf_amount : 0);
+        $admin = $side['is_pf_based'] ? 0 : $side['charges'] - $pf;
 
-        $commission = $svc->computeAmount($rate['type'], $rate['value'], $base, $cap);
-        $bd = $svc->breakdown($commission, $pfIncl, $adminIncl, $insurance, $rates);
+        $slab = $tier['slab'] ?? null;
+        $rate = $slab ? $slab->rateFor($loan?->payoutUser?->hasRole('connector') ?? false) : null;
+        $commission = $rate ? $svc->computeAmount($rate['type'], (float) $rate['value'], $side['amount'], null) : 0;
+        $bd = $svc->breakdown($commission, $insurance, $rates);
 
         return [
-            'ok' => true,
-            'base' => $base,
-            'rate_type' => $rate['type'],
-            'rate_value' => (float) $rate['value'],
-            'cap' => $cap,
+            'ok' => $slab !== null,
+            'base' => $side['amount'],
+            'rate_type' => $rate['type'] ?? null,
+            'rate_value' => (float) ($rate['value'] ?? 0),
             'commission' => $bd['commission'],
-            'pf' => $pfIncl,
-            'admin' => $adminIncl,
+            'pf' => $pf,
+            'admin' => $admin,
             'insurance' => $bd['insurance_base'],
             'insurance_payout' => $bd['insurance_payout'],
-            'gst' => $bd['gst'],
             'gross' => $bd['gross'],
             'tds' => $bd['tds'],
             'net' => $bd['net'],

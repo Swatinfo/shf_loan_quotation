@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
-use App\Models\DisbursementDetail;
 use App\Models\DisbursementEntry;
 use App\Models\PayoutRun;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\PayoutRunService;
+use App\Services\PayoutService;
 use Illuminate\Http\Request;
 
 /**
@@ -78,8 +78,8 @@ class PayoutRunController extends Controller
         $productName = $run->products->pluck('product_name', 'id');
 
         // Per-user BASE totals (loan amount / PF / insurance) from the stored lines.
-        // base_amount = volume (amount-based) or PF (pf-based); pf_base = PF counted,
-        // so volume = Σ base_amount − Σ pf_base.
+        // base_amount = volume incl. one-time PF + admin (amount-based) or PF excl. GST
+        // (pf-based); pf_base = PF counted, so volume = Σ base_amount − Σ pf_base.
         $userBases = $run->lines->groupBy('payout_user_id')->map(fn ($ls) => [
             'volume' => (int) $ls->sum('base_amount') - (int) $ls->sum('pf_base'),
             'pf' => (int) $ls->sum('pf_base'),
@@ -87,7 +87,8 @@ class PayoutRunController extends Controller
         ]);
 
         // Loans considered in this run — derived from the tranches stamped with this
-        // run id, grouped by payout user → product. (One row per loan, with PF/insurance.)
+        // run id, grouped by payout user → product. One-time PF + admin (normal
+        // products), PF (PF-based) and insurance appear only on the run that counted them.
         $pfBasedProductIds = $run->products->where('is_pf_based', true)->pluck('product_id')->all();
         $loansByUser = DisbursementEntry::where('payout_run_id', $run->id)
             ->with(['loan:id,loan_number,application_number,payout_user_id,product_id', 'loan.product:id,name', 'loan.payoutUser:id,name', 'loan.disbursement'])
@@ -97,10 +98,12 @@ class PayoutRunController extends Controller
                 $loan = $entries->first()->loan;
                 $header = $loan?->disbursement;
                 $isPf = in_array($loan?->product_id, $pfBasedProductIds, true);
+                $insurance = ($header && (int) $header->insurance_payout_run_id === $run->id) ? (int) $header->insurance_amount : 0;
                 $accNumbers = $entries->pluck('loan_account_number')
                     ->map(fn ($a) => trim((string) $a))->filter()->unique()->values()->all();
 
                 return [
+                    'loan_id' => $loan?->id,
                     'loan_number' => $loan?->loan_number ?? '—',
                     'application_number' => $loan?->application_number,
                     'account_numbers' => $accNumbers,
@@ -108,8 +111,12 @@ class PayoutRunController extends Controller
                     'payout_user' => $loan?->payoutUser?->name ?? '—',
                     'product_name' => $loan?->product?->name ?? '—',
                     'amount' => (int) $entries->sum('amount'),
-                    'pf' => ($isPf && $header) ? DisbursementDetail::exGst((int) $header->pf_amount, (float) $run->gst_rate) : 0,
-                    'insurance' => $header ? (int) $header->insurance_amount : 0,
+                    'charges' => (! $isPf && $header && (int) $header->charges_payout_run_id === $run->id)
+                        ? PayoutService::oneTimeChargesBase($header) : 0,
+                    'pf' => ($isPf && $header && (int) $header->pf_payout_run_id === $run->id)
+                        ? PayoutService::pfBase($header, (float) $run->gst_rate) : 0,
+                    'insurance' => $insurance,
+                    'insurance_payout' => (int) round($insurance * (float) $run->insurance_rate),
                     'settlement_date' => $entries->map(fn ($e) => optional($e->transactionDate())->toDateString())->filter()->max(),
                 ];
             })

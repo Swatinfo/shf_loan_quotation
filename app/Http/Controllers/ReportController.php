@@ -108,7 +108,7 @@ class ReportController extends Controller
             ->select('ld.status', DB::raw('COUNT(*) as cnt'), DB::raw('SUM(ld.loan_amount) as amount'))
             ->groupBy('ld.status')->get()->keyBy('status');
         $summary = [];
-        foreach (['active', 'partial_disbursed', 'on_hold', 'completed', 'rejected', 'cancelled'] as $st) {
+        foreach (['active', 'partial_disbursed', 'partial_completed', 'on_hold', 'completed', 'rejected', 'cancelled'] as $st) {
             $summary[$st] = [
                 'count' => (int) ($byStatus[$st]->cnt ?? 0),
                 'amount' => NumberToWordsService::formatCurrency((int) ($byStatus[$st]->amount ?? 0)),
@@ -134,7 +134,7 @@ class ReportController extends Controller
                 'p.name as product_name', 'br.name as branch_name', 'adv.name as advisor_name',
                 'rej.name as rejected_by_name', 'fin.done_at',
             ]);
-        // "Active" (and the default) means in-flight: active + partial_disbursed.
+        // "Active" (and the default) means in-flight: active + partial_disbursed + partial_completed.
         if ($status === 'active') {
             $rowsQ->whereIn('ld.status', LoanDetail::IN_FLIGHT_STATUSES);
         } elseif ($status !== 'all') {
@@ -152,7 +152,7 @@ class ReportController extends Controller
             ->pluck('s', 'loan_id');
 
         // Stage lines for open loans: in-progress + pending-inside-active-parallel.
-        $lineLoanIds = $loans->whereIn('status', ['active', 'partial_disbursed', 'on_hold'])->pluck('id');
+        $lineLoanIds = $loans->whereIn('status', [...LoanDetail::IN_FLIGHT_STATUSES, LoanDetail::STATUS_ON_HOLD])->pluck('id');
         $linesByLoan = $lineLoanIds->isEmpty() ? collect() : $this->stageLines($lineLoanIds);
 
         $now = now();
@@ -212,7 +212,7 @@ class ReportController extends Controller
         }
 
         // Most-stuck first for open loans; everything else stays newest-first.
-        if (in_array($status, ['active', 'partial_disbursed', 'on_hold'], true)) {
+        if (in_array($status, [...LoanDetail::IN_FLIGHT_STATUSES, LoanDetail::STATUS_ON_HOLD], true)) {
             $rows = $rows->sortByDesc('max_stage_days');
         }
 

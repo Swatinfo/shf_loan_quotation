@@ -114,6 +114,27 @@
         </div>
     @break
 
+    @case('kfs')
+        @if ($assignment->status === 'completed')
+            <div class="mt-2 border-top pt-2 shf-stage-saved-data">
+                <div class="row g-2">
+                    <div class="col-sm-6">
+                        <div class="small"><span class="text-muted">Loan Amount:</span>
+                            <strong>{{ $loan->formatted_amount }}</strong>
+                        </div>
+                    </div>
+                    @if ($loan->original_loan_amount !== null && (int) $loan->original_loan_amount !== (int) $loan->loan_amount)
+                        <div class="col-sm-6">
+                            <div class="small"><span class="text-muted">Original Applied:</span>
+                                <strong>{{ $loan->formatted_original_amount }}</strong>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+    @break
+
     @case('docket')
         @php
             $docketNotes = $roNotes;

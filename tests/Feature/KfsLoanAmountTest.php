@@ -33,7 +33,12 @@ class KfsLoanAmountTest extends TestCase
             ['slug' => 'manage_loan_stages'],
             ['name' => 'Manage Loan Stages', 'group' => 'Loans']
         );
-        $advisor->permissions()->syncWithoutDetaching([$perm->id]);
+        // The stages page is gated by permission:view_loans.
+        $viewPerm = Permission::firstOrCreate(
+            ['slug' => 'view_loans'],
+            ['name' => 'View Loans', 'group' => 'Loans']
+        );
+        $advisor->permissions()->syncWithoutDetaching([$perm->id, $viewPerm->id]);
     }
 
     private function user(string $role): User
@@ -161,6 +166,38 @@ class KfsLoanAmountTest extends TestCase
             ->assertStatus(422);
 
         $this->assertSame('in_progress', $loan->fresh()->stageAssignments->firstWhere('stage_key', 'kfs')->status);
+    }
+
+    public function test_completed_kfs_shows_loan_amount_to_owner_and_viewer(): void
+    {
+        $creator = $this->user('loan_advisor');
+        $kfsOwner = $this->user('loan_advisor');
+        $loan = $this->makeLoan($creator, $kfsOwner, ['loan_amount' => 1250000], kfsStatus: 'completed');
+        $loan->stageAssignments()->where('stage_key', 'kfs')->update(['completed_at' => now()]);
+
+        // KFS owner (editable branch) and loan creator (read-only partial) both see it.
+        foreach ([$kfsOwner, $creator] as $viewer) {
+            $this->actingAs($viewer)
+                ->get(route('loans.stages', $loan))
+                ->assertOk()
+                ->assertSee('Loan Amount:')
+                ->assertSee('12,50,000')
+                ->assertSee('Original Applied:')
+                ->assertSee('10,00,000');
+        }
+    }
+
+    public function test_completed_kfs_hides_original_when_amount_unchanged(): void
+    {
+        $creator = $this->user('loan_advisor');
+        $kfsOwner = $this->user('loan_advisor');
+        $loan = $this->makeLoan($creator, $kfsOwner, [], kfsStatus: 'completed');
+
+        $this->actingAs($kfsOwner)
+            ->get(route('loans.stages', $loan))
+            ->assertOk()
+            ->assertSee('10,00,000')
+            ->assertDontSee('Original Applied:');
     }
 
     public function test_legacy_null_original_is_backfilled_on_first_edit(): void

@@ -164,3 +164,36 @@ php artisan up               # end maintenance
   - `1`: Rate & PF opens alongside the parallel sub-stages after `bsm_osv` completes; Sanction Letter waits for BOTH `parallel_processing` and `rate_pf` to finish.
   - Safe to flip at runtime (`php artisan config:clear` in prod). Does not affect the frozen `workflow_config` snapshot on existing loans.
   - Flipping OFF→ON does NOT retro-open rate_pf for loans already past `bsm_osv`; only new completions of `bsm_osv` follow the parallel flow. Flipping ON→OFF is safe — `checkParallelCompletion` gates on status and will not double-start a rate_pf that is already in_progress/completed.
+
+## One-off: purge all past payouts (2026-10-28)
+
+`php artisan payout:purge-runs` deletes **every** past payout so they can be recalculated under
+the 2026-10-28 payout rules (normal products: commission on entries + PF + admin; PF-based:
+PF excluding GST; insurance info only). It removes all `payout_runs` (+ `payout_run_products`,
+`payout_run_lines`, `payout_run_users`) and the older `loan_payouts`, and clears every "paid"
+marker (`disbursement_entries.payout_run_id` / `paid_amount_counted` / `loan_payout_id`,
+`disbursement_details.pf_payout_run_id` / `insurance_payout_run_id` / `charges_payout_run_id`).
+Afterwards every settled tranche is unpaid and appears in the next payout run. Payout settings
+(rates, slabs, product versions) are not touched. **Cannot be undone except from the backup.**
+
+**Deploy order on production:**
+
+```bash
+php artisan migrate                       # adds charges_payout_run_id + status-only partial_completed backfill + recalculates partial loans' progress
+php artisan payout:purge-runs --dry-run   # shows the counts, changes nothing
+php artisan payout:purge-runs             # type PURGE to confirm
+php artisan payout:purge-runs --mysqldump=/usr/bin/mysqldump   # if mysqldump is not on PATH
+```
+
+The real run **always backs up the whole database first** with `mysqldump`
+(`--single-transaction --routines --triggers --no-tablespaces`) to
+`storage/app/backups/payout-purge-backup-<database>-<YYYY-MM-DD_HH-MM-SS>.sql.gz`. Credentials go
+through a temporary private option file (never on the command line). If the dump fails, is empty,
+or lacks mysqldump's "Dump completed" trailer, the command stops and **nothing is deleted**.
+The deletes run in one transaction and are logged as `purge_payout_runs` (with the backup file
+name). `--force` skips only the typed confirmation, never the backup. Old backups are not
+deleted automatically.
+
+Restore if ever needed: `gunzip -c storage/app/backups/<file>.sql.gz | mysql -u <user> -p <database>`.
+
+Then recreate payouts from **Payout Runs** for each period.

@@ -132,6 +132,13 @@ class PayoutRunControllerTest extends TestCase
         $this->assertSame(0, $preview['loan_lines'][0]['pf_base']);      // amount-based
         $this->assertSame(0, $preview['loan_lines'][0]['insurance_base']);
         $this->assertSame(60000, $preview['loan_lines'][0]['payout']);   // 1% of 60L
+        // The A/c number links to the loan's Stages page.
+        $resp->assertSee('href="'.route('loans.stages', $loan).'"', false);
+        // …and so does the loan number, opening in a new tab.
+        $this->assertMatchesRegularExpression(
+            '#<a href="'.preg_quote(route('loans.stages', $loan), '#').'" target="_blank"[^>]*>\s*'.preg_quote($loan->loan_number, '#').'</a>#',
+            $resp->getContent(),
+        );
 
         // Per-user base totals are exposed alongside the payouts.
         $this->assertSame(6000000, $preview['users'][0]['total_volume']);
@@ -157,8 +164,11 @@ class PayoutRunControllerTest extends TestCase
         // The tranche is stamped against the run.
         $this->assertSame($run->id, (int) $loan->disbursementEntries()->first()->payout_run_id);
 
-        // Show page renders.
-        $this->actingAs($admin)->get(route('payouts.runs.show', $run))->assertOk();
+        // Show page renders, with the A/c number linking to the loan's Stages page.
+        $this->actingAs($admin)->get(route('payouts.runs.show', $run))->assertOk()
+            ->assertSee('href="'.route('loans.stages', $loan).'"', false)
+            ->assertSee('class="po-loan-no"', false) // brand-orange loan #
+            ->assertSee('title="Open loan stages">'.$loan->loan_number.'</a>', false);
     }
 
     public function test_preview_can_not_finalize_when_nothing_in_range(): void

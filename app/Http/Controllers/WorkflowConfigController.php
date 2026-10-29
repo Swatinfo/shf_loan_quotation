@@ -90,7 +90,16 @@ class WorkflowConfigController extends Controller
             'bank_id' => 'required|exists:banks,id',
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:20',
+            'bank_aliases' => 'nullable|string|max:500',
         ]);
+
+        // Other names the bank uses for this product on its statements (comma separated).
+        $aliases = collect(explode(',', (string) ($validated['bank_aliases'] ?? '')))
+            ->map(fn ($a) => trim(preg_replace('/\s+/', ' ', $a)))
+            ->filter()
+            ->unique(fn ($a) => Product::normalizeBankName($a))
+            ->values()
+            ->all();
 
         // Check unique (bank_id + name)
         $exists = Product::where('bank_id', $validated['bank_id'])
@@ -103,10 +112,23 @@ class WorkflowConfigController extends Controller
                 ->with('error', 'This product already exists for the selected bank.');
         }
 
+        // A bank name must point at ONE product of the bank, or reconciliation can't
+        // tell them apart.
+        $candidate = new Product(['name' => $validated['name'], 'code' => $validated['code'] ?? null, 'bank_aliases' => $aliases]);
+        $clash = Product::where('bank_id', $validated['bank_id'])
+            ->when($validated['id'] ?? null, fn ($q, $id) => $q->where('id', '!=', $id))
+            ->get()
+            ->first(fn (Product $other) => array_intersect($candidate->bankNameKeys(), $other->bankNameKeys()) !== []);
+        if ($clash) {
+            return redirect()->back()->withInput()
+                ->with('error', 'A bank name / alias of this product is already used by "'.$clash->name.'" of the same bank.');
+        }
+
         $data = [
             'bank_id' => $validated['bank_id'],
             'name' => $validated['name'],
             'code' => $validated['code'] ?? null,
+            'bank_aliases' => $aliases ?: null,
         ];
 
         if ($validated['id'] ?? null) {

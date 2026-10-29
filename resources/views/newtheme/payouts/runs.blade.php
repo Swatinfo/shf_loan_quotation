@@ -139,8 +139,8 @@
                         <table class="tbl" style="width:100%;">
                             <thead><tr>
                                 <th>User</th>
-                                <th class="text-end">Loan Amount</th><th class="text-end">PF Amount</th><th class="text-end">Insurance Amount</th>
-                                <th class="text-end">Commission</th><th class="text-end">PF payout</th><th class="text-end">Insurance payout</th>
+                                <th class="text-end">Loan Amount <span class="text-muted">(incl. PF + Admin)</span></th><th class="text-end">PF Amount <span class="text-muted">(excl. GST)</span></th><th class="text-end">Insurance Amount</th>
+                                <th class="text-end">Commission</th><th class="text-end">PF payout</th><th class="text-end">Insurance payout <span class="text-muted">(info only)</span></th>
                                 <th class="text-end">Total</th><th class="text-end">TDS</th><th class="text-end">Net</th>
                             </tr></thead>
                             <tbody>
@@ -189,32 +189,36 @@
                         <div class="card-hd"><div class="t">Loans considered ({{ collect($preview['loan_lines'])->count() }}) — grouped by user → product</div></div>
                         <div class="card-bd" style="overflow-x:auto;">
                             <table class="tbl" style="width:100%;">
-                                <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Loan Amount</th><th class="text-end">PF</th><th class="text-end">Insurance</th><th class="text-end">Payout*</th></tr></thead>
+                                <thead><tr><th>User / Product / Loan</th><th>Settlement</th><th class="text-end">Disbursed</th><th class="text-end">PF + Admin</th><th class="text-end">PF <span class="text-muted">(excl. GST)</span></th><th class="text-end">Insurance</th><th class="text-end">Insurance payout <span class="text-muted">(info only)</span></th><th class="text-end">Payout*</th></tr></thead>
                                 <tbody>
                                     @foreach ($loansByUser as $uid => $uLoans)
                                         <tr style="background:var(--bg-alt,#f5f6f7);">
                                             <td colspan="2"><strong>{{ $preview['user_names'][$uid] ?? ('#'.$uid) }}</strong>
                                                 <span class="text-muted">· {{ $uLoans->count() }} loan(s)</span></td>
                                             <td class="text-end"><strong>₹ {{ inr($uLoans->sum('volume')) }}</strong></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('charges')) }}</strong></td>
                                             <td class="text-end"><strong>₹ {{ inr($uLoans->sum('pf_base')) }}</strong></td>
                                             <td class="text-end"><strong>₹ {{ inr($uLoans->sum('insurance_base')) }}</strong></td>
+                                            <td class="text-end"><strong>₹ {{ inr($uLoans->sum('insurance_payout')) }}</strong></td>
                                             <td class="text-end"><strong>₹ {{ inr($uLoans->sum('payout')) }}</strong></td>
                                         </tr>
                                         @foreach ($uLoans->groupBy('product_name') as $pname => $pLoans)
-                                            <tr><td colspan="6" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
+                                            <tr><td colspan="8" class="text-muted" style="padding-left:16px;">↳ {{ $pname }}</td></tr>
                                             @foreach ($pLoans as $l)
                                                 <tr>
                                                     <td style="padding-left:32px;">
-                                                        {{ $l['loan_number'] }}
+                                                        @include('newtheme.payouts._acc-link', ['accounts' => array_filter([$l['loan_number'] ?? null]), 'loanId' => $l['loan_id'] ?? null, 'isLoanNumber' => true])
                                                         <div class="text-muted" style="font-size:11px;">
                                                             App #: {{ $l['application_number'] ?: '—' }}<br>
-                                                            A/c #: {{ !empty($l['account_numbers']) ? implode(', ', $l['account_numbers']) : '—' }}
+                                                            A/c #: @include('newtheme.payouts._acc-link', ['accounts' => $l['account_numbers'] ?? [], 'loanId' => $l['loan_id'] ?? null])
                                                         </div>
                                                     </td>
                                                     <td>{{ $l['settlement_date'] ? \Illuminate\Support\Carbon::parse($l['settlement_date'])->format('d/m/Y') : '—' }}</td>
                                                     <td class="text-end">₹ {{ inr($l['volume']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['charges']) }}</td>
                                                     <td class="text-end">₹ {{ inr($l['pf_base']) }}</td>
                                                     <td class="text-end">₹ {{ inr($l['insurance_base']) }}</td>
+                                                    <td class="text-end">₹ {{ inr($l['insurance_payout']) }}</td>
                                                     <td class="text-end">₹ {{ inr($l['payout']) }}</td>
                                                 </tr>
                                             @endforeach
@@ -226,14 +230,16 @@
                                     <tr style="font-weight:700;border-top:2px solid var(--border,#bcbec0);">
                                         <td colspan="2" class="text-end">Grand Total ({{ $AL->count() }} loans)</td>
                                         <td class="text-end">₹ {{ inr($AL->sum('volume')) }}</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('charges')) }}</td>
                                         <td class="text-end">₹ {{ inr($AL->sum('pf_base')) }}</td>
                                         <td class="text-end">₹ {{ inr($AL->sum('insurance_base')) }}</td>
+                                        <td class="text-end">₹ {{ inr($AL->sum('insurance_payout')) }}</td>
                                         <td class="text-end">₹ {{ inr($AL->sum('payout')) }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
                             <div class="po-subhint" style="font-size:11.5px;color:var(--ink-3);margin-top:6px;">
-                                * per-loan payout is a gross, pre-cap figure (base × rate + insurance). The max-payout cap is applied per user × product, so a user's net above may be lower.
+                                * per-loan payout is a gross, pre-cap figure: rate × (disbursed + PF + admin) for normal products, rate × PF excluding GST for PF-based products. PF + admin are counted once per loan, with its first paid tranche. Insurance payout is shown for information only and is not added. The max-payout cap is applied per user × product, so a user's net above may be lower.
                             </div>
                         </div>
                     </div>

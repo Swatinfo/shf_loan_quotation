@@ -723,6 +723,16 @@
                                                 <input type="text" name="code" id="productCodeInput"
                                                     class="shf-input" placeholder="e.g. HL" maxlength="20">
                                             </div>
+                                            <div class="col-12">
+                                                <label class="shf-form-label d-block mb-1">Bank names / aliases (optional)</label>
+                                                <input type="text" name="bank_aliases" id="productAliasesInput"
+                                                    class="shf-input" placeholder="e.g. HL, Housing Loan, Prime HL" maxlength="500">
+                                                <div class="shf-text-xs text-muted mt-1">
+                                                    Comma separated. Other names the bank writes for this product in its
+                                                    statement — bank reconciliation checks the <strong>product</strong>
+                                                    column against the product name, code and these names.
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="shf-text-xs text-muted mt-2">
@@ -773,6 +783,10 @@
                                                 @if ($product->code)
                                                     <small class="text-muted">({{ $product->code }})</small>
                                                 @endif
+                                                @if (!empty($product->bank_aliases))
+                                                    <span class="shf-badge shf-badge-blue shf-text-2xs"
+                                                        title="Bank names / aliases">aka {{ implode(', ', $product->bank_aliases) }}</span>
+                                                @endif
                                                 @if ($product->productStages->count() > 0)
                                                     <span
                                                         class="shf-badge shf-badge-green shf-text-2xs">{{ $product->productStages->where('is_enabled', true)->count() }}
@@ -813,7 +827,8 @@
                                                         data-id="{{ $product->id }}"
                                                         data-bank-id="{{ $product->bank_id }}"
                                                         data-name="{{ $product->name }}"
-                                                        data-code="{{ $product->code }}">
+                                                        data-code="{{ $product->code }}"
+                                                        data-aliases="{{ implode(', ', $product->bank_aliases ?? []) }}">
                                                         <svg class="shf-icon-2xs" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"

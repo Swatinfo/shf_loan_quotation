@@ -98,3 +98,7 @@
 
 /* ========== Hint text ========== */
 .po-hint { color: var(--ink-3); font-size: 12.5px; margin-bottom: 12px; line-height: 1.5; }
+
+/* ========== Loan # — brand orange (links to the loan's Stages page) ========== */
+.po-loan-no { color: var(--accent, #f15a29); font-weight: 600; text-decoration: none; }
+a.po-loan-no:hover { text-decoration: underline; }

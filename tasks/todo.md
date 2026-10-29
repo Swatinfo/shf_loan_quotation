@@ -1,4 +1,41 @@
-# TODO — Entry-less on-hold loans by app# + download timestamps  ← CURRENT (2026-10-19)
+# TODO — Reconcile product check + one-click product correction + bank aliases  ← CURRENT (2026-10-28) — BUILT, full suite 469/469, Pint clean
+
+Decisions: new `product` column in the reconcile Excel; it is a CHECK, not a match key (match stays app# / A/c / name). Compare against our product name + code + per-product **bank aliases** (new Settings field), same bank only, ignoring case/spaces/punctuation. One-click "Change to X" per row (no bulk). The 5 loans whose entry product already differs from the loan product are left untouched (no cleanup).
+
+- [x] A. Migration `products.bank_aliases` (JSON array) + Product cast/fillable + `matchesBankName()` normaliser
+- [x] B. Settings → Products form: "Bank names / aliases" input (comma separated), storeProduct saves it, shown on the product row
+- [x] C. Reconcile: `product` column in template; per-row product check (ok / mismatch / unknown / blank) on matched + mismatch rows; mismatch/unknown = discrepancy
+- [x] D. Reconcile: bank-wide identifier lookup so a loan logged under a non-selected product is found ("Logged under X — not in selected products") instead of "not in DB"
+- [x] E. Uploaded file kept (per-user token, 24h) so the page can re-run without re-uploading
+- [x] F. `POST payouts/reconcile/loans/{loan}/product` (finalize_payout): same bank only, blocked when any tranche/charges are in a payout run or legacy finalized; updates loan + its entries (+ entries JSON); ActivityLog `change_loan_product` (source reconcile); page re-runs automatically
+- [x] H. Excel `loan_amount` renamed `disbursed_amount` (old header still read as fallback); table headers "Disbursed Amount"
+- [x] G. Tests + Pint + docs (services-reference, routes-reference, database-schema, settings, models, lessons)
+- [x] Browser-verified on local live copy: HL → Unknown, LAP → Mismatch → Change → auto re-run → "Other product"; loan 350 restored to HOME LOAN (2 `change_loan_product` logs)
+- [x] I. Loan A/c number → Stages page link (new tab) on Reconcile (3 tables) + Payout Runs preview + run detail; tests; suite 470/470
+- [x] J. Loan # linked too (new tab) + brand orange `.po-loan-no` on Reconcile + Payout Runs; SHF_VERSION bumped in local .env (bump on prod too); suite 471/471
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Partial disbursement lifecycle + payout/reconcile rework + payout purge  ← CURRENT (2026-10-28) — BUILT, full suite 459/459, Pint clean
+
+Decisions: partial Save completes disbursement stage + opens OTC; new stored status `partial_completed`; Mark Full sets loan_amount = entries+PF+admin; payout normal = slab% × (entries + PF + admin, once on 1st tranche); PF-based = slab% × PF ex-GST (Settings PF GST); insurance info-only (not in total, no TDS); TDS on final total; pay on OUR figures; reconcile normal = Excel loan_amount vs entries+PF+admin, PF-based = Excel pf_amount vs PF ex-GST (±₹1 counts as a match, PF only — all other comparisons exact); admin_charges column removed from reconcile Excel; purge all past payouts via `payout:purge-runs` with mysqldump backup to storage/app/backups/.
+
+- [x] A. `partial_completed` status (constants, labels EN/GU, in-flight + editable lists, hard-coded lists in Loan/Report/Dashboard controllers + LoanPipelineBreakdownService, badges) + status-only data migration
+- [x] B. `resolveDisbursementState` rewrite (always complete disbursement stage; reopen OTC on pending cheque; partial_completed vs completed)
+- [x] C. Disbursement page: no-entries error popups (Save + Mark Full), below-target warning, server `entries` error shown, Mark Full visible with no entries + unsaved-changes block
+- [x] D. Mark Full → loan_amount = gross, keep original, log change_loan_amount
+- [x] E. OTC stage card "Partially Completed" badge (owner + read-only partials)
+- [x] F. Shared payout formula (PayoutService) + PayoutRunService: no GST except PF-based ex-GST; admin+PF in normal base once (first tranche overall); `charges_payout_run_id` migration (PF+admin marker; named for both charges); insurance info-only column; TDS on total; run screen + PDF/Excel
+- [x] G. Reconcile: new comparisons, first-tranche-overall carrier fix, drop admin_charges from template/export, differences shown as before, insurance info-only
+- [x] H. `payout:purge-runs` (--dry-run, typed PURGE, mysqldump backup first, abort on failed backup, single transaction, activity log)
+- [x] I. Tests (status flow, Mark Full, no-entries, payout, reconcile, migration, purge) + update existing payout tests + full suite + Pint
+- [x] J. Docs: loans, workflow-developer, workflow-guide, settings, services-reference, database-schema, dashboard, ops, lessons; payout memory notes
+- [ ] Not committed — awaiting user confirmation
+
+---
+
+# TODO — Entry-less on-hold loans by app# + download timestamps  (2026-10-19)
 
 - [x] `dbIdentifierIndex` now loan-first (lists all bank+product loans ANY status, then enriches with tranches) → entry-less on-hold/cancelled loans found by application number, shown as [status] not "not in DB"
 - [x] Export filenames stamped: reconcile template `payout-reconciliation-template-<d-m-Y_H-i-s>.xlsx`; payout report `payout-report-<Ymd>-<Ymd>-<His>.xlsx`

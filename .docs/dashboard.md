@@ -193,9 +193,11 @@ carries no count badge.
 - The Disbursement section carries a derived **Total Disbursed** tile = Cheque/Transfer
   Entry + Partially Completed + OTC Clearance (disjoint, so no double count); it's excluded
   from the section subtotal and reconciles with the Management report's "Disbursed."
-- The loan carries `isPartiallyCompleted()` (status `partial_disbursed` + every active
-  tranche OTC-settled) — drives a **Partially Completed** badge on the loan show page and
-  the loans-list row; the dashboard **Partially Completed** tile deep-links to the same set.
+- **Partially Completed** is a stored loan status since 2026-10-28 (`partial_completed`:
+  every tranche OTC-settled, gross below target, not declared full — replaced the derived
+  `isPartiallyCompleted()`). It shows as the loan's status badge on the show page and the
+  loans-list row and counts as in-flight; the dashboard **Partially Completed** tile still
+  buckets by tranche state (settled entries), so it covers the same loans.
 - **Bank / Product / Branch filters** (AND-combined with scope/user/date): Bank →
   Product cascade (Product disabled until a Bank is picked, then limited to that bank's
   products); Branch options are scoped (all for `view_all_loans`, the user's own branches

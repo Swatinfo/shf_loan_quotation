@@ -122,7 +122,8 @@ class StageReadonlyDetailTest extends TestCase
         $loan = $this->makeLoan();
         $assignment = StageAssignment::create([
             'loan_id' => $loan->id,
-            'stage_key' => 'kfs',
+            // esign has no read-only financial detail (kfs now shows the loan amount).
+            'stage_key' => 'esign',
             'status' => 'completed',
             'notes' => json_encode([]),
         ]);
